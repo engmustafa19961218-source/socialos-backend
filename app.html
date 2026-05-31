@@ -481,7 +481,7 @@ async function processCommand(cmd) {
       const res = await fetch('https://api.anthropic.com/v1/messages', {method:'POST',headers:{'Content-Type':'application/json','x-api-key':'REMOVED-api03-bMHtg3tuf739Xde2XA0DtDsHX6ZkNmDNR8KNwScR3_DRQLdqVeNfRFAQI0rzVgJdC4R1EmiLFPb_V_rV-gU58g-rOewqwAA','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:'اكتب منشورات قصيرة وجذابة لوسائل التواصل الاجتماعي باللغة العربية مع إيموجي مناسب. المنشور يجب أن يكون احترافياً وجذاباً.',messages:[{role:'user',content:'اكتب منشوراً جذاباً عن: '+writeMatch[1]}]})});
       const d = await res.json();
       const text = d.content?.[0]?.text || '';
-      document.getElementById('post-text').value = text;
+      showTab('create', document.querySelectorAll('.nav-item')[1]); setTimeout(() => { document.getElementById('post-text').value = text; }, 300);
       showResult('✅ تم كتابة المنشور، راجعه وانشره!');
       speak('تم كتابة المنشور راجعه وانشره');
     } catch(e) { showResult('❌ تعذر الكتابة'); }
