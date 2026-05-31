@@ -208,7 +208,7 @@ async function handleAuth() {
   const errEl = document.getElementById('auth-error');
   if (!email || !password) { errEl.style.display='block'; errEl.textContent='أدخل البريد وكلمة المرور'; return; }
   try {
-    const url = isLogin ? API+'/api/auth/login' : API+'/api/auth/register';
+    const url = isLogin ? API+'/auth/login' : API+'/auth/register';
     const body = isLogin ? {email,password} : {name,email,password};
     const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json','x-api-key':'REMOVED-api03-bMHtg3tuf739Xde2XA0DtDsHX6ZkNmDNR8KNwScR3_DRQLdqVeNfRFAQI0rzVgJdC4R1EmiLFPb_V_rV-gU58g-rOewqwAA','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
     const data = await res.json();
