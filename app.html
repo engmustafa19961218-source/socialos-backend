@@ -219,7 +219,7 @@ async function handleAuth() {
       document.getElementById('auth').style.display = 'none';
       document.getElementById('dashboard').style.display = 'flex';
       document.getElementById('user-name').textContent = '👤 ' + data.user.name;
-      loadStats();
+      try { loadStats(); } catch(e) {}
     } else {
       errEl.style.display='block'; errEl.textContent = data.message || 'حدث خطأ';
     }
@@ -543,7 +543,7 @@ if(savedUser) {
   document.getElementById('auth').style.display='none';
   document.getElementById('dashboard').style.display='flex';
   document.getElementById('user-name').textContent = '👤 ' + currentUser.name;
-  loadStats();
+  try { loadStats(); } catch(e) {}
 }
 document.getElementById('name-field').style.display = 'none';
 
@@ -559,4 +559,5 @@ if(saved) {
 </script>
 </body>
 </html>
+
 
