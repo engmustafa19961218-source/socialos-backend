@@ -279,9 +279,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// =============================
-// Start Server
-// =============================
+// TikTok Verification
+app.get('/tiktokcdU6MT4crP3f2Vc2V4YaYTtKls8SZyjd.txt', (req, res) => {
+  res.send('tiktok-developers-site-verification=U6MT4crP3f2Vc2V4YaYTtKls8SZyjd');
+  });
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
