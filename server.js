@@ -6,6 +6,9 @@ app.use(cors());
 app.use(express.json());
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || 'awe5pvgbnm5z677q';
+const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || 'nFlkLVf7FSvajkESBriVA7lrE3jTf29q';
+const TIKTOK_REDIRECT_URI = 'https://socialos-production-4aa6.up.railway.app/api/tiktok/callback';
 
 let pool = null;
 try {
@@ -14,6 +17,7 @@ try {
   pool.query(`
     CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(255), email VARCHAR(255) UNIQUE, password VARCHAR(255), created_at TIMESTAMP DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, content TEXT, created_at TIMESTAMP DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS tiktok_tokens (id SERIAL PRIMARY KEY, user_id VARCHAR(255), access_token TEXT, refresh_token TEXT, open_id VARCHAR(255), display_name VARCHAR(255), avatar_url TEXT, created_at TIMESTAMP DEFAULT NOW());
   `).catch(e => console.log('DB init error:', e.message));
 } catch(e) {
   console.log('DB not available:', e.message);
@@ -21,7 +25,9 @@ try {
 
 const users = [];
 const posts = [];
+const tiktokTokens = {};
 
+// ========== AUTH ==========
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ message: 'يرجى ملء جميع الحقول' });
@@ -59,6 +65,7 @@ app.post('/api/auth/login', async (req, res) => {
   res.json({ user: { name: user.name, email }, token });
 });
 
+// ========== AI ==========
 app.post('/api/ai/generate', async (req, res) => {
   const { prompt } = req.body;
   try {
@@ -72,6 +79,7 @@ app.post('/api/ai/generate', async (req, res) => {
   } catch (e) { res.status(500).json({ message: 'خطأ في AI' }); }
 });
 
+// ========== POSTS ==========
 app.post('/api/posts', async (req, res) => {
   const { content } = req.body;
   try {
@@ -85,7 +93,7 @@ app.get('/api/posts', async (req, res) => {
   try {
     if (pool) { const r = await pool.query('SELECT * FROM posts ORDER BY created_at DESC LIMIT 50'); return res.json({ posts: r.rows }); }
   } catch (e) {}
-  res.json({ posts: posts.reverse() });
+  res.json({ posts: posts.slice().reverse() });
 });
 
 app.get('/api/analytics', async (req, res) => {
@@ -95,7 +103,100 @@ app.get('/api/analytics', async (req, res) => {
   res.json({ totalPosts: posts.length, scheduled: 0, published: posts.length });
 });
 
-app.get('/', (req, res) => res.json({ status: 'SocialOS API Running' }));
+// ========== TIKTOK OAuth ==========
+
+// 1. بدء عملية ربط TikTok
+app.get('/api/tiktok/auth', (req, res) => {
+  const state = Math.random().toString(36).substring(2, 15);
+  const scope = 'user.info.basic';
+  const authUrl = `https://www.tiktok.com/v2/auth/authorize?client_key=${TIKTOK_CLIENT_KEY}&scope=${scope}&response_type=code&redirect_uri=${encodeURIComponent(TIKTOK_REDIRECT_URI)}&state=${state}`;
+  res.json({ url: authUrl });
+});
+
+// 2. Callback بعد موافقة المستخدم
+app.get('/api/tiktok/callback', async (req, res) => {
+  const { code, error } = req.query;
+
+  if (error || !code) {
+    return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'${error || 'no_code'}'}, '*'); window.close();</script>`);
+  }
+
+  try {
+    // تبادل الكود بـ Access Token
+    const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_key: TIKTOK_CLIENT_KEY,
+        client_secret: TIKTOK_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: TIKTOK_REDIRECT_URI
+      })
+    });
+
+    const tokenData = await tokenRes.json();
+
+    if (!tokenData.access_token) {
+      return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'token_failed'}, '*'); window.close();</script>`);
+    }
+
+    // جلب بيانات المستخدم
+    const userRes = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url,follower_count', {
+      headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+    });
+    const userData = await userRes.json();
+    const userInfo = userData.data?.user || {};
+
+    // حفظ في DB
+    if (pool) {
+      await pool.query(`
+        INSERT INTO tiktok_tokens (user_id, access_token, refresh_token, open_id, display_name, avatar_url)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT DO NOTHING
+      `, ['default', tokenData.access_token, tokenData.refresh_token || '', userInfo.open_id || '', userInfo.display_name || '', userInfo.avatar_url || '']);
+    } else {
+      tiktokTokens['default'] = { ...tokenData, ...userInfo };
+    }
+
+    const tiktokUser = {
+      display_name: userInfo.display_name || 'مستخدم TikTok',
+      avatar_url: userInfo.avatar_url || '',
+      open_id: userInfo.open_id || '',
+      follower_count: userInfo.follower_count || 0
+    };
+
+    res.send(`<script>window.opener.postMessage({type:'TIKTOK_SUCCESS', user: ${JSON.stringify(tiktokUser)}}, '*'); window.close();</script>`);
+
+  } catch (e) {
+    console.error('TikTok callback error:', e);
+    res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'server_error'}, '*'); window.close();</script>`);
+  }
+});
+
+// 3. جلب حالة ربط TikTok
+app.get('/api/tiktok/status', async (req, res) => {
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT display_name, avatar_url, open_id, follower_count FROM tiktok_tokens ORDER BY created_at DESC LIMIT 1');
+      if (r.rows.length > 0) return res.json({ connected: true, user: r.rows[0] });
+    } else if (tiktokTokens['default']) {
+      return res.json({ connected: true, user: tiktokTokens['default'] });
+    }
+  } catch (e) {}
+  res.json({ connected: false });
+});
+
+// 4. فصل TikTok
+app.delete('/api/tiktok/disconnect', async (req, res) => {
+  try {
+    if (pool) await pool.query('DELETE FROM tiktok_tokens');
+    else delete tiktokTokens['default'];
+  } catch (e) {}
+  res.json({ success: true });
+});
+
+app.get('/', (req, res) => res.json({ status: 'SocialOS API Running ⚡' }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
