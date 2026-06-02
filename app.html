@@ -35,6 +35,7 @@
   .auth-btn { background: linear-gradient(135deg, var(--accent), #8b5cf6); border: none; border-radius: 12px; padding: 15px; color: white; font-family: 'Cairo', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
   .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--glow); }
   .auth-error { color: var(--accent2); font-size: 0.85rem; margin-top: -6px; display: none; }
+  .auth-success { color: var(--accent3); font-size: 0.85rem; margin-top: -6px; display: none; }
   #app { display: none; position: relative; z-index: 1; }
   .sidebar { position: fixed; right: 0; top: 0; bottom: 0; width: 240px; background: var(--surface); border-left: 1px solid var(--border); padding: 24px 0; display: flex; flex-direction: column; z-index: 50; transition: transform 0.3s; }
   .sidebar-logo { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
@@ -65,10 +66,14 @@
   .stat-change { font-size: 0.8rem; color: var(--accent3); margin-top: 4px; }
   .content-area { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 120px; width: 100%; color: var(--text); font-family: 'Cairo', sans-serif; font-size: 0.95rem; outline: none; resize: vertical; line-height: 1.7; }
   .content-area::placeholder { color: var(--muted); }
+  .word-counter { color: var(--muted); font-size: 0.82rem; margin-top: 6px; text-align: left; }
+  .word-counter span { color: var(--accent); font-weight: 700; }
   .chip { padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Cairo', sans-serif; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
   .chip.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
   .publish-btn { background: linear-gradient(135deg, var(--accent), #8b5cf6); border: none; border-radius: 12px; padding: 13px 28px; color: white; font-family: 'Cairo', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; }
   .publish-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--glow); }
+  .copy-btn { background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 13px 28px; color: var(--muted); font-family: 'Cairo', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; }
+  .copy-btn:hover { border-color: var(--accent3); color: var(--accent3); }
   .ai-container { display: flex; flex-direction: column; height: calc(100vh - 160px); }
   .ai-messages { flex: 1; overflow-y: auto; padding: 20px 0; display: flex; flex-direction: column; gap: 16px; }
   .msg { display: flex; gap: 12px; max-width: 80%; animation: msgIn 0.3s ease; }
@@ -105,8 +110,12 @@
   @media (max-width: 768px) { .sidebar { transform: translateX(100%); } .sidebar.open { transform: translateX(0); } .main { margin-right: 0; padding: 16px; } .mobile-header { display: flex; } .grid-3 { grid-template-columns: 1fr; } .msg { max-width: 90%; } }
   .suggestion-chip { padding: 6px 14px; background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.3); border-radius: 20px; font-size: 0.82rem; color: var(--accent); cursor: pointer; transition: all 0.2s; font-family: 'Cairo', sans-serif; }
   .section-title { font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; font-size: 0.82rem; }
+  .password-strength { height: 4px; border-radius: 2px; margin-top: 4px; transition: all 0.3s; }
+  .strength-weak { background: var(--accent2); width: 33%; }
+  .strength-medium { background: #f59e0b; width: 66%; }
+  .strength-strong { background: var(--accent3); width: 100%; }
 </style>
-</head>ا<body>
+</head><body>
 <div id="auth-screen">
   <div class="auth-box">
     <div class="auth-logo">⚡ SocialOS</div>
@@ -124,8 +133,10 @@
     <div class="auth-form" id="register-form" style="display:none">
       <input class="auth-input" type="text" id="reg-name" placeholder="الاسم">
       <input class="auth-input" type="email" id="reg-email" placeholder="البريد الإلكتروني">
-      <input class="auth-input" type="password" id="reg-pass" placeholder="كلمة المرور">
+      <input class="auth-input" type="password" id="reg-pass" placeholder="كلمة المرور" oninput="checkPasswordStrength(this.value)">
+      <div class="password-strength" id="pass-strength"></div>
       <div class="auth-error" id="reg-error">يرجى ملء جميع الحقول</div>
+      <div class="auth-success" id="reg-success">تم إنشاء الحساب بنجاح!</div>
       <button class="auth-btn" onclick="doRegister()">إنشاء الحساب</button>
     </div>
   </div>
@@ -190,21 +201,23 @@
           <span class="suggestion-chip" onclick="fillSuggestion(this)">🎉 تهنئة بمناسبة</span>
           <span class="suggestion-chip" onclick="fillSuggestion(this)">📱 نصيحة تقنية</span>
         </div>
-        <textarea class="content-area" id="post-content" placeholder="اكتب منشورك هنا..."></textarea>
+        <textarea class="content-area" id="post-content" placeholder="اكتب منشورك هنا..." oninput="updateWordCount()"></textarea>
+        <div class="word-counter">الكلمات: <span id="word-count">0</span> | الحروف: <span id="char-count">0</span></div>
         <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
           <button class="chip active">Facebook</button>
           <button class="chip" onclick="this.classList.toggle('active')">Instagram</button>
           <button class="chip" onclick="this.classList.toggle('active')">Twitter/X</button>
         </div>
-        <div style="display:flex;gap:12px;margin-top:16px">
+        <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
           <button class="publish-btn" onclick="generateWithAI()">🤖 توليد بالـ AI</button>
           <button class="publish-btn" style="background:linear-gradient(135deg,#43e97b,#00c9ff)" onclick="publishPost()">🚀 نشر الآن</button>
+          <button class="copy-btn" onclick="copyPost()">📋 نسخ المنشور</button>
         </div>
       </div>
     </div>
     <div class="page" id="page-messages">
       <div class="page-header"><div class="page-title">💬 الرسائل</div></div>
-      <div class="card"><div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:3rem;margin-bottom:12px">💬</div><div>اربط حساباتك من Meta لرؤية الرسائل</div></div></div>
+      <div class="card"><div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:3rem;margin-bottom:12px">💬</div><div>اربط حساباتك من Meta لرؤية الرسائل</div><div style="font-size:0.85rem;margin-top:8px">طلبك قيد المراجعة</div></div></div>
     </div>
     <div class="page" id="page-analytics">
       <div class="page-header"><div class="page-title">📊 التحليلات</div></div>
@@ -249,6 +262,14 @@ function switchAuthTab(tab) {
   document.getElementById('register-form').style.display = tab==='register' ? 'flex' : 'none';
 }
 
+function checkPasswordStrength(val) {
+  const el = document.getElementById('pass-strength');
+  if (val.length === 0) { el.className = 'password-strength'; return; }
+  if (val.length < 6) el.className = 'password-strength strength-weak';
+  else if (val.length < 10) el.className = 'password-strength strength-medium';
+  else el.className = 'password-strength strength-strong';
+}
+
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
@@ -273,6 +294,7 @@ async function doRegister() {
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-pass').value;
   if (!name || !email || !pass) return showError('reg-error', 'يرجى ملء جميع الحقول');
+  if (pass.length < 6) return showError('reg-error', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
   try {
     const r = await fetch(`${BACKEND}/api/auth/register`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -280,10 +302,14 @@ async function doRegister() {
     });
     const d = await r.json();
     if (r.ok) {
-      currentUser = d.user || { name, email };
-      localStorage.setItem('socialos_user', JSON.stringify(currentUser));
-      if (d.token) localStorage.setItem('socialos_token', d.token);
-      enterApp();
+      const s = document.getElementById('reg-success');
+      s.style.display = 'block';
+      setTimeout(() => {
+        currentUser = d.user || { name, email };
+        localStorage.setItem('socialos_user', JSON.stringify(currentUser));
+        if (d.token) localStorage.setItem('socialos_token', d.token);
+        enterApp();
+      }, 1000);
     } else { showError('reg-error', d.message || 'خطأ في التسجيل'); }
   } catch { currentUser = { name, email }; enterApp(); }
 }
@@ -346,6 +372,26 @@ function showPage(name) {
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
+function updateWordCount() {
+  const text = document.getElementById('post-content').value;
+  const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+  document.getElementById('word-count').textContent = words;
+  document.getElementById('char-count').textContent = text.length;
+}
+
+function copyPost() {
+  const text = document.getElementById('post-content').value;
+  if (!text.trim()) return showToast('لا يوجد محتوى للنسخ', 'info');
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✅ تم نسخ المنشور!', 'success');
+  }).catch(() => {
+    const el = document.getElementById('post-content');
+    el.select();
+    document.execCommand('copy');
+    showToast('✅ تم نسخ المنشور!', 'success');
+  });
+}
+
 async function callClaude(prompt) {
   const token = localStorage.getItem('socialos_token');
   const res = await fetch(`${BACKEND}/api/ai/generate`, {
@@ -360,20 +406,24 @@ async function callClaude(prompt) {
 async function fillSuggestion(el) {
   const topic = el.textContent.replace(/^[^\s]+\s/, '');
   document.getElementById('post-content').value = 'جارٍ التوليد...';
+  updateWordCount();
   try {
     const text = await callClaude(`اكتب منشور سوشيال ميديا عربي قصير وجذاب عن: ${topic}. لا يتجاوز 150 كلمة.`);
     document.getElementById('post-content').value = text;
-  } catch { document.getElementById('post-content').value = ''; }
+    updateWordCount();
+  } catch { document.getElementById('post-content').value = ''; updateWordCount(); }
 }
 
 async function generateWithAI() {
   const current = document.getElementById('post-content').value;
   if (!current) return showToast('اكتب فكرة أولاً', 'info');
   document.getElementById('post-content').value = 'جارٍ التحسين...';
+  updateWordCount();
   try {
     const text = await callClaude(`حسّن هذا المنشور ليكون أكثر جاذبية:\n${current}`);
     document.getElementById('post-content').value = text;
-  } catch { document.getElementById('post-content').value = current; }
+    updateWordCount();
+  } catch { document.getElementById('post-content').value = current; updateWordCount(); }
 }
 
 async function publishPost() {
@@ -388,6 +438,7 @@ async function publishPost() {
     });
     showToast('✅ تم حفظ المنشور!', 'success');
     document.getElementById('post-content').value = '';
+    updateWordCount();
     loadAnalytics();
   } catch { showToast('✅ تم جدولة المنشور!', 'success'); }
 }
@@ -401,11 +452,9 @@ async function sendAIMessage() {
   input.value = '';
   addMessage('user', text);
   const thinking = addThinking();
-  conversationHistory.push({ role: 'user', content: text });
   try {
     const reply = await callClaude(text);
     thinking.remove();
-    conversationHistory.push({ role: 'assistant', content: reply });
     addMessage('ai', reply);
   } catch (e) {
     thinking.remove();
