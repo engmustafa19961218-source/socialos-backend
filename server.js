@@ -104,8 +104,6 @@ app.get('/api/analytics', async (req, res) => {
 });
 
 // ========== TIKTOK OAuth ==========
-
-// 1. بدء عملية ربط TikTok
 app.get('/api/tiktok/auth', (req, res) => {
   const state = Math.random().toString(36).substring(2, 15);
   const scope = 'user.info.basic';
@@ -113,16 +111,12 @@ app.get('/api/tiktok/auth', (req, res) => {
   res.json({ url: authUrl });
 });
 
-// 2. Callback بعد موافقة المستخدم
 app.get('/api/tiktok/callback', async (req, res) => {
   const { code, error } = req.query;
-
   if (error || !code) {
     return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'${error || 'no_code'}'}, '*'); window.close();</script>`);
   }
-
   try {
-    // تبادل الكود بـ Access Token
     const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -134,21 +128,15 @@ app.get('/api/tiktok/callback', async (req, res) => {
         redirect_uri: TIKTOK_REDIRECT_URI
       })
     });
-
     const tokenData = await tokenRes.json();
-
     if (!tokenData.access_token) {
       return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'token_failed'}, '*'); window.close();</script>`);
     }
-
-    // جلب بيانات المستخدم
     const userRes = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url,follower_count', {
       headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
     });
     const userData = await userRes.json();
     const userInfo = userData.data?.user || {};
-
-    // حفظ في DB
     if (pool) {
       await pool.query(`
         INSERT INTO tiktok_tokens (user_id, access_token, refresh_token, open_id, display_name, avatar_url)
@@ -158,23 +146,19 @@ app.get('/api/tiktok/callback', async (req, res) => {
     } else {
       tiktokTokens['default'] = { ...tokenData, ...userInfo };
     }
-
     const tiktokUser = {
       display_name: userInfo.display_name || 'مستخدم TikTok',
       avatar_url: userInfo.avatar_url || '',
       open_id: userInfo.open_id || '',
       follower_count: userInfo.follower_count || 0
     };
-
     res.send(`<script>window.opener.postMessage({type:'TIKTOK_SUCCESS', user: ${JSON.stringify(tiktokUser)}}, '*'); window.close();</script>`);
-
   } catch (e) {
     console.error('TikTok callback error:', e);
     res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'server_error'}, '*'); window.close();</script>`);
   }
 });
 
-// 3. جلب حالة ربط TikTok
 app.get('/api/tiktok/status', async (req, res) => {
   try {
     if (pool) {
@@ -187,7 +171,6 @@ app.get('/api/tiktok/status', async (req, res) => {
   res.json({ connected: false });
 });
 
-// 4. فصل TikTok
 app.delete('/api/tiktok/disconnect', async (req, res) => {
   try {
     if (pool) await pool.query('DELETE FROM tiktok_tokens');
@@ -196,95 +179,27 @@ app.delete('/api/tiktok/disconnect', async (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/', (req, res) => res.json({ status: 'SocialOS API Running ⚡' }));
-
-// =============================
-// Privacy Policy
-// =============================
+// ========== Privacy & Terms ==========
 app.get('/privacy', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Privacy Policy - SocialOS</title>
-      <meta charset="utf-8">
-    </head>
-    <body style="font-family:Arial;padding:40px;">
-      <h1>Privacy Policy</h1>
-
-      <p>
-        SocialOS uses TikTok Login and other social media integrations
-        to allow users to connect and manage their accounts.
-      </p>
-
-      <p>
-        We only access information that users explicitly authorize.
-      </p>
-
-      <p>
-        User data is stored securely and is never sold or shared with
-        unauthorized third parties.
-      </p>
-
-      <p>
-        If you have questions regarding this privacy policy,
-        contact the SocialOS team.
-      </p>
-    </body>
-    </html>
-  `);
+  res.send(`<!DOCTYPE html><html><head><title>Privacy Policy - SocialOS</title><meta charset="utf-8"></head><body style="font-family:Arial;padding:40px;"><h1>Privacy Policy</h1><p>SocialOS uses TikTok Login and other social media integrations to allow users to connect and manage their accounts.</p><p>We only access information that users explicitly authorize.</p><p>User data is stored securely and is never sold or shared with unauthorized third parties.</p><p>If you have questions regarding this privacy policy, contact the SocialOS team.</p></body></html>`);
 });
 
-// =============================
-// Terms of Service
-// =============================
 app.get('/terms', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Terms of Service - SocialOS</title>
-      <meta charset="utf-8">
-    </head>
-    <body style="font-family:Arial;padding:40px;">
-      <h1>Terms of Service</h1>
-
-      <p>
-        By using SocialOS, you agree to use the service in accordance
-        with applicable laws and platform policies.
-      </p>
-
-      <p>
-        SocialOS provides social media management and analytics tools.
-      </p>
-
-      <p>
-        Users are responsible for activities performed through their accounts.
-      </p>
-
-      <p>
-        We reserve the right to update these terms at any time.
-      </p>
-    </body>
-    </html>
-  `);
+  res.send(`<!DOCTYPE html><html><head><title>Terms of Service - SocialOS</title><meta charset="utf-8"></head><body style="font-family:Arial;padding:40px;"><h1>Terms of Service</h1><p>By using SocialOS, you agree to use the service in accordance with applicable laws and platform policies.</p><p>SocialOS provides social media management and analytics tools.</p><p>Users are responsible for activities performed through their accounts.</p><p>We reserve the right to update these terms at any time.</p></body></html>`);
 });
 
-// =============================
-// Root Endpoint
-// =============================
-app.get('/', (req, res) => {
-  res.json({
-    status: 'SocialOS API Running'
-  });
-});
-
-// TikTok Verification
+// ========== TikTok Verification ==========
 app.get('/tiktokcdU6MT4crP3f2Vc2V4YaYTtKls8SZyjd.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
   res.send('tiktok-developers-site-verification=U6MT4crP3f2Vc2V4YaYTtKls8SZyjd');
-  });
-const PORT = process.env.PORT || 3000;
+});
 
+// ========== Root ==========
+app.get('/', (req, res) => {
+  res.json({ status: 'SocialOS API Running' });
+});
+
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
