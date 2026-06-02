@@ -6,7 +6,7 @@
 <title>SocialOS ⚡</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #0a0a0f; --surface: #12121a; --card: #1a1a26; --border: #2a2a3e; --accent: #6c63ff; --accent2: #ff6584; --accent3: #43e97b; --text: #e8e8f0; --muted: #7070a0; --glow: rgba(108,99,255,0.3); }
+  :root { --bg: #0a0a0f; --surface: #12121a; --card: #1a1a26; --border: #2a2a3e; --accent: #6c63ff; --accent2: #ff6584; --accent3: #43e97b; --text: #e8e8f0; --muted: #7070a0; --glow: rgba(108,99,255,0.3); --tiktok: #ff0050; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Cairo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
   body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 80% 50% at 20% 10%, rgba(108,99,255,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(255,101,132,0.06) 0%, transparent 60%); pointer-events: none; z-index: 0; }
@@ -104,6 +104,28 @@
   @media (max-width: 768px) { .sidebar { transform: translateX(100%); } .sidebar.open { transform: translateX(0); } .main { margin-right: 0; padding: 16px; } .mobile-header { display: flex; } .grid-3 { grid-template-columns: 1fr; } .msg { max-width: 90%; } }
   .suggestion-chip { padding: 6px 14px; background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.3); border-radius: 20px; font-size: 0.82rem; color: var(--accent); cursor: pointer; font-family: 'Cairo', sans-serif; }
   .section-title { font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; font-size: 0.82rem; }
+
+  /* TikTok Styles */
+  .social-connect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .social-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .social-card-header { display: flex; align-items: center; gap: 12px; }
+  .social-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+  .social-icon.tiktok { background: linear-gradient(135deg, #010101, #ff0050); }
+  .social-icon.meta { background: linear-gradient(135deg, #1877f2, #00b2ff); }
+  .social-name { font-weight: 700; font-size: 1rem; }
+  .social-status { font-size: 0.8rem; color: var(--muted); }
+  .social-status.connected { color: var(--accent3); }
+  .connect-btn { border: none; border-radius: 10px; padding: 10px 16px; font-family: 'Cairo', sans-serif; font-weight: 700; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; width: 100%; }
+  .connect-btn.tiktok { background: linear-gradient(135deg, #ff0050, #ff4d7d); color: white; }
+  .connect-btn.tiktok:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,0,80,0.3); }
+  .connect-btn.disconnect { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  .connect-btn.disconnect:hover { border-color: var(--accent2); color: var(--accent2); }
+  .tiktok-profile { display: flex; align-items: center; gap: 10px; }
+  .tiktok-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--tiktok); }
+  .tiktok-avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #ff0050, #ff4d7d); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .connecting-spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 600px) { .social-connect-grid { grid-template-columns: 1fr; } }
 </style>
 </head><body>
 <div id="auth-screen">
@@ -145,6 +167,7 @@
     <div class="nav-item active" onclick="showPage('home')"><span class="icon">⚡</span> الرئيسية</div>
     <div class="nav-item" onclick="showPage('content')"><span class="icon">✨</span> إنشاء محتوى</div>
     <div class="nav-item" onclick="showPage('myposts')"><span class="icon">📝</span> منشوراتي</div>
+    <div class="nav-item" onclick="showPage('accounts')"><span class="icon">🔗</span> الحسابات</div>
     <div class="nav-item" onclick="showPage('messages')"><span class="icon">💬</span> الرسائل</div>
     <div class="nav-item" onclick="showPage('analytics')"><span class="icon">📊</span> التحليلات</div>
     <div class="nav-item" onclick="showPage('ai')"><span class="icon">🤖</span> مساعد AI</div>
@@ -160,13 +183,15 @@
     </div>
   </div>
   <div class="main">
+
+    <!-- الرئيسية -->
     <div class="page active" id="page-home">
       <div class="welcome-banner">
         <div class="welcome-title" id="welcome-msg">مرحباً بك في SocialOS ⚡</div>
         <div class="welcome-sub">منصتك الذكية لإدارة السوشيال ميديا</div>
       </div>
       <div class="grid-3">
-        <div class="stat-card"><div class="stat-label">إجمالي المتابعين</div><div class="stat-value">—</div><div class="stat-change">اربط حساباتك لرؤية الإحصائيات</div></div>
+        <div class="stat-card"><div class="stat-label">إجمالي المتابعين</div><div class="stat-value" id="stat-followers">—</div><div class="stat-change" id="stat-followers-sub">اربط حساباتك لرؤية الإحصائيات</div></div>
         <div class="stat-card"><div class="stat-label">معدل التفاعل</div><div class="stat-value">—</div><div class="stat-change">اربط حساباتك لرؤية الإحصائيات</div></div>
         <div class="stat-card"><div class="stat-label">المنشورات هذا الشهر</div><div class="stat-value" id="stat-posts">0</div><div class="stat-change">ابدأ بنشر محتواك الآن</div></div>
       </div>
@@ -175,10 +200,12 @@
         <div style="display:flex;gap:12px;flex-wrap:wrap">
           <button class="publish-btn" onclick="showPage('content')">✨ إنشاء محتوى</button>
           <button class="publish-btn" style="background:linear-gradient(135deg,#43e97b,#00c9ff)" onclick="showPage('ai')">🤖 مساعد AI</button>
-          <button class="publish-btn" style="background:linear-gradient(135deg,#ff6584,#ff4757)" onclick="showPage('myposts')">📝 منشوراتي</button>
+          <button class="publish-btn" style="background:linear-gradient(135deg,#ff0050,#ff4d7d)" onclick="showPage('accounts')">🔗 ربط الحسابات</button>
         </div>
       </div>
     </div>
+
+    <!-- إنشاء محتوى -->
     <div class="page" id="page-content">
       <div class="page-header">
         <div class="page-title">✨ إنشاء محتوى</div>
@@ -198,6 +225,7 @@
           <button class="chip active">Facebook</button>
           <button class="chip" onclick="this.classList.toggle('active')">Instagram</button>
           <button class="chip" onclick="this.classList.toggle('active')">Twitter/X</button>
+          <button class="chip" id="tiktok-chip" onclick="this.classList.toggle('active')" style="display:none">TikTok</button>
         </div>
         <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
           <button class="publish-btn" onclick="generateWithAI()">🤖 توليد بالـ AI</button>
@@ -206,22 +234,72 @@
         </div>
       </div>
     </div>
+
+    <!-- منشوراتي -->
     <div class="page" id="page-myposts">
       <div class="page-header">
         <div class="page-title">📝 منشوراتي</div>
         <div class="page-sub">كل المنشورات التي حفظتها</div>
       </div>
       <div id="posts-list">
-        <div style="text-align:center;padding:40px;color:var(--muted)">
-          <div style="font-size:2rem;margin-bottom:12px">⏳</div>
-          <div>جارٍ تحميل المنشورات...</div>
+        <div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:12px">⏳</div><div>جارٍ تحميل المنشورات...</div></div>
+      </div>
+    </div>
+
+    <!-- الحسابات -->
+    <div class="page" id="page-accounts">
+      <div class="page-header">
+        <div class="page-title">🔗 الحسابات المرتبطة</div>
+        <div class="page-sub">اربط حساباتك على السوشيال ميديا</div>
+      </div>
+      <div class="social-connect-grid">
+
+        <!-- TikTok Card -->
+        <div class="social-card" id="tiktok-card">
+          <div class="social-card-header">
+            <div class="social-icon tiktok">🎵</div>
+            <div>
+              <div class="social-name">TikTok</div>
+              <div class="social-status" id="tiktok-status">غير مرتبط</div>
+            </div>
+          </div>
+          <div id="tiktok-profile-area"></div>
+          <button class="connect-btn tiktok" id="tiktok-btn" onclick="connectTikTok()">
+            🎵 ربط TikTok
+          </button>
+        </div>
+
+        <!-- Meta Card -->
+        <div class="social-card">
+          <div class="social-card-header">
+            <div class="social-icon meta">📘</div>
+            <div>
+              <div class="social-name">Meta (Facebook/Instagram)</div>
+              <div class="social-status">بانتظار الموافقة</div>
+            </div>
+          </div>
+          <div style="color:var(--muted);font-size:0.85rem">طلب الربط قيد المراجعة من Meta</div>
+          <button class="connect-btn" style="background:rgba(24,119,242,0.15);color:#1877f2;border:1px solid rgba(24,119,242,0.3)" disabled>⏳ قيد المراجعة</button>
+        </div>
+
+      </div>
+
+      <!-- TikTok Connected Info -->
+      <div id="tiktok-connected-info" style="display:none">
+        <div class="card">
+          <div class="section-title">✅ TikTok مرتبط</div>
+          <div id="tiktok-user-details"></div>
         </div>
       </div>
     </div>
+
+    <!-- الرسائل -->
     <div class="page" id="page-messages">
       <div class="page-header"><div class="page-title">💬 الرسائل</div></div>
       <div class="card"><div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:3rem;margin-bottom:12px">💬</div><div>اربط حساباتك من Meta لرؤية الرسائل</div><div style="font-size:0.85rem;margin-top:8px">طلبك قيد المراجعة</div></div></div>
     </div>
+
+    <!-- التحليلات -->
     <div class="page" id="page-analytics">
       <div class="page-header"><div class="page-title">📊 التحليلات</div></div>
       <div class="grid-3">
@@ -230,6 +308,8 @@
         <div class="stat-card"><div class="stat-label">المنشورة</div><div class="stat-value" id="analytics-published">0</div></div>
       </div>
     </div>
+
+    <!-- مساعد AI -->
     <div class="page" id="page-ai">
       <div class="page-header">
         <div class="page-title">🤖 مساعد AI</div>
@@ -252,11 +332,16 @@
         </div>
       </div>
     </div>
+
   </div>
-</div><script>
+</div>
+
+<script>
 const BACKEND = 'https://socialos-production-4aa6.up.railway.app';
 let currentUser = null;
+let tiktokUser = null;
 
+// ========== AUTH ==========
 function switchAuthTab(tab) {
   document.querySelectorAll('.auth-tab').forEach((t,i) => {
     t.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register'));
@@ -326,12 +411,18 @@ function enterApp() {
   document.getElementById('user-avatar').textContent = n[0].toUpperCase();
   document.getElementById('welcome-msg').textContent = `مرحباً ${n} ⚡`;
   loadAnalytics();
+  checkTikTokStatus();
+
+  // استماع لرسائل TikTok OAuth
+  window.addEventListener('message', handleTikTokMessage);
 }
 
 function doLogout() {
   localStorage.removeItem('socialos_user');
   localStorage.removeItem('socialos_token');
+  localStorage.removeItem('socialos_tiktok');
   currentUser = null;
+  tiktokUser = null;
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }
@@ -342,6 +433,116 @@ function showError(id, msg) {
   setTimeout(() => el.style.display = 'none', 3000);
 }
 
+// ========== TIKTOK ==========
+async function connectTikTok() {
+  const btn = document.getElementById('tiktok-btn');
+  btn.innerHTML = '<span class="connecting-spinner"></span> جارٍ الاتصال...';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`${BACKEND}/api/tiktok/auth`);
+    const d = await r.json();
+    if (d.url) {
+      const popup = window.open(d.url, 'tiktok-auth', 'width=600,height=700,scrollbars=yes');
+      if (!popup) {
+        showToast('يرجى السماح بالنوافذ المنبثقة', 'info');
+        btn.innerHTML = '🎵 ربط TikTok';
+        btn.disabled = false;
+      }
+    }
+  } catch (e) {
+    showToast('خطأ في الاتصال بـ TikTok', 'info');
+    btn.innerHTML = '🎵 ربط TikTok';
+    btn.disabled = false;
+  }
+}
+
+function handleTikTokMessage(event) {
+  if (event.data?.type === 'TIKTOK_SUCCESS') {
+    tiktokUser = event.data.user;
+    localStorage.setItem('socialos_tiktok', JSON.stringify(tiktokUser));
+    updateTikTokUI(tiktokUser);
+    showToast('✅ تم ربط TikTok بنجاح!', 'success');
+  } else if (event.data?.type === 'TIKTOK_ERROR') {
+    showToast('فشل ربط TikTok، حاول مرة أخرى', 'info');
+    const btn = document.getElementById('tiktok-btn');
+    btn.innerHTML = '🎵 ربط TikTok';
+    btn.disabled = false;
+  }
+}
+
+async function checkTikTokStatus() {
+  // تحقق من localStorage أولاً
+  const saved = localStorage.getItem('socialos_tiktok');
+  if (saved) {
+    tiktokUser = JSON.parse(saved);
+    updateTikTokUI(tiktokUser);
+    return;
+  }
+  // تحقق من السيرفر
+  try {
+    const r = await fetch(`${BACKEND}/api/tiktok/status`);
+    const d = await r.json();
+    if (d.connected && d.user) {
+      tiktokUser = d.user;
+      localStorage.setItem('socialos_tiktok', JSON.stringify(tiktokUser));
+      updateTikTokUI(tiktokUser);
+    }
+  } catch (e) {}
+}
+
+function updateTikTokUI(user) {
+  document.getElementById('tiktok-status').textContent = '✅ مرتبط';
+  document.getElementById('tiktok-status').className = 'social-status connected';
+
+  const profileArea = document.getElementById('tiktok-profile-area');
+  profileArea.innerHTML = `
+    <div class="tiktok-profile">
+      ${user.avatar_url
+        ? `<img class="tiktok-avatar" src="${user.avatar_url}" alt="avatar">`
+        : `<div class="tiktok-avatar-placeholder">🎵</div>`}
+      <div>
+        <div style="font-weight:700">${user.display_name || 'مستخدم TikTok'}</div>
+        ${user.follower_count ? `<div style="font-size:0.8rem;color:var(--muted)">${user.follower_count.toLocaleString()} متابع</div>` : ''}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('tiktok-btn').innerHTML = '🔌 فصل TikTok';
+  document.getElementById('tiktok-btn').className = 'connect-btn disconnect';
+  document.getElementById('tiktok-btn').onclick = disconnectTikTok;
+
+  // إظهار chip TikTok في إنشاء المحتوى
+  document.getElementById('tiktok-chip').style.display = 'inline-block';
+
+  // تحديث stat المتابعين
+  if (user.follower_count) {
+    document.getElementById('stat-followers').textContent = user.follower_count.toLocaleString();
+    document.getElementById('stat-followers-sub').textContent = `متابعو TikTok لـ ${user.display_name}`;
+  }
+}
+
+async function disconnectTikTok() {
+  try {
+    await fetch(`${BACKEND}/api/tiktok/disconnect`, { method: 'DELETE' });
+  } catch (e) {}
+  localStorage.removeItem('socialos_tiktok');
+  tiktokUser = null;
+
+  document.getElementById('tiktok-status').textContent = 'غير مرتبط';
+  document.getElementById('tiktok-status').className = 'social-status';
+  document.getElementById('tiktok-profile-area').innerHTML = '';
+  document.getElementById('tiktok-btn').innerHTML = '🎵 ربط TikTok';
+  document.getElementById('tiktok-btn').className = 'connect-btn tiktok';
+  document.getElementById('tiktok-btn').onclick = connectTikTok;
+  document.getElementById('tiktok-btn').disabled = false;
+  document.getElementById('tiktok-chip').style.display = 'none';
+  document.getElementById('stat-followers').textContent = '—';
+  document.getElementById('stat-followers-sub').textContent = 'اربط حساباتك لرؤية الإحصائيات';
+  showToast('تم فصل TikTok', 'info');
+}
+
+// ========== ANALYTICS ==========
 async function loadAnalytics() {
   const token = localStorage.getItem('socialos_token');
   if (!token) return;
@@ -387,12 +588,16 @@ window.addEventListener('load', () => {
   if (saved) { currentUser = JSON.parse(saved); enterApp(); }
 });
 
+// ========== NAVIGATION ==========
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => {
-    if (n.textContent.trim().includes(name==='home'?'الرئيسية':name==='content'?'إنشاء':name==='myposts'?'منشوراتي':name==='messages'?'الرسائل':name==='analytics'?'التحليلات':'مساعد')) n.classList.add('active');
+    if (n.textContent.trim().includes(
+      name==='home'?'الرئيسية':name==='content'?'إنشاء':name==='myposts'?'منشوراتي':
+      name==='accounts'?'الحسابات':name==='messages'?'الرسائل':name==='analytics'?'التحليلات':'مساعد'
+    )) n.classList.add('active');
   });
   if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
   if (name === 'analytics') loadAnalytics();
@@ -401,6 +606,7 @@ function showPage(name) {
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
+// ========== CONTENT ==========
 function updateWordCount() {
   const text = document.getElementById('post-content').value;
   const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
@@ -411,12 +617,8 @@ function updateWordCount() {
 function copyPost() {
   const text = document.getElementById('post-content').value;
   if (!text.trim()) return showToast('لا يوجد محتوى للنسخ', 'info');
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('✅ تم نسخ المنشور!', 'success');
-  }).catch(() => {
-    const el = document.getElementById('post-content');
-    el.select();
-    document.execCommand('copy');
+  navigator.clipboard.writeText(text).then(() => showToast('✅ تم نسخ المنشور!', 'success')).catch(() => {
+    const el = document.getElementById('post-content'); el.select(); document.execCommand('copy');
     showToast('✅ تم نسخ المنشور!', 'success');
   });
 }
@@ -472,6 +674,7 @@ async function publishPost() {
   } catch { showToast('✅ تم جدولة المنشور!', 'success'); }
 }
 
+// ========== AI CHAT ==========
 async function sendAIMessage() {
   const input = document.getElementById('ai-input');
   const text = input.value.trim();
