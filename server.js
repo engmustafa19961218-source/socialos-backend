@@ -198,5 +198,92 @@ app.delete('/api/tiktok/disconnect', async (req, res) => {
 
 app.get('/', (req, res) => res.json({ status: 'SocialOS API Running ⚡' }));
 
+// =============================
+// Privacy Policy
+// =============================
+app.get('/privacy', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Privacy Policy - SocialOS</title>
+      <meta charset="utf-8">
+    </head>
+    <body style="font-family:Arial;padding:40px;">
+      <h1>Privacy Policy</h1>
+
+      <p>
+        SocialOS uses TikTok Login and other social media integrations
+        to allow users to connect and manage their accounts.
+      </p>
+
+      <p>
+        We only access information that users explicitly authorize.
+      </p>
+
+      <p>
+        User data is stored securely and is never sold or shared with
+        unauthorized third parties.
+      </p>
+
+      <p>
+        If you have questions regarding this privacy policy,
+        contact the SocialOS team.
+      </p>
+    </body>
+    </html>
+  `);
+});
+
+// =============================
+// Terms of Service
+// =============================
+app.get('/terms', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Terms of Service - SocialOS</title>
+      <meta charset="utf-8">
+    </head>
+    <body style="font-family:Arial;padding:40px;">
+      <h1>Terms of Service</h1>
+
+      <p>
+        By using SocialOS, you agree to use the service in accordance
+        with applicable laws and platform policies.
+      </p>
+
+      <p>
+        SocialOS provides social media management and analytics tools.
+      </p>
+
+      <p>
+        Users are responsible for activities performed through their accounts.
+      </p>
+
+      <p>
+        We reserve the right to update these terms at any time.
+      </p>
+    </body>
+    </html>
+  `);
+});
+
+// =============================
+// Root Endpoint
+// =============================
+app.get('/', (req, res) => {
+  res.json({
+    status: 'SocialOS API Running'
+  });
+});
+
+// =============================
+// Start Server
+// =============================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
