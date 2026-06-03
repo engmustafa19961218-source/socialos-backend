@@ -6,7 +6,7 @@ app.use(cors());
 app.use(express.json());
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || 'awe5pvgbnm5z677q';
+const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || 'sbawpmxlnd2c1ic5fx'
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || 'nFlkLVf7FSvajkESBriVA7lrE3jTf29q';
 const TIKTOK_REDIRECT_URI = 'https://socialos-production-4aa6.up.railway.app/api/tiktok/callback';
 
