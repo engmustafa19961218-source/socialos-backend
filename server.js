@@ -125,7 +125,46 @@ app.get('/api/analytics', async (req, res) => {
   } catch (e) {}
   res.json({ totalPosts: posts.length, scheduled: 0, published: posts.length });
 });
+// ========== SCHEDULED POSTS ==========
+app.post('/api/schedule', async (req, res) => {
+  const { user_id, content, platform, scheduled_at } = req.body;
 
+  try {
+    if (pool) {
+      const result = await pool.query(
+        `INSERT INTO scheduled_posts
+        (user_id, content, platform, scheduled_at)
+        VALUES ($1,$2,$3,$4)
+        RETURNING *`,
+        [user_id, content, platform, scheduled_at]
+      );
+
+      return res.json(result.rows[0]);
+    }
+
+    res.status(500).json({ message: 'Database not available' });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Schedule failed' });
+  }
+});
+
+app.get('/api/schedule', async (req, res) => {
+  try {
+    if (pool) {
+      const result = await pool.query(
+        'SELECT * FROM scheduled_posts ORDER BY scheduled_at ASC'
+      );
+
+      return res.json(result.rows);
+    }
+
+    res.json([]);
+  } catch (e) {
+    res.status(500).json({ message: 'Load failed' });
+  }
+});
 // ========== TIKTOK OAuth ==========
 app.get('/api/tiktok/auth', (req, res) => {
   const state = Math.random().toString(36).substring(2, 15);
