@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const cron = require('node-cron');
+
 const app = express();
 
 app.use(cors());
@@ -350,7 +352,32 @@ app.get('/tiktokr6U5TIN70qo1z8ifKN1Bi8FTi3Chhbrb.txt', (req, res) => {
 app.get('/', (req, res) => {
   res.json({ status: 'SocialOS API Running' });
 });
+cron.schedule('* * * * *', async () => {
+  try {
+    if (!pool) return;
 
+    const result = await pool.query(`
+      SELECT *
+      FROM scheduled_posts
+      WHERE status = 'pending'
+      AND scheduled_at <= NOW()
+    `);
+
+    for (const post of result.rows) {
+
+      console.log('Publishing scheduled post:', post.id);
+
+      await pool.query(`
+        UPDATE scheduled_posts
+        SET status = 'published'
+        WHERE id = $1
+      `, [post.id]);
+    }
+
+  } catch (err) {
+    console.error('Scheduler Error:', err);
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
