@@ -245,7 +245,38 @@
         <div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:12px">⏳</div><div>جارٍ تحميل المنشورات...</div></div>
       </div>
     </div>
+<!-- المنشورات المجدولة -->
+<div class="page" id="page-schedule">
+  <div class="page-header">
+    <div class="page-title">⏰ المنشورات المجدولة</div>
+    <div class="page-sub">إدارة المنشورات التي ستنشر لاحقاً</div>
+  </div>
 
+  <div class="card">
+    <textarea
+      id="schedule-content"
+      class="content-area"
+      placeholder="اكتب المنشور..."
+    ></textarea>
+
+    <input
+      type="datetime-local"
+      id="schedule-date"
+      class="auth-input"
+      style="margin-top:12px;width:100%"
+    >
+
+    <button
+      class="publish-btn"
+      style="margin-top:12px"
+      onclick="schedulePost()"
+    >
+      ⏰ جدولة المنشور
+    </button>
+  </div>
+
+  <div id="scheduled-list" style="margin-top:20px"></div>
+</div>
     <!-- الحسابات -->
     <div class="page" id="page-accounts">
       <div class="page-header">
