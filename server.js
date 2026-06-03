@@ -353,6 +353,8 @@ app.get('/', (req, res) => {
   res.json({ status: 'SocialOS API Running' });
 });
 cron.schedule('* * * * *', async () => {
+  console.log('Cron running:', new Date());
+
   try {
     if (!pool) return;
 
@@ -363,8 +365,9 @@ cron.schedule('* * * * *', async () => {
       AND scheduled_at <= NOW()
     `);
 
-    for (const post of result.rows) {
+    console.log('Found posts:', result.rows.length);
 
+    for (const post of result.rows) {
       console.log('Publishing scheduled post:', post.id);
 
       await pool.query(`
