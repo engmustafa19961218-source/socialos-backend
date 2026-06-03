@@ -634,6 +634,7 @@ function showPage(name) {
   if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
   if (name === 'analytics') loadAnalytics();
   if (name === 'myposts') loadMyPosts();
+  if (name === 'schedule') loadScheduledPosts();
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
