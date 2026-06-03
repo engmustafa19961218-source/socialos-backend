@@ -110,7 +110,17 @@ app.get('/api/tiktok/auth', (req, res) => {
   const authUrl = `https://www.tiktok.com/v2/auth/authorize?client_key=${TIKTOK_CLIENT_KEY}&scope=${scope}&response_type=code&redirect_uri=${encodeURIComponent(TIKTOK_REDIRECT_URI)}&state=${state}`;
   res.json({ url: authUrl });
 });
+app.get('/api/tiktok/login', (req, res) => {
+  const authUrl =
+    `https://www.tiktok.com/v2/auth/authorize` +
+    `?client_key=${TIKTOK_CLIENT_KEY}` +
+    `&scope=user.info.basic` +
+    `&response_type=code` +
+    `&redirect_uri=${encodeURIComponent(TIKTOK_REDIRECT_URI)}` +
+    `&state=${Date.now()}`;
 
+  res.redirect(authUrl);
+});
 app.get('/api/tiktok/callback', async (req, res) => { console.log('TikTok callback query:', req.query);
 console.log('TikTok callback code:', req.query.code);
   const { code, error } = req.query;
