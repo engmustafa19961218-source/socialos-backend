@@ -733,6 +733,103 @@ function showToast(msg, type = 'info') {
   t.textContent = msg; t.className = `toast ${type} show`;
   setTimeout(() => t.classList.remove('show'), 3500);
 }
+  // ===== Scheduled Posts =====
+
+async function schedulePost() {
+  const content = document.getElementById('schedule-content').value;
+  const scheduled_at = document.getElementById('schedule-date').value;
+  const token = localStorage.getItem('socialos_token');
+
+  if (!content || !scheduled_at) {
+    showToast('أدخل المحتوى والتاريخ', 'info');
+    return;
+  }
+
+  try {
+    const r = await fetch(`${BACKEND}/api/schedule`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        content,
+        platform: 'facebook',
+        scheduled_at
+      })
+    });
+
+    if (r.ok) {
+      showToast('✅ تم إنشاء الجدولة', 'success');
+      document.getElementById('schedule-content').value = '';
+      loadScheduledPosts();
+    }
+  } catch (e) {
+    showToast('فشل إنشاء الجدولة', 'info');
+  }
+}
+
+async function loadScheduledPosts() {
+  const token = localStorage.getItem('socialos_token');
+
+  try {
+    const r = await fetch(`${BACKEND}/api/schedule`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await r.json();
+
+    const container = document.getElementById('scheduled-list');
+    if (!container) return;
+
+    if (!data.length) {
+      container.innerHTML =
+        '<div class="card">لا توجد منشورات مجدولة</div>';
+      return;
+    }
+
+    container.innerHTML = data.map(post => `
+      <div class="post-item">
+        <div class="post-item-content">
+          ${post.content}
+        </div>
+
+        <div class="post-item-date">
+          ${new Date(post.scheduled_at).toLocaleString('ar-SA')}
+        </div>
+
+        <button
+          class="copy-btn"
+          onclick="deleteScheduled(${post.id})">
+          🗑 حذف
+        </button>
+      </div>
+    `).join('');
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function deleteScheduled(id) {
+  const token = localStorage.getItem('socialos_token');
+
+  try {
+    await fetch(`${BACKEND}/api/schedule/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    loadScheduledPosts();
+
+  } catch (e) {
+    console.error(e);
+  }
+}
 </script>
 </body>
 </html>
