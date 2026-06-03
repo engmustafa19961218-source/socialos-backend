@@ -118,7 +118,26 @@ console.log('TikTok callback code:', req.query.code);
     return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'${error || 'no_code'}'}, '*'); window.close();</script>`);
   }
   try {
-    const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+
+  console.log('====================');
+  console.log('KEY:', TIKTOK_CLIENT_KEY);
+  console.log('SECRET START:', TIKTOK_CLIENT_SECRET.substring(0, 8));
+  console.log('REDIRECT URI:', TIKTOK_REDIRECT_URI);
+  console.log('CODE EXISTS:', !!code);
+  console.log('====================');
+
+  const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_key: TIKTOK_CLIENT_KEY,
+      client_secret: TIKTOK_CLIENT_SECRET,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: TIKTOK_REDIRECT_URI
+    })
+  });
+ const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
