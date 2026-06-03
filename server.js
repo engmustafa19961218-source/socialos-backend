@@ -15,6 +15,31 @@ try {
   const { Pool } = require('pg');
   pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 pool.query(`
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255),
+  email VARCHAR(255) UNIQUE,
+  password TEXT
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+  id SERIAL PRIMARY KEY,
+  content TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS tiktok_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255),
+  access_token TEXT,
+  refresh_token TEXT,
+  open_id TEXT,
+  display_name TEXT,
+  avatar_url TEXT,
+  follower_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS social_accounts (
   id SERIAL PRIMARY KEY,
   user_id INTEGER,
@@ -37,6 +62,13 @@ CREATE TABLE IF NOT EXISTS scheduled_posts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 `).catch(e => console.log('DB init error:', e.message));
+  } catch (e) {
+  console.log('DB not available:', e.message);
+}
+
+const users = [];
+const posts = [];
+const tiktokTokens = {};
 // ========== AUTH ==========
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
