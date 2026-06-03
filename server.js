@@ -227,6 +227,10 @@ app.get('/tiktokzQ5nsjbY4ICxzF7xJeyNhWdxRZtg7Zdd.txt', (req, res) => {
     res.setHeader('Content-Type', 'text/plain');
     res.send('tiktok-developers-site-verification=zQ5nsjbY4ICxzF7xJeyNhWdxRZtg7Zdd');
 });
+app.get('/tiktokcWO7vuDpya6AcrmlXRgMnxUyc2qTdBik.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.send('tiktok-developers-site-verification=cWO7vuDpya6AcrmlXRgMnxUyc2qTdBik');
+});
 // ========== Root ==========
 app.get('/', (req, res) => {
   res.json({ status: 'SocialOS API Running' });
