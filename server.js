@@ -32,7 +32,15 @@ try {
     avatar_url TEXT,
     created_at TIMESTAMP DEFAULT NOW()
   );
-
+CREATE TABLE IF NOT EXISTS scheduled_posts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER,
+  content TEXT,
+  platform VARCHAR(50),
+  scheduled_at TIMESTAMP,
+  status VARCHAR(50) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW()
+);
 `).catch(e => console.log('DB init error:', e.message));
 } catch(e) {
   console.log('DB not available:', e.message);
