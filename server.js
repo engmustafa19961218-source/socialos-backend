@@ -130,9 +130,22 @@ console.log('TikTok callback code:', req.query.code);
       })
     });
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) {
-      return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'token_failed'}, '*'); window.close();</script>`);
-    }
+   if (!tokenData.access_token) {
+  console.log('TOKEN ERROR:', JSON.stringify(tokenData, null, 2));
+
+  return res.send(`
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>TikTok Error</title>
+      </head>
+      <body style="font-family:Arial;padding:40px">
+        <h2>TikTok Token Error</h2>
+        <pre>${JSON.stringify(tokenData, null, 2)}</pre>
+      </body>
+    </html>
+  `);
+}
     const userRes = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url,follower_count', {
       headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
     });
