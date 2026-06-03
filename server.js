@@ -117,7 +117,7 @@ console.log('TikTok callback code:', req.query.code);
   if (error || !code) {
     return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'${error || 'no_code'}'}, '*'); window.close();</script>`);
   }
-  try {
+try {
 
   console.log('====================');
   console.log('KEY:', TIKTOK_CLIENT_KEY);
@@ -128,7 +128,9 @@ console.log('TikTok callback code:', req.query.code);
 
   const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
     body: new URLSearchParams({
       client_key: TIKTOK_CLIENT_KEY,
       client_secret: TIKTOK_CLIENT_SECRET,
@@ -137,17 +139,8 @@ console.log('TikTok callback code:', req.query.code);
       redirect_uri: TIKTOK_REDIRECT_URI
     })
   });
- const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_key: TIKTOK_CLIENT_KEY,
-        client_secret: TIKTOK_CLIENT_SECRET,
-        code,
-        grant_type: 'authorization_code',
-        redirect_uri: TIKTOK_REDIRECT_URI
-      })
-    });
+
+ 
     const tokenData = await tokenRes.json();
    if (!tokenData.access_token) {
   console.log('TOKEN ERROR:', JSON.stringify(tokenData, null, 2));
