@@ -146,16 +146,16 @@ app.get('/api/analytics', async (req, res) => {
 });
 // ========== SCHEDULED POSTS ==========
 app.post('/api/schedule', async (req, res) => {
-  const { user_id, content, platform, scheduled_at } = req.body;
+  const { user_id, content, platforms, scheduled_at } = req.body;
 
   try {
     if (pool) {
       const result = await pool.query(
         `INSERT INTO scheduled_posts
-        (user_id, content, platform, scheduled_at)
+        (user_id, content, platforms, scheduled_at)
         VALUES ($1,$2,$3,$4)
         RETURNING *`,
-        [user_id, content, platform, scheduled_at]
+        [user_id, content, platforms, scheduled_at]
       );
 
       return res.json(result.rows[0]);
