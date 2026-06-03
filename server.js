@@ -165,6 +165,26 @@ app.get('/api/schedule', async (req, res) => {
     res.status(500).json({ message: 'Load failed' });
   }
 });
+app.delete('/api/schedule/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (pool) {
+      await pool.query(
+        'DELETE FROM scheduled_posts WHERE id = $1',
+        [id]
+      );
+
+      return res.json({ success: true });
+    }
+
+    res.status(500).json({ message: 'Database not available' });
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Delete failed' });
+  }
+});
 // ========== TIKTOK OAuth ==========
 app.get('/api/tiktok/auth', (req, res) => {
   const state = Math.random().toString(36).substring(2, 15);
