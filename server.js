@@ -111,7 +111,8 @@ app.get('/api/tiktok/auth', (req, res) => {
   res.json({ url: authUrl });
 });
 
-app.get('/api/tiktok/callback', async (req, res) => {
+app.get('/api/tiktok/callback', async (req, res) => { console.log('TikTok callback query:', req.query);
+console.log('TikTok callback code:', req.query.code);
   const { code, error } = req.query;
   if (error || !code) {
     return res.send(`<script>window.opener.postMessage({type:'TIKTOK_ERROR', error:'${error || 'no_code'}'}, '*'); window.close();</script>`);
