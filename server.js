@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS posts (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER,
   content TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -215,16 +216,29 @@ app.post('/api/ai/generate', async (req, res) => {
 // ========== POSTS ==========
 app.post('/api/posts', authenticateToken, async (req, res) => {
   const { content } = req.body;
+  const userId = req.user.id;
   try {
-    if (pool) { await pool.query('INSERT INTO posts (content) VALUES ($1)', [content]); return res.json({ success: true }); }
+    if (pool) { await pool.query(
+  'INSERT INTO posts (user_id, content) VALUES ($1, $2)',
+  [userId, content]
+); return res.json({ success: true }); }
   } catch (e) {}
   posts.push({ id: Date.now(), content, created_at: new Date() });
   res.json({ success: true });
 });
 
 app.get('/api/posts', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+
   try {
-    if (pool) { const r = await pool.query('SELECT * FROM posts ORDER BY created_at DESC LIMIT 50'); return res.json({ posts: r.rows }); }
+    if (pool) {
+      const r = await pool.query(
+        'SELECT * FROM posts WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
+        [userId]
+      );
+
+      return res.json({ posts: r.rows });
+    }
   } catch (e) {}
   res.json({ posts: posts.slice().reverse() });
 });
