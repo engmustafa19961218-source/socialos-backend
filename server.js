@@ -10,6 +10,32 @@ app.use(express.json());
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const JWT_SECRET = process.env.JWT_SECRET || 'socialos_secret_key';
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({
+      message: 'Token required'
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    );
+
+    req.user = decoded;
+
+    next();
+  } catch (err) {
+    return res.status(403).json({
+      message: 'Invalid token'
+    });
+  }
+}
 const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || 'sbawpmxlnd2c1ic5fx'
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || 'nFlkLVf7FSvajkESBriVA7lrE3jTf29q';
 const TIKTOK_REDIRECT_URI = 'https://socialos-production-4aa6.up.railway.app/api/tiktok/callback';
@@ -187,7 +213,7 @@ app.post('/api/ai/generate', async (req, res) => {
 });
 
 // ========== POSTS ==========
-app.post('/api/posts', async (req, res) => {
+app.post('/api/posts', authenticateToken, async (req, res) => {
   const { content } = req.body;
   try {
     if (pool) { await pool.query('INSERT INTO posts (content) VALUES ($1)', [content]); return res.json({ success: true }); }
@@ -196,7 +222,7 @@ app.post('/api/posts', async (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/posts', async (req, res) => {
+app.get('/api/posts', authenticateToken, async (req, res) => {
   try {
     if (pool) { const r = await pool.query('SELECT * FROM posts ORDER BY created_at DESC LIMIT 50'); return res.json({ posts: r.rows }); }
   } catch (e) {}
@@ -443,6 +469,11 @@ cron.schedule('* * * * *', async () => {
   } catch (err) {
     console.error('Scheduler Error:', err);
   }
+});
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  res.json({
+    user: req.user
+  });
 });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
