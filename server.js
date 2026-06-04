@@ -246,10 +246,8 @@ app.get('/tiktokr6U5TIN70qo1z8ifKN1Bi8FTi3Chhbrb.txt', (req, res) => {
   res.send('tiktok-developers-site-verification=r6U5TIN70qo1z8ifKN1Bi8FTi3Chhbrb');
 });
 // ========== Root ==========
-app.get('/', (req, res) => {
-  res.json({ status: 'SocialOS API Running' });
-});
-
+app.use(express.static(__dirname));
+app.get('/', (req, res) => res.sendFile(__dirname + '/app.html'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
