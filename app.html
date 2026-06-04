@@ -934,13 +934,18 @@ async function deleteScheduled(id) {
 
   try {
 
-    const r = await fetch(`${BACKEND}/api/profile`, {
-      headers: {
+   const r = await fetch(`${BACKEND}/api/profile`, {
+    headers: {
         Authorization: `Bearer ${token}`
-      }
-    });
+    }
+});
 
-    const p = await r.json();
+if (!r.ok) {
+    console.log('PROFILE ERROR:', r.status);
+    return;
+}
+
+const p = await r.json();
 
     document.getElementById('profile-name').value =
       p.name || '';
