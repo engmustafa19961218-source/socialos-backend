@@ -30,11 +30,13 @@ function authenticateToken(req, res, next) {
     req.user = decoded;
 
     next();
-  } catch (err) {
-    return res.status(403).json({
-      message: 'Invalid token'
-    });
-  }
+} catch (err) {
+  console.log('JWT ERROR:', err.message);
+
+  return res.status(403).json({
+    message: err.message
+  });
+}
 }
 const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || 'sbawpmxlnd2c1ic5fx'
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || 'nFlkLVf7FSvajkESBriVA7lrE3jTf29q';
