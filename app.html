@@ -931,7 +931,7 @@ async function deleteScheduled(id) {
   async function loadProfile() {
 
   const token = localStorage.getItem('socialos_token');
-
+  console.log('TOKEN:', token);
   try {
 
    const r = await fetch(`${BACKEND}/api/profile`, {
