@@ -144,16 +144,32 @@ if (!isMatch) {
   });
 }
        
-        const token = Buffer.from(`${user.id}:secret`).toString('base64');
-        return res.json({ user: { name: user.name, email: user.email }, token });
+const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email
+  },
+  JWT_SECRET,
+  {
+    expiresIn: '7d'
+  }
+);        return res.json({ user: { name: user.name, email: user.email }, token });
       }
       return res.status(401).json({ message: 'بيانات غير صحيحة' });
     }
   } catch (e) {}
   const user = users.find(u => u.email === email && u.password === password);
   if (!user) return res.status(401).json({ message: 'بيانات غير صحيحة' });
-  const token = Buffer.from(`${user.id}:secret`).toString('base64');
-  res.json({ user: { name: user.name, email }, token });
+const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email
+  },
+  JWT_SECRET,
+  {
+    expiresIn: '7d'
+  }
+);  res.json({ user: { name: user.name, email }, token });
 });
 
 // ========== AI ==========
