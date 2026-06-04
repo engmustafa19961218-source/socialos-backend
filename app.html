@@ -953,7 +953,7 @@ async function deleteScheduled(id) {
 
     document.getElementById('profile-preview').src =
       p.avatar_url || 'https://via.placeholder.com/120';
-
+  console.log('PROFILE DATA:', p);
   } catch(err) {
     console.error(err);
   }
