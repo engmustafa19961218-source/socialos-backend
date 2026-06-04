@@ -325,6 +325,39 @@
       </div>
     </div>
 
+    <div class="page" id="page-profile">
+
+  <div class="page-header">
+    <div class="page-title">👤 الملف الشخصي</div>
+    <div class="page-sub">إدارة معلومات حسابك</div>
+  </div>
+
+  <div class="card">
+
+    <input
+      id="profile-avatar"
+      class="auth-input"
+      placeholder="رابط الصورة الشخصية"
+      style="margin-bottom:12px"
+    >
+
+    <textarea
+      id="profile-bio"
+      class="content-area"
+      placeholder="اكتب نبذة عنك..."
+    ></textarea>
+
+    <button
+      class="publish-btn"
+      style="margin-top:12px"
+      onclick="saveProfile()"
+    >
+      💾 حفظ الملف الشخصي
+    </button>
+
+  </div>
+
+</div>
     <!-- الرسائل -->
     <div class="page" id="page-messages">
       <div class="page-header"><div class="page-title">💬 الرسائل</div></div>
@@ -635,6 +668,7 @@ function showPage(name) {
   if (name === 'analytics') loadAnalytics();
   if (name === 'myposts') loadMyPosts();
   if (name === 'schedule') loadScheduledPosts();
+  if (name === 'profile') loadProfile();
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
@@ -861,6 +895,73 @@ async function deleteScheduled(id) {
 
   } catch (e) {
     console.error(e);
+  }
+}
+  async function loadProfile() {
+
+  const token = localStorage.getItem('socialos_token');
+
+  try {
+
+    const r = await fetch(`${BACKEND}/api/profile`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const p = await r.json();
+
+    document.getElementById('profile-name').value =
+      p.name || '';
+
+    document.getElementById('profile-bio').value =
+      p.bio || '';
+
+    document.getElementById('profile-avatar').value =
+      p.avatar_url || '';
+
+    document.getElementById('profile-preview').src =
+      p.avatar_url || 'https://via.placeholder.com/120';
+
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+async function saveProfile() {
+
+  const token = localStorage.getItem('socialos_token');
+
+  const name =
+    document.getElementById('profile-name').value;
+
+  const bio =
+    document.getElementById('profile-bio').value;
+
+  const avatar_url =
+    document.getElementById('profile-avatar').value;
+
+  try {
+
+    await fetch(`${BACKEND}/api/profile`, {
+      method:'PUT',
+      headers:{
+        'Content-Type':'application/json',
+        Authorization:`Bearer ${token}`
+      },
+      body:JSON.stringify({
+        name,
+        bio,
+        avatar_url
+      })
+    });
+
+    showToast('✅ تم حفظ الملف الشخصي', 'success');
+
+  } catch(err) {
+
+    showToast('❌ فشل الحفظ', 'info');
+
   }
 }
 </script>
