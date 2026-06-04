@@ -85,8 +85,16 @@ app.post('/api/auth/register', async (req, res) => {
     if (pool) {
       const result = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email', [name, email, hashedPassword]);
       const user = result.rows[0];
-      const token = Buffer.from(`${user.id}:secret`).toString('base64');
-      return res.json({ user: { name: user.name, email: user.email }, token });
+const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email
+  },
+  JWT_SECRET,
+  {
+    expiresIn: '7d'
+  }
+);      return res.json({ user: { name: user.name, email: user.email }, token });
     }
  } catch (e) {
   console.log('REGISTER ERROR:', e);
@@ -102,8 +110,16 @@ app.post('/api/auth/register', async (req, res) => {
   password: hashedPassword
 };
   users.push(user);
-  const token = Buffer.from(`${user.id}:secret`).toString('base64');
-  res.json({ user: { name, email }, token });
+const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email
+  },
+  JWT_SECRET,
+  {
+    expiresIn: '7d'
+  }
+);  res.json({ user: { name, email }, token });
 });
 
 app.post('/api/auth/login', async (req, res) => {
