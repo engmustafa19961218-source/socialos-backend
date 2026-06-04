@@ -1,43 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const cron = require('node-cron');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const JWT_SECRET = process.env.JWT_SECRET || 'socialos_secret_key';
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).json({
-      message: 'Token required'
-    });
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  try {
-    const decoded = jwt.verify(
-      token,
-      JWT_SECRET
-    );
-
-    req.user = decoded;
-
-    next();
-} catch (err) {
-  console.log('JWT ERROR:', err.message);
-
-  return res.status(403).json({
-    message: err.message
-  });
-}
-}
 const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || 'sbawpmxlnd2c1ic5fx'
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || 'nFlkLVf7FSvajkESBriVA7lrE3jTf29q';
 const TIKTOK_REDIRECT_URI = 'https://socialos-production-4aa6.up.railway.app/api/tiktok/callback';
@@ -46,163 +14,55 @@ let pool = null;
 try {
   const { Pool } = require('pg');
   pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-pool.query(`
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255),
-  email VARCHAR(255) UNIQUE,
-  password TEXT,
-  bio TEXT DEFAULT '',
-  avatar_url TEXT DEFAULT '',
-  followers_count INTEGER DEFAULT 0,
-  following_count INTEGER DEFAULT 0
-)
-
-CREATE TABLE IF NOT EXISTS posts (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER,
-  content TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS tiktok_tokens (
-  id SERIAL PRIMARY KEY,
-  user_id VARCHAR(255),
-  access_token TEXT,
-  refresh_token TEXT,
-  open_id TEXT,
-  display_name TEXT,
-  avatar_url TEXT,
-  follower_count INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS social_accounts (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER,
-  platform VARCHAR(50),
-  platform_user_id VARCHAR(255),
-  access_token TEXT,
-  refresh_token TEXT,
-  display_name VARCHAR(255),
-  avatar_url TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS scheduled_posts (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER,
-  content TEXT,
-  platform VARCHAR(50),
-  scheduled_at TIMESTAMP,
-  status VARCHAR(50) DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT NOW()
-);
-`).catch(e => console.log('DB init error:', e.message));
-  } catch (e) {
+  pool.query(`
+    CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(255), email VARCHAR(255) UNIQUE, password VARCHAR(255), created_at TIMESTAMP DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, content TEXT, created_at TIMESTAMP DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS tiktok_tokens (id SERIAL PRIMARY KEY, user_id VARCHAR(255), access_token TEXT, refresh_token TEXT, open_id VARCHAR(255), display_name VARCHAR(255), avatar_url TEXT, created_at TIMESTAMP DEFAULT NOW());
+  `).catch(e => console.log('DB init error:', e.message));
+} catch(e) {
   console.log('DB not available:', e.message);
 }
 
 const users = [];
 const posts = [];
 const tiktokTokens = {};
+
 // ========== AUTH ==========
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  if (!name || !email || !password)
-    return res.status(400).json({ message: 'يرجى ملء جميع الحقول' });
-
+  if (!name || !email || !password) return res.status(400).json({ message: 'يرجى ملء جميع الحقول' });
   try {
     if (pool) {
-      const result = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email', [name, email, hashedPassword]);
+      const result = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email', [name, email, password]);
       const user = result.rows[0];
-const token = jwt.sign(
-  {
-    id: user.id,
-    email: user.email
-  },
-  JWT_SECRET,
-  {
-    expiresIn: '7d'
-  }
-);      return res.json({ user: { name: user.name, email: user.email }, token });
+      const token = Buffer.from(`${user.id}:secret`).toString('base64');
+      return res.json({ user: { name: user.name, email: user.email }, token });
     }
- } catch (e) {
-  console.log('REGISTER ERROR:', e);
-  return res.status(400).json({
-    message: e.message
-  });
-  }
+  } catch (e) { return res.status(400).json({ message: 'البريد مستخدم مسبقاً' }); }
   if (users.find(u => u.email === email)) return res.status(400).json({ message: 'البريد مستخدم' });
-  const user = {
-  id: Date.now(),
-  name,
-  email,
-  password: hashedPassword
-};
+  const user = { id: Date.now(), name, email, password };
   users.push(user);
-const token = jwt.sign(
-  {
-    id: user.id,
-    email: user.email
-  },
-  JWT_SECRET,
-  {
-    expiresIn: '7d'
-  }
-);  res.json({ user: { name, email }, token });
+  const token = Buffer.from(`${user.id}:secret`).toString('base64');
+  res.json({ user: { name, email }, token });
 });
 
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     if (pool) {
-      const result = await pool.query(
-  'SELECT * FROM users WHERE email=$1',
-  [email]
-);
+      const result = await pool.query('SELECT * FROM users WHERE email=$1 AND password=$2', [email, password]);
       if (result.rows.length > 0) {
         const user = result.rows[0];
-
-const isMatch = await bcrypt.compare(
-  password,
-  user.password
-);
-
-if (!isMatch) {
-  return res.status(401).json({
-    message: 'بيانات غير صحيحة'
-  });
-}
-       
-const token = jwt.sign(
-  {
-    id: user.id,
-    email: user.email
-  },
-  JWT_SECRET,
-  {
-    expiresIn: '7d'
-  }
-);        return res.json({ user: { name: user.name, email: user.email }, token });
+        const token = Buffer.from(`${user.id}:secret`).toString('base64');
+        return res.json({ user: { name: user.name, email: user.email }, token });
       }
       return res.status(401).json({ message: 'بيانات غير صحيحة' });
     }
   } catch (e) {}
   const user = users.find(u => u.email === email && u.password === password);
   if (!user) return res.status(401).json({ message: 'بيانات غير صحيحة' });
-const token = jwt.sign(
-  {
-    id: user.id,
-    email: user.email
-  },
-  JWT_SECRET,
-  {
-    expiresIn: '7d'
-  }
-);  res.json({ user: { name: user.name, email }, token });
+  const token = Buffer.from(`${user.id}:secret`).toString('base64');
+  res.json({ user: { name: user.name, email }, token });
 });
 
 // ========== AI ==========
@@ -220,31 +80,18 @@ app.post('/api/ai/generate', async (req, res) => {
 });
 
 // ========== POSTS ==========
-app.post('/api/posts', authenticateToken, async (req, res) => {
+app.post('/api/posts', async (req, res) => {
   const { content } = req.body;
-  const userId = req.user.id;
   try {
-    if (pool) { await pool.query(
-  'INSERT INTO posts (user_id, content) VALUES ($1, $2)',
-  [userId, content]
-); return res.json({ success: true }); }
+    if (pool) { await pool.query('INSERT INTO posts (content) VALUES ($1)', [content]); return res.json({ success: true }); }
   } catch (e) {}
   posts.push({ id: Date.now(), content, created_at: new Date() });
   res.json({ success: true });
 });
 
-app.get('/api/posts', authenticateToken, async (req, res) => {
-  const userId = req.user.id;
-
+app.get('/api/posts', async (req, res) => {
   try {
-    if (pool) {
-      const r = await pool.query(
-        'SELECT * FROM posts WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
-        [userId]
-      );
-
-      return res.json({ posts: r.rows });
-    }
+    if (pool) { const r = await pool.query('SELECT * FROM posts ORDER BY created_at DESC LIMIT 50'); return res.json({ posts: r.rows }); }
   } catch (e) {}
   res.json({ posts: posts.slice().reverse() });
 });
@@ -255,66 +102,7 @@ app.get('/api/analytics', async (req, res) => {
   } catch (e) {}
   res.json({ totalPosts: posts.length, scheduled: 0, published: posts.length });
 });
-// ========== SCHEDULED POSTS ==========
-app.post('/api/schedule', async (req, res) => {
-  const { user_id, content, platforms, scheduled_at } = req.body;
 
-  try {
-    if (pool) {
-      const result = await pool.query(
-        `INSERT INTO scheduled_posts
-        (user_id, content, platforms, scheduled_at)
-        VALUES ($1,$2,$3,$4)
-        RETURNING *`,
-        [user_id, content, platforms, scheduled_at]
-      );
-
-      return res.json(result.rows[0]);
-    }
-
-    res.status(500).json({ message: 'Database not available' });
-
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Schedule failed' });
-  }
-});
-
-app.get('/api/schedule', async (req, res) => {
-  try {
-    if (pool) {
-      const result = await pool.query(
-        'SELECT * FROM scheduled_posts ORDER BY scheduled_at ASC'
-      );
-
-      return res.json(result.rows);
-    }
-
-    res.json([]);
-  } catch (e) {
-    res.status(500).json({ message: 'Load failed' });
-  }
-});
-app.delete('/api/schedule/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (pool) {
-      await pool.query(
-        'DELETE FROM scheduled_posts WHERE id = $1',
-        [id]
-      );
-
-      return res.json({ success: true });
-    }
-
-    res.status(500).json({ message: 'Database not available' });
-
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Delete failed' });
-  }
-});
 // ========== TIKTOK OAuth ==========
 app.get('/api/tiktok/auth', (req, res) => {
   const state = Math.random().toString(36).substring(2, 15);
@@ -461,85 +249,7 @@ app.get('/tiktokr6U5TIN70qo1z8ifKN1Bi8FTi3Chhbrb.txt', (req, res) => {
 app.get('/', (req, res) => {
   res.json({ status: 'SocialOS API Running' });
 });
-cron.schedule('* * * * *', async () => {
-  console.log('Cron running:', new Date());
 
-  try {
-    if (!pool) return;
-
-    const result = await pool.query(`
-      SELECT *
-      FROM scheduled_posts
-      WHERE status = 'pending'
-      AND scheduled_at <= NOW()
-    `);
-
-    console.log('Found posts:', result.rows.length);
-
-    for (const post of result.rows) {
-      console.log('Publishing scheduled post:', post.id);
-
-      await pool.query(`
-        UPDATE scheduled_posts
-        SET status = 'published'
-        WHERE id = $1
-      `, [post.id]);
-    }
-
-  } catch (err) {
-    console.error('Scheduler Error:', err);
-  }
-});
-app.get('/api/auth/me', authenticateToken, (req, res) => {
-  res.json({
-    user: req.user
-  });
-});
-// ===== PROFILE =====
-
-app.get('/api/profile', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const r = await pool.query(
-      `SELECT id, name, email, bio, avatar_url,
-              followers_count, following_count
-       FROM users
-       WHERE id = $1`,
-      [userId]
-    );
-
-    if (r.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json(r.rows[0]);
-
-  } catch (err) {
-    res.status(500).json({ message: 'Profile error' });
-  }
-});
-
-
-app.put('/api/profile', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-  const { name, bio, avatar_url } = req.body;
-
-  await pool.query(
-  `UPDATE users
-   SET name = $1,
-       bio = $2,
-       avatar_url = $3
-   WHERE id = $4`,
-  [name || '', bio || '', avatar_url || '', userId]
-);
-    res.json({ success: true });
-
-  } catch (err) {
-    res.status(500).json({ message: 'Update error' });
-  }
-});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
