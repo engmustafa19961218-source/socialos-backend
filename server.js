@@ -77,17 +77,26 @@ const tiktokTokens = {};
 // ========== AUTH ==========
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ message: 'يرجى ملء جميع الحقول' });
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  if (!name || !email || !password)
+    return res.status(400).json({ message: 'يرجى ملء جميع الحقول' });
+
   try {
     if (pool) {
-      const result = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email', [name, email, password]);
+      const result = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email', [name, email, hashedpassword]);
       const user = result.rows[0];
       const token = Buffer.from(`${user.id}:secret`).toString('base64');
       return res.json({ user: { name: user.name, email: user.email }, token });
     }
   } catch (e) { return res.status(400).json({ message: 'البريد مستخدم مسبقاً' }); }
   if (users.find(u => u.email === email)) return res.status(400).json({ message: 'البريد مستخدم' });
-  const user = { id: Date.now(), name, email, password };
+  const user = {
+  id: Date.now(),
+  name,
+  email,
+  password: hashedPassword
+};
   users.push(user);
   const token = Buffer.from(`${user.id}:secret`).toString('base64');
   res.json({ user: { name, email }, token });
@@ -97,9 +106,24 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     if (pool) {
-      const result = await pool.query('SELECT * FROM users WHERE email=$1 AND password=$2', [email, password]);
+      const result = await pool.query(
+  'SELECT * FROM users WHERE email=$1',
+  [email]
+);
       if (result.rows.length > 0) {
         const user = result.rows[0];
+
+const isMatch = await bcrypt.compare(
+  password,
+  user.password
+);
+
+if (!isMatch) {
+  return res.status(401).json({
+    message: 'بيانات غير صحيحة'
+  });
+}
+       
         const token = Buffer.from(`${user.id}:secret`).toString('base64');
         return res.json({ user: { name: user.name, email: user.email }, token });
       }
