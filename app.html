@@ -947,18 +947,16 @@ if (!r.ok) {
 
 const p = await r.json();
 
-    document.getElementById('profile-name').value =
-      p.name || '';
+   document.getElementById('profile-name').value =
+    p.name || '';
 
-    document.getElementById('profile-bio').value =
-      p.bio || '';
+document.getElementById('profile-bio').value =
+    p.bio || '';
 
-    document.getElementById('profile-avatar').value =
-      p.avatar_url || '';
+document.getElementById('profile-preview').src =
+    p.avatar_url || 'https://via.placeholder.com/120';
 
-    document.getElementById('profile-preview').src =
-      p.avatar_url || 'https://via.placeholder.com/120';
-  console.log('PROFILE DATA:', p);
+console.log('PROFILE DATA:', p);
   } catch(err) {
     console.error(err);
   }
