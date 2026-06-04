@@ -83,7 +83,7 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     if (pool) {
-      const result = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email', [name, email, hashedpassword]);
+      const result = await pool.query('INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email', [name, email, hashedPassword]);
       const user = result.rows[0];
       const token = Buffer.from(`${user.id}:secret`).toString('base64');
       return res.json({ user: { name: user.name, email: user.email }, token });
@@ -93,7 +93,7 @@ app.post('/api/auth/register', async (req, res) => {
   return res.status(400).json({
     message: e.message
   });
-}
+  }
   if (users.find(u => u.email === email)) return res.status(400).json({ message: 'البريد مستخدم' });
   const user = {
   id: Date.now(),
