@@ -49,8 +49,12 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255),
   email VARCHAR(255) UNIQUE,
-  password TEXT
-);
+  password TEXT,
+  bio TEXT DEFAULT '',
+  avatar_url TEXT DEFAULT '',
+  followers_count INTEGER DEFAULT 0,
+  following_count INTEGER DEFAULT 0
+)
 
 CREATE TABLE IF NOT EXISTS posts (
   id SERIAL PRIMARY KEY,
