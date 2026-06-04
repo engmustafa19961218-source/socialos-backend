@@ -493,6 +493,51 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
     user: req.user
   });
 });
+// ===== PROFILE =====
+
+app.get('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const r = await pool.query(
+      `SELECT id, name, email, bio, avatar_url,
+              followers_count, following_count
+       FROM users
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (r.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(r.rows[0]);
+
+  } catch (err) {
+    res.status(500).json({ message: 'Profile error' });
+  }
+});
+
+
+app.put('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { bio, avatar_url } = req.body;
+
+    await pool.query(
+      `UPDATE users
+       SET bio = $1,
+           avatar_url = $2
+       WHERE id = $3`,
+      [bio || '', avatar_url || '', userId]
+    );
+
+    res.json({ success: true });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Update error' });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
