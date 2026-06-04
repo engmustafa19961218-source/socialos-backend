@@ -335,12 +335,26 @@
 
   <div class="card">
 
-    <input
-      id="profile-avatar"
-      class="auth-input"
-      placeholder="رابط الصورة الشخصية"
-      style="margin-bottom:12px"
-    >
+   <input
+  type="file"
+  id="profile-avatar-file"
+  accept="image/*"
+  style="margin-bottom:12px"
+  onchange="previewProfileImage(event)"
+>
+
+<img
+  id="profile-preview"
+  src="https://via.placeholder.com/120"
+  style="
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    display:block;
+    margin:15px auto;
+    object-fit:cover;
+  "
+>
 
     <textarea
       id="profile-bio"
