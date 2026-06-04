@@ -522,16 +522,16 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 app.put('/api/profile', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { bio, avatar_url } = req.body;
+  const { name, bio, avatar_url } = req.body;
 
-    await pool.query(
-      `UPDATE users
-       SET bio = $1,
-           avatar_url = $2
-       WHERE id = $3`,
-      [bio || '', avatar_url || '', userId]
-    );
-
+  await pool.query(
+  `UPDATE users
+   SET name = $1,
+       bio = $2,
+       avatar_url = $3
+   WHERE id = $4`,
+  [name || '', bio || '', avatar_url || '', userId]
+);
     res.json({ success: true });
 
   } catch (err) {
