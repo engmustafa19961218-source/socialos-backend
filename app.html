@@ -809,7 +809,19 @@ function startVoice() {
   recognition.start();
   showToast('🎙️ تحدث الآن...', 'info');
 }
+function previewProfileImage(event) {
+    const file = event.target.files[0];
 
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        document.getElementById('profile-preview').src = e.target.result;
+    };
+
+    reader.readAsDataURL(file);
+}
 function showToast(msg, type = 'info') {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = `toast ${type} show`;
