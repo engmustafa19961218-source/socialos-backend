@@ -291,6 +291,9 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="nav-item" onclick="showPage('messages',this)"><span class="icon">💬</span> الرسائل</div>
     <div class="nav-section">الإدارة</div>
     <div class="nav-item" onclick="showPage('analytics',this)"><span class="icon">📊</span> التحليلات</div>
+    <div class="nav-item" onclick="showPage('customers',this)"><span class="icon">👥</span> العملاء</div>
+    <div class="nav-item" onclick="showPage('templates',this)"><span class="icon">💬</span> قوالب الردود</div>
+    <div class="nav-item" onclick="showPage('report',this)"><span class="icon">📋</span> التقرير الأسبوعي</div>
     <div class="nav-item" onclick="showPage('accounts',this)"><span class="icon">🔗</span> ربط الحسابات</div>
     <div class="nav-item" onclick="showPage('profile',this)"><span class="icon">👤</span> البروفايل</div>
     <div class="nav-item" onclick="showPage('notifications',this)"><span class="icon">🔔</span> الإشعارات</div>
@@ -472,6 +475,43 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
       <div class="card"><h3>🕐 آخر الطلبات</h3><div id="recent-orders-list"></div></div>
     </div>
 
+    <!-- CUSTOMERS -->
+    <div class="page" id="page-customers">
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>👥 العملاء</h1><p>قاعدة بيانات عملائك</p></div>
+          <button class="btn btn-accent" onclick="openCustomerModal()">➕ عميل جديد</button>
+        </div>
+      </div>
+      <div class="card" style="padding:12px 20px">
+        <input class="form-input" id="customers-search" placeholder="🔍 بحث باسم أو هاتف..." oninput="searchCustomers(this.value)">
+      </div>
+      <div id="customers-list"><div class="empty-state"><div class="emoji">👥</div><p>جاري التحميل...</p></div></div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="page" id="page-templates">
+      <div class="page-header"><h1>💬 قوالب الردود</h1><p>ردود جاهزة للاستخدام السريع</p></div>
+      <div class="card">
+        <h3>➕ إضافة قالب جديد</h3>
+        <div class="form-group-item"><label class="form-label">العنوان</label><input class="form-input" id="tmpl-title" placeholder="مثال: رد ترحيب"></div>
+        <div class="form-group-item"><label class="form-label">المحتوى</label><textarea class="form-textarea" id="tmpl-content" placeholder="اكتب الرد هنا..." style="min-height:80px"></textarea></div>
+        <button class="btn btn-accent" onclick="saveTemplate()">💾 حفظ القالب</button>
+      </div>
+      <div class="card"><h3>📋 القوالب المحفوظة</h3><div id="templates-list"><div class="empty-state"><div class="emoji">💬</div><p>لا توجد قوالب بعد</p></div></div></div>
+    </div>
+
+    <!-- WEEKLY REPORT -->
+    <div class="page" id="page-report">
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>📋 التقرير الأسبوعي</h1><p>ملخص آخر 7 أيام</p></div>
+          <button class="btn btn-outline btn-sm" onclick="loadReport()">🔄 تحديث</button>
+        </div>
+      </div>
+      <div id="report-content"><div class="empty-state"><div class="emoji">📋</div><p>جاري التحميل...</p></div></div>
+    </div>
+
     <!-- ACCOUNTS -->
     <div class="page" id="page-accounts">
       <div class="page-header"><h1>🔗 ربط الحسابات</h1><p>اربط حسابات التواصل الاجتماعي</p></div>
@@ -606,6 +646,21 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
     </div>
 
   </main>
+</div>
+
+<!-- CUSTOMER MODAL -->
+<div class="modal-overlay" id="customer-modal">
+  <div class="modal">
+    <h2>👥 إضافة عميل جديد</h2>
+    <div class="form-group-item"><label class="form-label">الاسم *</label><input class="form-input" id="cust-name" placeholder="اسم العميل"></div>
+    <div class="form-group-item"><label class="form-label">الهاتف *</label><input class="form-input" id="cust-phone" placeholder="05xxxxxxxx" dir="ltr"></div>
+    <div class="form-group-item"><label class="form-label">العنوان</label><input class="form-input" id="cust-address" placeholder="العنوان"></div>
+    <div class="form-group-item"><label class="form-label">ملاحظات</label><textarea class="form-textarea" id="cust-notes" placeholder="ملاحظات..." style="min-height:60px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeCustomerModal()">إلغاء</button>
+      <button class="btn btn-accent" onclick="saveCustomer()">💾 حفظ</button>
+    </div>
+  </div>
 </div>
 
 <!-- FORGOT PASSWORD MODAL -->
@@ -781,7 +836,7 @@ function showPage(name,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(el)el.classList.add('active');
-  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications};
+  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport};
   if(loaders[name])loaders[name]();
 }
 
@@ -1221,6 +1276,142 @@ async function subscribe(plan){
     if(data.success){currentUser.plan=plan;localStorage.setItem('socialos_user',JSON.stringify(currentUser));updatePlanBadge(plan);showToast('✅ تم تفعيل الخطة!');loadSubscriptionPage();}
     else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+// ─── CUSTOMERS ───
+function openCustomerModal(){document.getElementById('customer-modal').classList.add('show');}
+function closeCustomerModal(){document.getElementById('customer-modal').classList.remove('show');}
+
+async function saveCustomer(){
+  const name=document.getElementById('cust-name').value.trim();
+  const phone=document.getElementById('cust-phone').value.trim();
+  if(!name||!phone)return showToast('⚠️ الاسم والهاتف مطلوبان');
+  try{
+    const res=await fetch(`${API}/api/customers`,{method:'POST',headers:authH(),body:JSON.stringify({name,phone,address:document.getElementById('cust-address').value.trim(),notes:document.getElementById('cust-notes').value.trim()})});
+    const data=await res.json();
+    if(data.success){showToast('✅ تم حفظ العميل!');closeCustomerModal();loadCustomers();['cust-name','cust-phone','cust-address','cust-notes'].forEach(id=>document.getElementById(id).value='');}
+    else showToast('❌ '+(data.message||'فشل'));
+  }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+async function loadCustomers(){
+  const container=document.getElementById('customers-list');
+  container.innerHTML='<div class="empty-state"><div class="emoji">⏳</div><p>جاري التحميل...</p></div>';
+  try{
+    const res=await fetch(`${API}/api/customers`,{headers:authH()});
+    const data=await res.json();
+    if(!data.customers||data.customers.length===0){container.innerHTML='<div class="empty-state"><div class="emoji">👥</div><p>لا يوجد عملاء بعد</p></div>';return;}
+    container.innerHTML=data.customers.map(c=>`
+      <div class="order-card">
+        <div class="order-header">
+          <div>
+            <div class="order-customer">${c.name}</div>
+            <div style="color:var(--text2);font-size:.85rem">${c.phone}</div>
+            ${c.address?`<div style="color:var(--text2);font-size:.8rem">📍 ${c.address}</div>`:''}
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id})">🗑</button>
+        </div>
+        ${c.notes?`<div style="color:var(--text2);font-size:.85rem;margin-top:8px">📝 ${c.notes}</div>`:''}
+        <div style="margin-top:10px">
+          <button class="btn btn-outline btn-sm" onclick="useCustomerInOrder('${c.name}','${c.phone}','${c.address||''}')">➕ إضافة طلب</button>
+        </div>
+      </div>`).join('');
+  }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
+}
+
+let searchCustTimeout=null;
+function searchCustomers(q){
+  clearTimeout(searchCustTimeout);
+  searchCustTimeout=setTimeout(async()=>{
+    const container=document.getElementById('customers-list');
+    try{
+      const res=await fetch(`${API}/api/customers?q=${encodeURIComponent(q)}`,{headers:authH()});
+      const data=await res.json();
+      if(!data.customers||data.customers.length===0){container.innerHTML='<div class="empty-state"><div class="emoji">🔍</div><p>لا توجد نتائج</p></div>';return;}
+      container.innerHTML=data.customers.map(c=>`<div class="order-card"><div class="order-header"><div><div class="order-customer">${c.name}</div><div style="color:var(--text2);font-size:.85rem">${c.phone}</div></div><button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id})">🗑</button></div></div>`).join('');
+    }catch(e){}
+  },400);
+}
+
+async function deleteCustomer(id){
+  if(!confirm('حذف العميل؟'))return;
+  try{await fetch(`${API}/api/customers/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 تم الحذف');loadCustomers();}catch(e){}
+}
+
+function useCustomerInOrder(name,phone,address){
+  document.getElementById('ord-name').value=name;
+  document.getElementById('ord-phone').value=phone;
+  document.getElementById('ord-address').value=address;
+  showPage('orders',document.querySelector('[onclick*=orders]'));
+  openOrderModal();
+  showToast('✅ تم ملء بيانات العميل');
+}
+
+// ─── REPLY TEMPLATES ───
+async function saveTemplate(){
+  const title=document.getElementById('tmpl-title').value.trim();
+  const content=document.getElementById('tmpl-content').value.trim();
+  if(!title||!content)return showToast('⚠️ أكمل جميع الحقول');
+  try{
+    const res=await fetch(`${API}/api/templates`,{method:'POST',headers:authH(),body:JSON.stringify({title,content})});
+    const data=await res.json();
+    if(data.success){showToast('✅ تم حفظ القالب!');document.getElementById('tmpl-title').value='';document.getElementById('tmpl-content').value='';loadTemplates();}
+    else showToast('❌ '+(data.message||'فشل'));
+  }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+async function loadTemplates(){
+  const container=document.getElementById('templates-list');
+  try{
+    const res=await fetch(`${API}/api/templates`,{headers:authH()});
+    const data=await res.json();
+    if(!data.templates||data.templates.length===0){container.innerHTML='<div class="empty-state"><div class="emoji">💬</div><p>لا توجد قوالب بعد</p></div>';return;}
+    container.innerHTML=data.templates.map(t=>`
+      <div class="order-card">
+        <div class="order-header">
+          <div class="order-customer">${t.title}</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="copyTemplate('${t.content.replace(/'/g,"\'")}')">📋 نسخ</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})">🗑</button>
+          </div>
+        </div>
+        <div style="color:var(--text2);font-size:.85rem;margin-top:8px">${t.content}</div>
+      </div>`).join('');
+  }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
+}
+
+function copyTemplate(content){navigator.clipboard.writeText(content);showToast('📋 تم النسخ!');}
+
+async function deleteTemplate(id){
+  if(!confirm('حذف القالب؟'))return;
+  try{await fetch(`${API}/api/templates/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 تم الحذف');loadTemplates();}catch(e){}
+}
+
+// ─── WEEKLY REPORT ───
+async function loadReport(){
+  const container=document.getElementById('report-content');
+  container.innerHTML='<div class="empty-state"><div class="emoji">⏳</div><p>جاري التحميل...</p></div>';
+  try{
+    const res=await fetch(`${API}/api/reports/weekly`,{headers:authH()});
+    const data=await res.json();
+    if(!data.success){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';return;}
+    const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
+    container.innerHTML=`
+      <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">${data.orders.revenue.toFixed(0)}</div><div class="stat-label">الإيرادات (ر.س)</div></div>
+        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value">${data.orders.total}</div><div class="stat-label">الطلبات</div></div>
+        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${data.posts}</div><div class="stat-label">المنشورات</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">${data.orders.total>0?(data.orders.revenue/data.orders.total).toFixed(0):0}</div><div class="stat-label">متوسط الطلب</div></div>
+      </div>
+      <div class="card">
+        <h3>📊 الطلبات حسب الحالة</h3>
+        ${data.orders.by_status.length?data.orders.by_status.map(s=>`<div class="metric-row"><span class="metric-label">${statusLabels[s.status]||s.status}</span><span class="metric-value">${s.count} طلب · ${parseFloat(s.revenue||0).toFixed(0)} ر.س</span></div>`).join(''):'<p style="color:var(--text2)">لا توجد طلبات هذا الأسبوع</p>'}
+      </div>
+      <div class="card">
+        <h3>🏆 أكبر الطلبات هذا الأسبوع</h3>
+        ${data.top_orders.length?data.top_orders.map(o=>`<div class="metric-row"><span class="metric-label">${o.customer_name}</span><span class="metric-value">${o.total} ر.س</span></div>`).join(''):'<p style="color:var(--text2)">لا توجد طلبات</p>'}
+      </div>`;
+  }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
 
 // ─── FORGOT PASSWORD ───

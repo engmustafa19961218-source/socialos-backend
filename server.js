@@ -354,6 +354,129 @@ cron.schedule('* * * * *', async () => {
   } catch (err) { console.error('Scheduler Error:', err); }
 });
 
+
+// ========== CUSTOMERS ==========
+app.post('/api/customers', authenticateToken, async (req, res) => {
+  const { name, phone, address, notes } = req.body;
+  const userId = req.user.id;
+  if (!name || !phone) return res.status(400).json({ success: false, message: 'الاسم والهاتف مطلوبان' });
+  try {
+    if (pool) {
+      const result = await pool.query(
+        'INSERT INTO customers (user_id, name, phone, address, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [userId, name, phone, address || '', notes || '']
+      );
+      return res.json({ success: true, customer: result.rows[0] });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/customers', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { q } = req.query;
+  try {
+    if (pool) {
+      let query = 'SELECT * FROM customers WHERE user_id=$1';
+      const params = [userId];
+      if (q) { query += ' AND (name ILIKE $2 OR phone ILIKE $2)'; params.push(`%${q}%`); }
+      query += ' ORDER BY created_at DESC';
+      const r = await pool.query(query, params);
+      return res.json({ customers: r.rows });
+    }
+  } catch (e) {}
+  res.json({ customers: [] });
+});
+
+app.put('/api/customers/:id', authenticateToken, async (req, res) => {
+  const { name, phone, address, notes } = req.body;
+  try {
+    if (pool) {
+      await pool.query('UPDATE customers SET name=$1, phone=$2, address=$3, notes=$4 WHERE id=$5 AND user_id=$6',
+        [name, phone, address || '', notes || '', req.params.id, req.user.id]);
+      return res.json({ success: true });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.delete('/api/customers/:id', authenticateToken, async (req, res) => {
+  try {
+    if (pool) { await pool.query('DELETE FROM customers WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]); return res.json({ success: true }); }
+  } catch (e) {}
+  res.json({ success: true });
+});
+
+// ========== REPLY TEMPLATES ==========
+app.post('/api/templates', authenticateToken, async (req, res) => {
+  const { title, content } = req.body;
+  const userId = req.user.id;
+  if (!title || !content) return res.status(400).json({ success: false, message: 'العنوان والمحتوى مطلوبان' });
+  try {
+    if (pool) {
+      const result = await pool.query(
+        'INSERT INTO reply_templates (user_id, title, content) VALUES ($1,$2,$3) RETURNING *',
+        [userId, title, content]
+      );
+      return res.json({ success: true, template: result.rows[0] });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/templates', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM reply_templates WHERE user_id=$1 ORDER BY created_at DESC', [userId]);
+      return res.json({ templates: r.rows });
+    }
+  } catch (e) {}
+  res.json({ templates: [] });
+});
+
+app.delete('/api/templates/:id', authenticateToken, async (req, res) => {
+  try {
+    if (pool) { await pool.query('DELETE FROM reply_templates WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]); return res.json({ success: true }); }
+  } catch (e) {}
+  res.json({ success: true });
+});
+
+// ========== WEEKLY REPORT ==========
+app.get('/api/reports/weekly', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const [orders, posts, topOrders] = await Promise.all([
+        pool.query(`SELECT COUNT(*) as count, SUM(total) as revenue, status FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days' GROUP BY status`, [userId]),
+        pool.query(`SELECT COUNT(*) as count FROM posts WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days'`, [userId]),
+        pool.query(`SELECT customer_name, total, status FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days' ORDER BY total DESC LIMIT 5`, [userId])
+      ]);
+      const totalRevenue = orders.rows.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
+      const totalOrders = orders.rows.reduce((s, r) => s + parseInt(r.count || 0), 0);
+      return res.json({
+        success: true,
+        period: 'آخر 7 أيام',
+        orders: { total: totalOrders, revenue: totalRevenue, by_status: orders.rows },
+        posts: parseInt(posts.rows[0]?.count || 0),
+        top_orders: topOrders.rows
+      });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+  res.json({ success: true, period: 'آخر 7 أيام', orders: { total: 0, revenue: 0, by_status: [] }, posts: 0, top_orders: [] });
+});
+
+// ========== CREATE TABLES ==========
+if (pool) {
+  pool.query(`CREATE TABLE IF NOT EXISTS customers (
+    id SERIAL PRIMARY KEY, user_id INTEGER, name VARCHAR(255), phone VARCHAR(50),
+    address TEXT DEFAULT '', notes TEXT DEFAULT '', orders_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`).catch(e => console.log('customers table:', e.message));
+  
+  pool.query(`CREATE TABLE IF NOT EXISTS reply_templates (
+    id SERIAL PRIMARY KEY, user_id INTEGER, title VARCHAR(255), content TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`).catch(e => console.log('templates table:', e.message));
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));
 
