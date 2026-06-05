@@ -1797,53 +1797,63 @@ function toggleVoice(){
 async function processVoiceCommand(text){
   const responseEl=document.getElementById('voice-response');
   responseEl.style.display='block';
-  responseEl.textContent='⏳ جاري التنفيذ...';
-  const lower=text.trim();
-
-  if(/طلب|طلبات/.test(lower)){showPage('orders',document.querySelector('[onclick*=orders]'));responseEl.textContent='✅ تم فتح الطلبات';return;}
-  if(/تحليل|إحصائيات|احصائيات/.test(lower)){showPage('analytics',document.querySelector('[onclick*=analytics]'));responseEl.textContent='✅ تم فتح التحليلات';return;}
-  if(/رسائل/.test(lower)){showPage('messages',document.querySelector('[onclick*=messages]'));responseEl.textContent='✅ تم فتح الرسائل';return;}
-  if(/بروفايل|ملفي/.test(lower)){showPage('profile',document.querySelector('[onclick*=profile]'));responseEl.textContent='✅ تم فتح البروفايل';return;}
-  if(/منتجات|متجر/.test(lower)&&!/منشور/.test(lower)){showPage('products',document.querySelector('[onclick*=products]'));responseEl.textContent='✅ تم فتح المنتجات';return;}
-  if(/عملاء/.test(lower)){showPage('customers',document.querySelector('[onclick*=customers]'));responseEl.textContent='✅ تم فتح العملاء';return;}
-  if(/جدول/.test(lower)){showPage('schedule',document.querySelector('[onclick*=schedule]'));responseEl.textContent='✅ تم فتح الجدولة';return;}
-  if(/إعدادات|اعدادات/.test(lower)){showPage('settings',document.querySelector('[onclick*=settings]'));responseEl.textContent='✅ تم فتح الإعدادات';return;}
-
-  if(/صمم|اعمل صورة|ولد صورة|تصميم صورة/.test(lower)){
-    const prompt=lower.replace(/صمم لي|صمم|اعمل لي صورة|اعمل صورة|ولد لي صورة|ولد صورة|تصميم صورة عن|تصميم صورة/g,'').trim();
-    showPage('design',document.querySelector('[onclick*=design]'));
-    if(prompt){document.getElementById('design-prompt').value=prompt;responseEl.textContent='🎨 جاري توليد الصورة...';await generateImage();responseEl.textContent='✅ تم توليد الصورة!';}
-    else responseEl.textContent='✅ تم فتح تصميم الصور';
-    return;
-  }
-
-  if(/انشر|اكتب منشور|أنشئ منشور|منشور عن/.test(lower)){
-    const content2=lower.replace(/انشر على فيسبوك|انشر على انستغرام|انشر على تيك توك|انشر|اكتب منشور عن|اكتب منشور|أنشئ منشور عن|أنشئ منشور|منشور عن/g,'').trim();
-    showPage('create',document.querySelector('[onclick*=create]'));
-    if(content2){document.getElementById('post-content').value=content2;responseEl.textContent='✅ تم كتابة المنشور، راجعه وانشره';}
-    else responseEl.textContent='✅ تم فتح إنشاء منشور';
-    return;
-  }
-
-  if(/أضف طلب|اضف طلب|طلب جديد/.test(lower)){
-    showPage('orders',document.querySelector('[onclick*=orders]'));
-    setTimeout(()=>openOrderModal(),500);
-    responseEl.textContent='✅ تم فتح نموذج الطلب الجديد';
-    return;
-  }
-
-  if(/أضف منتج|اضف منتج|منتج جديد/.test(lower)){
-    showPage('products',document.querySelector('[onclick*=products]'));
-    setTimeout(()=>openProductModal(),500);
-    responseEl.textContent='✅ تم فتح نموذج المنتج الجديد';
-    return;
-  }
+  responseEl.textContent='🧠 Claude يفهم أمرك...';
 
   try{
-    const res=await fetch(`${API}/api/ai/generate`,{method:'POST',headers:authH(),body:JSON.stringify({prompt:`أنت مساعد ذكي. المستخدم قال: "${text}". أجب باختصار بالعربية.`,type:'default'})});
+    // إرسال للـ Claude API ليفهم الأمر ويحدد الإجراء
+    const res=await fetch(`${API}/api/voice-command`,{
+      method:'POST',
+      headers:authH(),
+      body:JSON.stringify({text})
+    });
     const data=await res.json();
-    responseEl.textContent=data.success?data.content:'❌ تعذرت المعالجة';
-  }catch(e){responseEl.textContent='❌ تعذر الاتصال';}
+    if(!data.success){responseEl.textContent='❌ تعذرت المعالجة';return;}
+    
+    const cmd=data.command;
+    responseEl.textContent=data.message||'✅ تم التنفيذ';
+
+    // تنفيذ الأمر
+    switch(cmd.action){
+      case 'design':
+        showPage('design',document.querySelector('[onclick*=design]'));
+        if(cmd.prompt){
+          document.getElementById('design-prompt').value=cmd.prompt;
+          responseEl.textContent='🎨 جاري توليد الصورة...';
+          await generateImage();
+          responseEl.textContent='✅ تم توليد الصورة!';
+        }
+        break;
+      case 'create_post':
+        showPage('create',document.querySelector('[onclick*=create]'));
+        if(cmd.content) document.getElementById('post-content').value=cmd.content;
+        break;
+      case 'new_order':
+        showPage('orders',document.querySelector('[onclick*=orders]'));
+        setTimeout(()=>openOrderModal(),500);
+        break;
+      case 'new_product':
+        showPage('products',document.querySelector('[onclick*=products]'));
+        setTimeout(()=>openProductModal(),500);
+        break;
+      case 'navigate':
+        const pages={orders:'orders',analytics:'analytics',messages:'messages',profile:'profile',products:'products',customers:'customers',schedule:'schedule',settings:'settings',design:'design',ai:'ai',report:'report',create:'create'};
+        const pageId=pages[cmd.page];
+        if(pageId){
+          const navEl=document.querySelector(`[onclick*="${pageId}"]`);
+          showPage(pageId,navEl);
+        }
+        break;
+      case 'generate_content':
+        showPage('ai',document.querySelector('[onclick*="ai"]'));
+        if(cmd.prompt&&document.getElementById('ai-prompt')) document.getElementById('ai-prompt').value=cmd.prompt;
+        break;
+      case 'answer':
+        responseEl.textContent=cmd.text||data.message;
+        break;
+    }
+  }catch(e){
+    responseEl.textContent='❌ تعذر الاتصال';
+  }
 }
 // ─── POSTS ───
 async function loadPosts(){

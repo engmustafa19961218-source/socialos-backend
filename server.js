@@ -1548,6 +1548,65 @@ app.get('/api/mobile/dashboard', authenticateToken, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// ========== VOICE COMMAND (Claude AI) ==========
+app.post('/api/voice-command', authenticateToken, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ success: false });
+
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    if (!ANTHROPIC_KEY) return res.status(500).json({ success: false, message: 'Anthropic key missing' });
+
+    const systemPrompt = `أنت مساعد ذكي لتطبيق إدارة سوشيال ميديا. 
+تحليل أمر المستخدم وأرجع JSON فقط بدون أي نص آخر.
+
+الأوامر المتاحة:
+- design: تصميم صورة (prompt: وصف الصورة بالإنجليزي)
+- create_post: إنشاء منشور (content: نص المنشور)
+- new_order: إضافة طلب جديد
+- new_product: إضافة منتج جديد
+- navigate: الانتقال لصفحة (page: orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create)
+- generate_content: توليد محتوى (prompt: الموضوع)
+- answer: الرد بنص (text: الرد)
+
+مثال: "صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, professional photography","message":"🎨 جاري تصميم الصورة..."}
+مثال: "افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
+مثال: "اكتب منشور عن عروض رمضان" → {"action":"create_post","content":"عروض رمضان المميزة...","message":"✅ تم إنشاء المنشور"}
+
+أرجع JSON فقط.`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: text }]
+      })
+    });
+
+    const aiData = await response.json();
+    const rawText = aiData.content?.[0]?.text || '{}';
+    
+    let command;
+    try {
+      const clean = rawText.replace(/```json|```/g, '').trim();
+      command = JSON.parse(clean);
+    } catch(e) {
+      command = { action: 'answer', text: rawText };
+    }
+
+    res.json({ success: true, command, message: command.message || '✅ تم التنفيذ' });
+  } catch(e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ========== GENERATE IMAGE (REPLICATE FLUX) ==========
 app.post('/api/generate-image', authenticateToken, async (req, res) => {
   try {
