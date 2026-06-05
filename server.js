@@ -396,8 +396,7 @@ app.get('/api/orders/export', authenticateToken, async (req, res) => {
         o.total, o.deposit, o.status, o.platform || '',
         new Date(o.created_at).toLocaleDateString('ar')
       ]);
-      const csv = [headers, ...rows].map(r => r.join(',')).join('
-');
+      const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
       return res.send('﻿' + csv); // BOM for Arabic Excel
