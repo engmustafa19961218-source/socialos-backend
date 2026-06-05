@@ -729,7 +729,7 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-opus-4-5',
+          model: 'claude-3-5-haiku-20241022',
           max_tokens: 2048,
           system: systemPrompt,
           messages: agentConversations[userId]
@@ -743,7 +743,7 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'anthropic/claude-opus-4',
+          model: 'anthropic/claude-3-5-haiku',
           messages: [{ role: 'system', content: systemPrompt }, ...agentConversations[userId]]
         })
       });
