@@ -1603,24 +1603,31 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
 2. نفذ الأمر فوراً بناءً على فهمك
 3. أرجع JSON فقط
 
-الأوامر:
-- design: تصميم صورة. prompt = وصف بالإنجليزي (ترجم أنت)
-- create_post: إنشاء منشور. content = نص المنشور
-- new_order: طلب جديد
-- new_product: منتج جديد  
-- navigate: انتقال. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
-- generate_content: توليد محتوى. prompt = الموضوع
-- answer: رد نصي. text = الرد
+الأوامر المتاحة:
+- design: تصميم أو توليد صورة. prompt = وصف مفصّل بالإنجليزي (أنت تترجم وتطوّر الوصف ليكون prompt احترافي لـ Flux، أضف دائماً: no text, no letters, no watermark)
+- create_post: إنشاء منشور. content = نص المنشور كاملاً
+- new_order: فتح نموذج طلب جديد
+- new_product: فتح نموذج منتج جديد
+- navigate: انتقال لصفحة. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
+- generate_content: توليد محتوى نصي. prompt = الموضوع
+- answer: رد على سؤال. text = الرد
+
+قواعد الـ design prompt:
+- شعار/لوغو → أضف: "minimal logo design, vector style, no text, no letters, professional"
+- منتج → أضف: "product photography, studio lighting, commercial, no text"
+- بوستر/إعلان → أضف: "advertising poster, professional design, no text, no letters"
+- صورة عامة → أضف: "high quality, professional, detailed, no text, no watermark"
 
 أمثلة:
-"صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, elegant living room furniture, professional photography, dark background","message":"🎨 جاري تصميم الكنب الفاخر..."}
-"صمم شعار لمتجر عطور" → {"action":"design","prompt":"luxury perfume store logo, elegant, gold and black, minimal design","message":"🎨 جاري تصميم الشعار..."}
+"صمم شعار لمتجر عطور فاخر" → {"action":"design","prompt":"luxury perfume store logo, minimal elegant design, gold and black color palette, no text, no letters, professional brand identity, vector style, high quality","message":"🎨 جاري تصميم شعار متجر العطور..."}
+"صمم صورة منتج عطر" → {"action":"design","prompt":"luxury perfume bottle product photography, studio lighting, dark elegant background, golden accents, commercial quality, no text, no watermark, sharp focus","message":"🎨 جاري تصميم صورة العطر..."}
+"صمم بوستر خصم 50%" → {"action":"design","prompt":"professional sale poster, 50% discount promotion, bold modern design, vibrant colors, elegant typography layout, no Arabic text, no letters, commercial advertising","message":"🎨 جاري تصميم البوستر..."}
+"اكتب منشور عن وصول منتج جديد" → {"action":"create_post","content":"🎉 وصل الجديد! منتجنا الجديد متوفر الحين 🔥 لا تفوّت الفرصة","message":"✅ تم كتابة المنشور"}
 "افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
-"كم عدد طلباتي" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
-"اكتب منشور عن خصم 50%" → {"action":"create_post","content":"🎉 خصم 50% على جميع المنتجات! لا تفوت الفرصة","message":"✅ تم كتابة المنشور"}
 "أضف طلب جديد" → {"action":"new_order","message":"✅ فتح نموذج الطلب"}
+"كم مبيعاتي اليوم" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
 
-أرجع JSON فقط بدون أي نص إضافي.`;
+أرجع JSON فقط بدون أي نص إضافي أو شرح.`;
 
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1639,9 +1646,8 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
     });
 
     const aiData = await response.json();
-    console.log('Voice AI response:', JSON.stringify(aiData.content?.[0]?.text?.substring(0,200)));
-    // prefilled with '{' so we prepend it back
-    let rawText = '{' + (aiData.content?.[0]?.text || '"}');
+    let rawText = aiData.content?.[0]?.text || '';
+    
     
     let command;
     try {
@@ -1683,7 +1689,7 @@ app.post('/api/generate-image', authenticateToken, async (req, res) => {
     const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
     if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'Replicate token not configured' });
 
-    // Translate Arabic to English if needed
+    // ترجمة وتحسين الـ prompt تلقائياً
     const hasArabic = /[\u0600-\u06FF]/.test(prompt);
     if (hasArabic) {
       try {
@@ -1694,16 +1700,40 @@ app.post('/api/generate-image', authenticateToken, async (req, res) => {
             headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: 'claude-haiku-4-5-20251001',
-              max_tokens: 300,
-              messages: [{ role: 'user', content: `Translate this Arabic image description to English for an AI image generator. Return ONLY the English translation, nothing else:\n${prompt}` }]
+              max_tokens: 400,
+              messages: [{ role: 'user', content: `You are an expert AI image generation prompt engineer for Flux image generator.
+
+The user wrote in Arabic: "${prompt}"
+
+Your job:
+1. Understand what type of image they want (logo, product, poster, social post, etc.)
+2. Translate and expand into a detailed professional English prompt
+3. Add relevant quality keywords based on type:
+   - Logo/شعار: add "minimal logo design, vector style, clean, professional brand identity, no text, no letters"
+   - Product/منتج: add "professional product photography, studio lighting, commercial quality, sharp focus"
+   - Poster/بوستر: add "professional poster design, vibrant colors, high impact"
+   - Default: add "high quality, professional, detailed"
+4. Always end with: "no text, no letters, no words, no watermark, high quality"
+
+Return ONLY the English prompt, nothing else.` }]
             })
           });
           const translateData = await translateRes.json();
           if (translateData.content?.[0]?.text) {
-            prompt = translateData.content[0].text.trim() + ', no text, no words, no letters, no watermark';
+            prompt = translateData.content[0].text.trim();
+            if (!prompt.toLowerCase().includes('no text')) {
+              prompt += ', no text, no letters, no words, no watermark';
+            }
           }
         }
-      } catch(e) { console.log('Translation failed, using original prompt'); }
+      } catch(e) {
+        console.log('Translation failed, using original');
+        prompt = prompt + ', no text, no letters, no watermark';
+      }
+    } else {
+      if (!prompt.toLowerCase().includes('no text')) {
+        prompt += ', no text, no letters, no watermark';
+      }
     }
 
     const https = require('https');
