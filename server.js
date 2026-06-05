@@ -1595,7 +1595,7 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
         model: 'claude-sonnet-4-6',
         max_tokens: 200,
         system: systemPrompt,
-        messages: [{ role: 'user', content: text }, { role: 'assistant', content: '{' }]
+        messages: [{ role: 'user', content: text }]
       })
     });
 
