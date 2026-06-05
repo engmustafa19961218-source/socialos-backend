@@ -756,9 +756,9 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
 
     // Detect actions from response
     const lowerMsg = message.toLowerCase();
-    // Check if AI response contains a post (has hashtags or is long enough)
-    const isPostContent = aiResponse.includes('#') || (aiResponse.length > 100 && (lowerMsg.includes('منشور') || lowerMsg.includes('اكتب') || lowerMsg.includes('انشر') || lowerMsg.includes('محتوى')));
-    if (isPostContent) {
+    // Check if user asked for a post
+    const askedForPost = lowerMsg.includes('منشور') || lowerMsg.includes('اكتب') || lowerMsg.includes('انشر') || lowerMsg.includes('محتوى') || lowerMsg.includes('بوست');
+    if (askedForPost) {
       action = { type: 'create_post', content: aiResponse };
     } else if (lowerMsg.includes('تقرير') || lowerMsg.includes('إحصائيات') || lowerMsg.includes('احصائيات')) {
       action = { type: 'report', data: context };
