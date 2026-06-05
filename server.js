@@ -696,8 +696,9 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
 2. إذا كان الأمر تلقائياً: نفذه وأخبره بالنتيجة
 3. إذا كان الأمر يحتاج موافقة: اقترح الخطوات وانتظر تأكيده
 4. دائماً أجب بالعربية بشكل واضح ومختصر
-5. إذا طُلب منك إنشاء منشور، أنشئه كاملاً مع هاشتاقات
-6. إذا طُلب منك تقرير، اعطه الأرقام الحالية
+5. إذا طُلب منك إنشاء منشور أو كتابة محتوى: اكتب المنشور كاملاً مباشرةً بدون مقدمات، مع إيموجي وهاشتاقات مناسبة
+6. إذا طُلب منك تقرير، اعطه الأرقام الحالية من البيانات المتاحة
+7. لا تكتب "حسناً سأكتب لك..." فقط اكتب المحتوى مباشرة
 
 قواعد مهمة:
 - لا تحذف أي شيء بدون تأكيد صريح
@@ -728,8 +729,8 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 1024,
+          model: 'claude-opus-4-5',
+          max_tokens: 2048,
           system: systemPrompt,
           messages: agentConversations[userId]
         })
@@ -742,7 +743,7 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'anthropic/claude-3-haiku',
+          model: 'anthropic/claude-opus-4',
           messages: [{ role: 'system', content: systemPrompt }, ...agentConversations[userId]]
         })
       });
@@ -755,7 +756,9 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
 
     // Detect actions from response
     const lowerMsg = message.toLowerCase();
-    if (lowerMsg.includes('منشور') || lowerMsg.includes('اكتب') || lowerMsg.includes('انشر')) {
+    // Check if AI response contains a post (has hashtags or is long enough)
+    const isPostContent = aiResponse.includes('#') || (aiResponse.length > 100 && (lowerMsg.includes('منشور') || lowerMsg.includes('اكتب') || lowerMsg.includes('انشر') || lowerMsg.includes('محتوى')));
+    if (isPostContent) {
       action = { type: 'create_post', content: aiResponse };
     } else if (lowerMsg.includes('تقرير') || lowerMsg.includes('إحصائيات') || lowerMsg.includes('احصائيات')) {
       action = { type: 'report', data: context };
