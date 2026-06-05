@@ -554,6 +554,101 @@ app.post('/api/payment/moyasar', authenticateToken, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+
+// ========== IRAQI PAYMENT METHODS ==========
+app.post('/api/payment/iraqi', authenticateToken, async (req, res) => {
+  const { order_id, method, amount, sender_name, sender_phone, transfer_ref } = req.body;
+  const userId = req.user.id;
+  if (!order_id || !method || !amount) return res.status(400).json({ success: false, message: 'البيانات ناقصة' });
+  
+  const paymentInfo = {
+    zaincash: { name: 'ZainCash', number: process.env.ZAINCASH_NUMBER || '07700000000', instructions: 'حول المبلغ عبر ZainCash ثم أرسل رقم العملية' },
+    asia_hawala: { name: 'Asia Hawala', number: process.env.ASIA_HAWALA_NUMBER || '07800000000', instructions: 'حول المبلغ عبر Asia Hawala ثم أرسل رقم الحوالة' },
+    master_rafidain: { name: 'ماستر رافدين', number: process.env.MASTER_RAFIDAIN_NUMBER || '4111111111111111', instructions: 'حول المبلغ إلى بطاقة ماستر رافدين ثم أرسل إيصال التحويل' },
+    card: { name: 'بطاقة دفع', number: process.env.CARD_NUMBER || '', instructions: 'حول المبلغ إلى رقم البطاقة ثم أرسل رقم العملية' }
+  };
+
+  const info = paymentInfo[method];
+  if (!info) return res.status(400).json({ success: false, message: 'طريقة دفع غير صحيحة' });
+
+  try {
+    if (pool && transfer_ref) {
+      // Save payment request
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)`,
+        [userId, '💳 طلب تأكيد دفع', `طلب #${order_id} - ${info.name} - ${amount} د.ع - المرجع: ${transfer_ref}`, 'payment']
+      );
+      await pool.query('UPDATE orders SET payment_method=$1, notes=COALESCE(notes,'')||$2 WHERE id=$3 AND user_id=$4',
+        [method, ` | دفع ${info.name}: ${transfer_ref}`, order_id, userId]);
+    }
+    return res.json({ 
+      success: true, 
+      payment_info: info,
+      message: transfer_ref ? 'تم إرسال طلب التأكيد' : 'معلومات الدفع'
+    });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/payment/methods', (req, res) => {
+  res.json({
+    methods: [
+      { id: 'zaincash', name: 'ZainCash', icon: '📱', number: process.env.ZAINCASH_NUMBER || 'غير مضاف' },
+      { id: 'asia_hawala', name: 'Asia Hawala', icon: '🏦', number: process.env.ASIA_HAWALA_NUMBER || 'غير مضاف' },
+      { id: 'master_rafidain', name: 'ماستر رافدين', icon: '💳', number: process.env.MASTER_RAFIDAIN_NUMBER || 'غير مضاف' },
+      { id: 'card', name: 'بطاقة دفع أخرى', icon: '💳', number: process.env.CARD_NUMBER || 'غير مضاف' },
+      { id: 'cash', name: 'كاش', icon: '💵', number: '' },
+    ]
+  });
+});
+
+
+// ========== SETTINGS ==========
+app.get('/api/settings', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM user_settings WHERE user_id=$1', [userId]);
+      if (r.rows.length > 0) return res.json({ success: true, settings: r.rows[0] });
+      return res.json({ success: true, settings: {} });
+    }
+  } catch (e) {}
+  res.json({ success: true, settings: {} });
+});
+
+app.put('/api/settings', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { store_name, whatsapp_number, zaincash_number, asia_hawala_number, master_rafidain_number, card_number, currency } = req.body;
+  try {
+    if (pool) {
+      await pool.query(`
+        INSERT INTO user_settings (user_id, store_name, whatsapp_number, zaincash_number, asia_hawala_number, master_rafidain_number, card_number, currency)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        ON CONFLICT (user_id) DO UPDATE SET
+          store_name=$2, whatsapp_number=$3, zaincash_number=$4,
+          asia_hawala_number=$5, master_rafidain_number=$6, card_number=$7, currency=$8
+      `, [userId, store_name||'', whatsapp_number||'', zaincash_number||'', asia_hawala_number||'', master_rafidain_number||'', card_number||'', currency||'IQD']);
+      return res.json({ success: true });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+  res.json({ success: true });
+});
+
+// Create settings table
+if (pool) {
+  pool.query(`CREATE TABLE IF NOT EXISTS user_settings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE,
+    store_name VARCHAR(255) DEFAULT '',
+    whatsapp_number VARCHAR(50) DEFAULT '',
+    zaincash_number VARCHAR(50) DEFAULT '',
+    asia_hawala_number VARCHAR(50) DEFAULT '',
+    master_rafidain_number VARCHAR(50) DEFAULT '',
+    card_number VARCHAR(100) DEFAULT '',
+    currency VARCHAR(10) DEFAULT 'IQD',
+    created_at TIMESTAMP DEFAULT NOW()
+  )`).catch(e => console.log('settings table:', e.message));
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));
 

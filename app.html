@@ -297,6 +297,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="nav-item" onclick="showPage('accounts',this)"><span class="icon">🔗</span> ربط الحسابات</div>
     <div class="nav-item" onclick="showPage('profile',this)"><span class="icon">👤</span> البروفايل</div>
     <div class="nav-item" onclick="showPage('notifications',this)"><span class="icon">🔔</span> الإشعارات</div>
+    <div class="nav-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span> الإعدادات</div>
     <div class="nav-item" onclick="showPage('subscription',this)"><span class="icon">⭐</span> الاشتراك</div>
     <div class="sidebar-bottom">
       <div class="user-info">
@@ -599,6 +600,46 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
       <div id="notifications-list"><div class="empty-state"><div class="emoji">🔔</div><p>لا توجد إشعارات</p></div></div>
     </div>
 
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header"><h1>⚙️ الإعدادات</h1><p>إعدادات متجرك وطرق الدفع</p></div>
+      
+      <div class="card">
+        <h3>🏪 معلومات المتجر</h3>
+        <div class="form-group-item"><label class="form-label">اسم المتجر</label><input class="form-input" id="set-store-name" placeholder="اسم متجرك"></div>
+        <div class="form-group-item"><label class="form-label">رقم واتساب التجاري</label><input class="form-input" id="set-whatsapp" placeholder="07xxxxxxxxx" dir="ltr"></div>
+        <div class="form-group-item"><label class="form-label">العملة</label>
+          <select class="form-select" id="set-currency">
+            <option value="IQD">دينار عراقي (IQD)</option>
+            <option value="USD">دولار أمريكي (USD)</option>
+            <option value="SAR">ريال سعودي (SAR)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>💳 أرقام طرق الدفع</h3>
+        <p style="color:var(--text2);font-size:.85rem;margin-bottom:16px">أضف أرقامك لتظهر تلقائياً للعملاء عند الدفع</p>
+        <div class="form-group-item">
+          <label class="form-label">📱 ZainCash</label>
+          <input class="form-input" id="set-zaincash" placeholder="07700000000" dir="ltr">
+        </div>
+        <div class="form-group-item">
+          <label class="form-label">🏦 Asia Hawala</label>
+          <input class="form-input" id="set-asia-hawala" placeholder="07800000000" dir="ltr">
+        </div>
+        <div class="form-group-item">
+          <label class="form-label">💳 ماستر رافدين</label>
+          <input class="form-input" id="set-master-rafidain" placeholder="4111 1111 1111 1111" dir="ltr">
+        </div>
+        <div class="form-group-item">
+          <label class="form-label">💳 بطاقة دفع أخرى</label>
+          <input class="form-input" id="set-card" placeholder="رقم البطاقة أو IBAN" dir="ltr">
+        </div>
+        <button class="btn btn-accent" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+      </div>
+    </div>
+
     <!-- SUBSCRIPTION -->
     <div class="page" id="page-subscription">
       <div class="page-header"><h1>⭐ الاشتراك</h1><p>اختر الخطة المناسبة</p></div>
@@ -685,6 +726,39 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
       </div>
     </div>
     <div class="auth-error" id="forgot-error" style="display:none"></div>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-overlay" id="payment-modal">
+  <div class="modal">
+    <h2>💳 طرق الدفع العراقية</h2>
+    <div id="payment-order-info" style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:16px;font-size:.9rem"></div>
+    
+    <div id="payment-step1">
+      <p style="color:var(--text2);margin-bottom:12px;font-size:.85rem">اختر طريقة الدفع:</p>
+      <div id="payment-methods-list" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+    <div id="payment-step2" style="display:none">
+      <div id="payment-instructions" style="background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:16px;margin-bottom:16px"></div>
+      <div class="form-group-item">
+        <label class="form-label">رقم العملية / المرجع</label>
+        <input class="form-input" id="transfer-ref" placeholder="أدخل رقم العملية بعد التحويل" dir="ltr">
+      </div>
+      <div class="form-group-item">
+        <label class="form-label">اسم المرسل</label>
+        <input class="form-input" id="sender-name" placeholder="اسمك">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="backToMethods()">رجوع</button>
+        <button class="btn btn-accent" onclick="confirmPayment()">✅ تأكيد الدفع</button>
+      </div>
+    </div>
+
+    <div class="modal-footer" id="payment-footer1">
+      <button class="btn btn-outline" onclick="closePaymentModal()">إلغاء</button>
+    </div>
   </div>
 </div>
 
@@ -812,6 +886,7 @@ function showDashboard(){
   loadHomeAccounts();
   loadNotifCount();
   setTimeout(checkPendingOrders, 3000);
+  loadSettings();
 }
 
 function updatePlanBadge(plan){
@@ -837,7 +912,7 @@ function showPage(name,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(el)el.classList.add('active');
-  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport};
+  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport,settings:loadSettings};
   if(loaders[name])loaders[name]();
 }
 
@@ -1085,7 +1160,7 @@ function renderOrders(orders, container) {
   container.innerHTML=orders.map(o=>{
       let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
       const itemsText=items.map(i=>i.description||'').filter(Boolean).join(', ')||'لا تفاصيل';
-      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button><button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25d366">📱</button><button class="btn btn-outline btn-sm" onclick="payOrder(${o.id},${o.total})" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--accent3)">💳</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
+      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button><button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25d366">📱</button><button class="btn btn-outline btn-sm" onclick="openPaymentModal(${o.id},${o.total},'${o.customer_name}','${o.customer_phone}')" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--accent3)">💳</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
     }).join('');
 }
 
@@ -1121,20 +1196,121 @@ async function sendWhatsApp(orderId){
   }catch(e){showToast('❌ تعذر الاتصال');}
 }
 
-// ─── MOYASAR PAYMENT ───
-async function payOrder(orderId, amount){
-  if(!confirm(`إنشاء رابط دفع بمبلغ ${amount} ر.س؟`))return;
+// ─── SETTINGS ───
+let userSettings = {};
+
+async function loadSettings(){
   try{
-    const res=await fetch(`${API}/api/payment/moyasar`,{method:'POST',headers:authH(),body:JSON.stringify({order_id:orderId,amount})});
+    const res=await fetch(`${API}/api/settings`,{headers:authH()});
     const data=await res.json();
     if(data.success){
-      window.open(data.payment_url,'_blank');
-      showToast('💳 تم إنشاء رابط الدفع!');
-    }else{
-      showToast('⚠️ '+(data.message||'تأكد من إضافة MOYASAR_API_KEY في Railway'));
+      userSettings=data.settings||{};
+      document.getElementById('set-store-name').value=userSettings.store_name||'';
+      document.getElementById('set-whatsapp').value=userSettings.whatsapp_number||'';
+      document.getElementById('set-zaincash').value=userSettings.zaincash_number||'';
+      document.getElementById('set-asia-hawala').value=userSettings.asia_hawala_number||'';
+      document.getElementById('set-master-rafidain').value=userSettings.master_rafidain_number||'';
+      document.getElementById('set-card').value=userSettings.card_number||'';
+      if(userSettings.currency)document.getElementById('set-currency').value=userSettings.currency;
     }
+  }catch(e){}
+}
+
+async function saveSettings(){
+  const settings={
+    store_name:document.getElementById('set-store-name').value.trim(),
+    whatsapp_number:document.getElementById('set-whatsapp').value.trim(),
+    zaincash_number:document.getElementById('set-zaincash').value.trim(),
+    asia_hawala_number:document.getElementById('set-asia-hawala').value.trim(),
+    master_rafidain_number:document.getElementById('set-master-rafidain').value.trim(),
+    card_number:document.getElementById('set-card').value.trim(),
+    currency:document.getElementById('set-currency').value
+  };
+  try{
+    const res=await fetch(`${API}/api/settings`,{method:'PUT',headers:authH(),body:JSON.stringify(settings)});
+    const data=await res.json();
+    if(data.success){userSettings=settings;showToast('✅ تم حفظ الإعدادات!');}
+    else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
 }
+
+// ─── IRAQI PAYMENT ───
+let currentPaymentOrder = null;
+let currentPaymentMethod = null;
+
+async function openPaymentModal(orderId, amount, customerName, customerPhone){
+  currentPaymentOrder = {id: orderId, amount, customerName, customerPhone};
+  document.getElementById('payment-order-info').innerHTML = `<strong>طلب #${orderId}</strong> · ${customerName} · <span style="color:var(--accent)">${amount} د.ع</span>`;
+  document.getElementById('payment-step1').style.display='block';
+  document.getElementById('payment-step2').style.display='none';
+  document.getElementById('payment-footer1').style.display='flex';
+  
+  // Load from settings
+  const methods = [
+    {id:'zaincash', name:'ZainCash', icon:'📱', number: userSettings.zaincash_number||''},
+    {id:'asia_hawala', name:'Asia Hawala', icon:'🏦', number: userSettings.asia_hawala_number||''},
+    {id:'master_rafidain', name:'ماستر رافدين', icon:'💳', number: userSettings.master_rafidain_number||''},
+    {id:'card', name:'بطاقة دفع أخرى', icon:'💳', number: userSettings.card_number||''},
+    {id:'cash', name:'كاش', icon:'💵', number: ''},
+  ];
+  try{
+    document.getElementById('payment-methods-list').innerHTML=methods.map(m=>`
+      <div onclick="selectPaymentMethod('${m.id}','${m.name}','${m.icon}','${m.number}')" 
+           style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .2s"
+           onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <span style="font-size:1.5rem">${m.icon}</span>
+        <div>
+          <div style="font-weight:700">${m.name}</div>
+          ${m.number ? `<div style="color:var(--accent);font-size:.85rem;direction:ltr">${m.number}</div>` : '<div style="color:var(--text2);font-size:.8rem">أضف الرقم في الإعدادات</div>'}
+        </div>
+      </div>`).join('');
+  }catch(e){}
+  
+  document.getElementById('payment-modal').classList.add('show');
+}
+
+function selectPaymentMethod(id, name, icon, number){
+  currentPaymentMethod = {id, name, icon, number};
+  document.getElementById('payment-step1').style.display='none';
+  document.getElementById('payment-step2').style.display='block';
+  document.getElementById('payment-footer1').style.display='none';
+  document.getElementById('payment-instructions').innerHTML = `
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">${icon} ${name}</div>
+    ${number && number !== 'غير مضاف' ? `<div style="margin-bottom:8px">📞 الرقم: <strong style="color:var(--accent);direction:ltr;display:inline-block">${number}</strong></div>` : ''}
+    <div style="color:var(--text2);font-size:.85rem">💰 المبلغ: <strong style="color:var(--accent)">${currentPaymentOrder.amount} د.ع</strong></div>
+    <div style="color:var(--text2);font-size:.8rem;margin-top:8px">قم بالتحويل ثم أدخل رقم العملية أدناه</div>`;
+  document.getElementById('sender-name').value = currentPaymentOrder.customerName || '';
+}
+
+function backToMethods(){
+  document.getElementById('payment-step1').style.display='block';
+  document.getElementById('payment-step2').style.display='none';
+  document.getElementById('payment-footer1').style.display='flex';
+}
+
+function closePaymentModal(){document.getElementById('payment-modal').classList.remove('show');}
+
+async function confirmPayment(){
+  const ref=document.getElementById('transfer-ref').value.trim();
+  const senderName=document.getElementById('sender-name').value.trim();
+  if(!ref)return showToast('⚠️ أدخل رقم العملية');
+  try{
+    const res=await fetch(`${API}/api/payment/iraqi`,{method:'POST',headers:authH(),body:JSON.stringify({
+      order_id:currentPaymentOrder.id, method:currentPaymentMethod.id,
+      amount:currentPaymentOrder.amount, sender_name:senderName,
+      sender_phone:currentPaymentOrder.customerPhone, transfer_ref:ref
+    })});
+    const data=await res.json();
+    if(data.success){
+      showToast('✅ تم إرسال تأكيد الدفع!');
+      closePaymentModal();
+      loadOrders('');
+    }else showToast('❌ '+(data.message||'فشل'));
+  }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+// ─── MOYASAR PAYMENT ───
+// payOrder replaced by openPaymentModal
 
 // ─── PENDING REMINDER ───
 async function checkPendingOrders(){
