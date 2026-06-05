@@ -557,7 +557,7 @@ app.post('/api/payment/moyasar', authenticateToken, async (req, res) => {
 
 // ========== IRAQI PAYMENT METHODS ==========
 app.post('/api/payment/iraqi', authenticateToken, async (req, res) => {
-  const { order_id, method, amount, sender_name, sender_phone, transfer_ref } = req.body;
+  const { order_id, method, amount, sender_name, sender_phone, transfer_ref, receipt_image } = req.body;
   const userId = req.user.id;
   if (!order_id || !method || !amount) return res.status(400).json({ success: false, message: 'البيانات ناقصة' });
   
@@ -576,7 +576,7 @@ app.post('/api/payment/iraqi', authenticateToken, async (req, res) => {
       // Save payment request
       await pool.query(
         `INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)`,
-        [userId, '💳 طلب تأكيد دفع', `طلب #${order_id} - ${info.name} - ${amount} د.ع - المرجع: ${transfer_ref}`, 'payment']
+        [userId, '💳 طلب تأكيد دفع', `طلب #${order_id} - ${info.name} - ${amount} د.ع - المرجع: ${transfer_ref}${receiptNote}`, 'payment']
       );
       await pool.query("UPDATE orders SET payment_method=$1, notes=COALESCE(notes,'')||$2 WHERE id=$3 AND user_id=$4",
         [method, ` | دفع ${info.name}: ${transfer_ref}`, order_id, userId]);
@@ -648,6 +648,132 @@ if (pool) {
     created_at TIMESTAMP DEFAULT NOW()
   )`).catch(e => console.log('settings table:', e.message));
 }
+
+
+// ========== AI AGENT ==========
+const agentConversations = {};
+
+app.post('/api/agent/chat', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { message, voice } = req.body;
+  if (!message) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
+
+  // Initialize conversation history
+  if (!agentConversations[userId]) agentConversations[userId] = [];
+  
+  // Get user stats for context
+  let context = { orders: 0, posts: 0, messages: 0, revenue: 0 };
+  try {
+    if (pool) {
+      const [o, p, m] = await Promise.all([
+        pool.query('SELECT COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1', [userId]),
+        pool.query('SELECT COUNT(*) as count FROM posts WHERE user_id=$1', [userId]),
+        pool.query('SELECT COUNT(*) as count FROM messages WHERE user_id=$1', [userId])
+      ]);
+      context = {
+        orders: parseInt(o.rows[0]?.count || 0),
+        revenue: parseFloat(o.rows[0]?.revenue || 0),
+        posts: parseInt(p.rows[0]?.count || 0),
+        messages: parseInt(m.rows[0]?.count || 0)
+      };
+    }
+  } catch(e) {}
+
+  const systemPrompt = `أنت مساعد ذكي متخصص لإدارة منصة SocialOS. أنت تعمل لصالح صاحب المتجر.
+
+بياناتك الحالية:
+- الطلبات: ${context.orders} طلب
+- الإيرادات: ${context.revenue} 
+- المنشورات: ${context.posts} منشور
+- الرسائل: ${context.messages} رسالة
+
+صلاحياتك:
+✅ تنفذ تلقائياً: توليد محتوى، الرد على رسائل، التقارير، اقتراح منشورات
+⚠️ تقترح وتنتظر موافقة: إضافة/تعديل/حذف طلبات، النشر على المنصات
+
+عند استلام أمر:
+1. افهم ماذا يريد المستخدم بالضبط
+2. إذا كان الأمر تلقائياً: نفذه وأخبره بالنتيجة
+3. إذا كان الأمر يحتاج موافقة: اقترح الخطوات وانتظر تأكيده
+4. دائماً أجب بالعربية بشكل واضح ومختصر
+5. إذا طُلب منك إنشاء منشور، أنشئه كاملاً مع هاشتاقات
+6. إذا طُلب منك تقرير، اعطه الأرقام الحالية
+
+قواعد مهمة:
+- لا تحذف أي شيء بدون تأكيد صريح
+- للطلبات المالية: اقترح دائماً
+- كن موجزاً وعملياً
+- استخدم إيموجي لجعل الردود أوضح`;
+
+  // Add message to history
+  agentConversations[userId].push({ role: 'user', content: message });
+  
+  // Keep only last 10 messages
+  if (agentConversations[userId].length > 20) {
+    agentConversations[userId] = agentConversations[userId].slice(-20);
+  }
+
+  try {
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    let aiResponse = '';
+    let action = null;
+
+    if (ANTHROPIC_KEY) {
+      // Use Anthropic API directly
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: agentConversations[userId]
+        })
+      });
+      const data = await response.json();
+      aiResponse = data.content?.[0]?.text || 'عذراً، لم أتمكن من المعالجة';
+    } else {
+      // Fallback to OpenRouter
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'anthropic/claude-3-haiku',
+          messages: [{ role: 'system', content: systemPrompt }, ...agentConversations[userId]]
+        })
+      });
+      const data = await response.json();
+      aiResponse = data.choices?.[0]?.message?.content || 'عذراً، لم أتمكن من المعالجة';
+    }
+
+    // Add response to history
+    agentConversations[userId].push({ role: 'assistant', content: aiResponse });
+
+    // Detect actions from response
+    const lowerMsg = message.toLowerCase();
+    if (lowerMsg.includes('منشور') || lowerMsg.includes('اكتب') || lowerMsg.includes('انشر')) {
+      action = { type: 'create_post', content: aiResponse };
+    } else if (lowerMsg.includes('تقرير') || lowerMsg.includes('إحصائيات') || lowerMsg.includes('احصائيات')) {
+      action = { type: 'report', data: context };
+    } else if (lowerMsg.includes('طلب') && (lowerMsg.includes('أضف') || lowerMsg.includes('اضف') || lowerMsg.includes('جديد'))) {
+      action = { type: 'suggest_order', requires_confirmation: true };
+    }
+
+    return res.json({ success: true, response: aiResponse, action, context });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'خطأ في الـ Agent: ' + e.message });
+  }
+});
+
+app.delete('/api/agent/clear', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  agentConversations[userId] = [];
+  res.json({ success: true });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));

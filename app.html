@@ -189,6 +189,19 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
 .connect-status.connected{color:var(--accent);}
 .connect-user{font-size:.8rem;color:var(--accent);margin-top:4px;}
 
+/* AGENT */
+.agent-msg{display:flex;gap:10px;align-items:flex-start;}
+.agent-msg-user{flex-direction:row-reverse;}
+.agent-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;background:var(--surface2);}
+.agent-bubble{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;max-width:80%;font-size:.9rem;line-height:1.6;}
+.agent-msg-user .agent-bubble{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.2);}
+.agent-msg-ai .agent-bubble{background:rgba(124,58,237,.08);border-color:rgba(124,58,237,.2);}
+.agent-typing{display:flex;gap:4px;padding:8px 12px;}
+.agent-typing span{width:8px;height:8px;background:var(--accent2);border-radius:50%;animation:typing 1s infinite;}
+.agent-typing span:nth-child(2){animation-delay:.2s;}
+.agent-typing span:nth-child(3){animation-delay:.4s;}
+@keyframes typing{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
 /* VOICE */
 .voice-btn{width:80px;height:80px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:2rem;transition:all .3s;margin:0 auto;}
 .voice-btn.idle{background:linear-gradient(135deg,var(--accent2),#a855f7);box-shadow:0 8px 32px rgba(124,58,237,.4);}
@@ -283,6 +296,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="nav-section">المحتوى</div>
     <div class="nav-item" onclick="showPage('create',this)"><span class="icon">✨</span> إنشاء محتوى</div>
     <div class="nav-item" onclick="showPage('ai',this)"><span class="icon">🤖</span> الذكاء الاصطناعي</div>
+    <div class="nav-item" onclick="showPage('agent',this)"><span class="icon">🧠</span> AI Agent</div>
     <div class="nav-item" onclick="showPage('voice',this)"><span class="icon">🎤</span> التحكم الصوتي</div>
     <div class="nav-item" onclick="showPage('schedule',this)"><span class="icon">📅</span> الجدولة</div>
     <div class="nav-item" onclick="showPage('posts',this)"><span class="icon">📝</span> المنشورات</div>
@@ -374,6 +388,62 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
         <div id="ai-actions" style="display:none;gap:10px;margin-top:12px">
           <button class="btn btn-outline btn-sm" onclick="copyAIResult()">📋 نسخ</button>
           <button class="btn btn-outline btn-sm" onclick="sendToCreate()">📤 إرسال للنشر</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENT -->
+    <div class="page" id="page-agent">
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>🧠 AI Agent</h1><p>مساعدك الذكي — قل له ما تريد وهو ينفذ</p></div>
+          <button class="btn btn-outline btn-sm" onclick="clearAgent()">🗑 مسح المحادثة</button>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-grid" id="agent-stats" style="margin-bottom:20px">
+        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">🛒</div><div class="stat-value" style="font-size:1.3rem" id="ag-orders">-</div><div class="stat-label">الطلبات</div></div>
+        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">💰</div><div class="stat-value" style="font-size:1.3rem" id="ag-revenue">-</div><div class="stat-label">الإيرادات</div></div>
+        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">📝</div><div class="stat-value" style="font-size:1.3rem" id="ag-posts">-</div><div class="stat-label">المنشورات</div></div>
+        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">💬</div><div class="stat-value" style="font-size:1.3rem" id="ag-messages">-</div><div class="stat-label">الرسائل</div></div>
+      </div>
+
+      <!-- Chat -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="agent-chat" style="height:400px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div class="agent-msg agent-msg-ai">
+            <div class="agent-avatar">🧠</div>
+            <div class="agent-bubble">مرحباً! أنا مساعدك الذكي. يمكنني مساعدتك في إدارة متجرك. قل لي ماذا تريد! 😊<br><br>
+            <small style="color:var(--text2)">مثال: "اكتب منشور عن عرض خصم" أو "كم عدد الطلبات اليوم" أو "أعطني تقرير المبيعات"</small></div>
+          </div>
+        </div>
+        
+        <!-- Quick Commands -->
+        <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('كم عدد طلباتي اليوم؟')">📊 طلبات اليوم</button>
+          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('اكتب منشور جذاب لمتجري')">✍️ اكتب منشور</button>
+          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('أعطني تقرير المبيعات الأسبوعي')">📋 تقرير أسبوعي</button>
+          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('اقترح محتوى ترند لهذا الأسبوع')">🔥 محتوى ترند</button>
+        </div>
+
+        <!-- Input -->
+        <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center">
+          <button id="agent-voice-btn" onclick="toggleAgentVoice()" style="width:42px;height:42px;border-radius:50%;border:none;background:var(--surface2);cursor:pointer;font-size:1.2rem;flex-shrink:0;transition:all .2s">🎤</button>
+          <input class="form-input" id="agent-input" placeholder="اكتب أمرك هنا أو اضغط الميكروفون..." onkeydown="if(event.key==='Enter')sendAgentMsg()" style="flex:1">
+          <button class="btn btn-accent" onclick="sendAgentMsg()" id="agent-send-btn">إرسال</button>
+        </div>
+      </div>
+
+      <!-- Action Buttons (shown after AI response) -->
+      <div id="agent-actions" style="display:none;margin-top:16px">
+        <div class="card">
+          <h3>⚡ إجراء مقترح</h3>
+          <div id="agent-action-content"></div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-accent" id="agent-confirm-btn" onclick="confirmAgentAction()">✅ تأكيد</button>
+            <button class="btn btn-outline" onclick="dismissAgentAction()">إلغاء</button>
+          </div>
         </div>
       </div>
     </div>
@@ -923,7 +993,7 @@ function showPage(name,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(el)el.classList.add('active');
-  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport,settings:loadSettings};
+  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport,settings:loadSettings,agent:loadAgent};
   if(loaders[name])loaders[name]();
 }
 
@@ -1205,6 +1275,152 @@ async function sendWhatsApp(orderId){
     if(data.success){window.open(data.url,'_blank');showToast('📱 جاري فتح واتساب!');}
     else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+// ─── AI AGENT ───
+let agentVoiceRecognition = null;
+let isAgentListening = false;
+let pendingAgentAction = null;
+
+function initAgentVoice(){
+  if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    agentVoiceRecognition=new SR();
+    agentVoiceRecognition.lang='ar-SA';
+    agentVoiceRecognition.onresult=(e)=>{
+      const text=e.results[0][0].transcript;
+      document.getElementById('agent-input').value=text;
+      sendAgentMsg();
+    };
+    agentVoiceRecognition.onend=()=>{
+      isAgentListening=false;
+      const btn=document.getElementById('agent-voice-btn');
+      if(btn){btn.textContent='🎤';btn.style.background='var(--surface2)';}
+    };
+  }
+}
+
+function toggleAgentVoice(){
+  if(!agentVoiceRecognition)return showToast('❌ المتصفح لا يدعم الصوت');
+  const btn=document.getElementById('agent-voice-btn');
+  if(isAgentListening){agentVoiceRecognition.stop();isAgentListening=false;btn.textContent='🎤';btn.style.background='var(--surface2)';}
+  else{agentVoiceRecognition.start();isAgentListening=true;btn.textContent='⏹';btn.style.background='rgba(255,68,102,.3)';}
+}
+
+async function sendAgentMsg(text){
+  const input=document.getElementById('agent-input');
+  const msg=text||input.value.trim();
+  if(!msg)return;
+  input.value='';
+  
+  // Add user message
+  addAgentMsg(msg, 'user');
+  
+  // Show typing
+  const typingId='typing-'+Date.now();
+  addTypingIndicator(typingId);
+  
+  const btn=document.getElementById('agent-send-btn');
+  btn.disabled=true;
+  
+  try{
+    const res=await fetch(`${API}/api/agent/chat`,{method:'POST',headers:authH(),body:JSON.stringify({message:msg})});
+    const data=await res.json();
+    
+    // Remove typing
+    const typing=document.getElementById(typingId);
+    if(typing)typing.remove();
+    
+    if(data.success){
+      addAgentMsg(data.response, 'ai');
+      
+      // Update stats
+      if(data.context){
+        document.getElementById('ag-orders').textContent=data.context.orders||0;
+        document.getElementById('ag-revenue').textContent=(data.context.revenue||0).toFixed(0);
+        document.getElementById('ag-posts').textContent=data.context.posts||0;
+        document.getElementById('ag-messages').textContent=data.context.messages||0;
+      }
+      
+      // Handle actions
+      if(data.action){
+        pendingAgentAction=data.action;
+        if(data.action.type==='create_post'){
+          document.getElementById('agent-action-content').innerHTML=`
+            <p style="color:var(--text2);font-size:.85rem;margin-bottom:8px">هل تريد نشر هذا المحتوى؟</p>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.9rem">${data.action.content}</div>`;
+          document.getElementById('agent-actions').style.display='block';
+        } else if(data.action.type==='suggest_order'){
+          document.getElementById('agent-action-content').innerHTML=`<p style="color:var(--text2);font-size:.85rem">هل تريد فتح نموذج إضافة طلب جديد؟</p>`;
+          document.getElementById('agent-actions').style.display='block';
+        }
+      }
+    } else {
+      addAgentMsg('❌ عذراً، حدث خطأ: '+(data.message||''), 'ai');
+    }
+  }catch(e){
+    const typing=document.getElementById(typingId);
+    if(typing)typing.remove();
+    addAgentMsg('❌ تعذر الاتصال بالـ Agent', 'ai');
+  }
+  btn.disabled=false;
+}
+
+function addAgentMsg(text, type){
+  const chat=document.getElementById('agent-chat');
+  const div=document.createElement('div');
+  div.className=`agent-msg agent-msg-${type}`;
+  const avatar=type==='user'?'👤':'🧠';
+  div.innerHTML=`<div class="agent-avatar">${avatar}</div><div class="agent-bubble">${text.replace(/
+/g,'<br>')}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+function addTypingIndicator(id){
+  const chat=document.getElementById('agent-chat');
+  const div=document.createElement('div');
+  div.className='agent-msg agent-msg-ai';
+  div.id=id;
+  div.innerHTML=`<div class="agent-avatar">🧠</div><div class="agent-bubble"><div class="agent-typing"><span></span><span></span><span></span></div></div>`;
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+async function confirmAgentAction(){
+  if(!pendingAgentAction)return;
+  if(pendingAgentAction.type==='create_post'){
+    document.getElementById('post-content').value=pendingAgentAction.content;
+    showPage('create',document.querySelector('[onclick*="create"]'));
+    showToast('✅ تم إرسال المحتوى لصفحة النشر');
+  } else if(pendingAgentAction.type==='suggest_order'){
+    showPage('orders',document.querySelector('[onclick*="orders"]'));
+    openOrderModal();
+  }
+  dismissAgentAction();
+}
+
+function dismissAgentAction(){
+  document.getElementById('agent-actions').style.display='none';
+  pendingAgentAction=null;
+}
+
+async function clearAgent(){
+  if(!confirm('مسح تاريخ المحادثة؟'))return;
+  try{await fetch(`${API}/api/agent/clear`,{method:'DELETE',headers:authH()});}catch(e){}
+  const chat=document.getElementById('agent-chat');
+  chat.innerHTML=`<div class="agent-msg agent-msg-ai"><div class="agent-avatar">🧠</div><div class="agent-bubble">تم مسح المحادثة. كيف يمكنني مساعدتك؟ 😊</div></div>`;
+  showToast('🗑 تم مسح المحادثة');
+}
+
+function loadAgent(){
+  initAgentVoice();
+  // Load stats
+  fetch(`${API}/api/stats`,{headers:authH()}).then(r=>r.json()).then(data=>{
+    document.getElementById('ag-orders').textContent=data.orders||0;
+    document.getElementById('ag-posts').textContent=data.posts||0;
+    document.getElementById('ag-messages').textContent=data.messages||0;
+  }).catch(e=>{});
 }
 
 // ─── SETTINGS ───
