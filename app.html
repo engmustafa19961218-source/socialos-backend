@@ -1070,9 +1070,9 @@ async function loadProfile(){
     document.getElementById('profile-email').value=data.email||'';
     document.getElementById('profile-bio').value=data.bio||'';
     document.getElementById('profile-avatar-url').value=data.avatar_url||'';
-    if(data.avatar_url){const preview=document.getElementById('upload-preview');if(preview)preview.innerHTML=\;}
+    if(data.avatar_url){const preview=document.getElementById('upload-preview');if(preview){preview.innerHTML='<img src="'+data.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';}}
     const av=document.getElementById('profile-avatar-display');
-    if(data.avatar_url){av.innerHTML=`<img src="${data.avatar_url}" onerror="this.parentElement.textContent='${(data.name||'U').charAt(0).toUpperCase()}'">`;} 
+    if(data.avatar_url){av.innerHTML='<img src="'+data.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';} 
     else av.textContent=(data.name||'U').charAt(0).toUpperCase();
     // stats
     const statsRes=await fetch(`${API}/api/stats`);
