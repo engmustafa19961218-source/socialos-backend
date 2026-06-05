@@ -1593,21 +1593,29 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 300,
+        max_tokens: 200,
         system: systemPrompt,
-        messages: [{ role: 'user', content: text }]
+        messages: [{ role: 'user', content: text }, { role: 'assistant', content: '{' }]
       })
     });
 
     const aiData = await response.json();
-    const rawText = aiData.content?.[0]?.text || '{}';
+    let rawText = aiData.content?.[0]?.text || '{}';
+    // Extract JSON from response
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    rawText = jsonMatch ? jsonMatch[0] : '{}';
     
     let command;
     try {
-      const clean = rawText.replace(/```json|```/g, '').trim();
-      command = JSON.parse(clean);
+      command = JSON.parse(rawText);
     } catch(e) {
-      command = { action: 'answer', text: rawText };
+      // Fallback: try to detect action from text
+      const txt = aiData.content?.[0]?.text || '';
+      if(/design|صمم|صورة/i.test(txt)) {
+        command = { action: 'design', prompt: text, message: '🎨 جاري التصميم...' };
+      } else {
+        command = { action: 'answer', text: txt.substring(0, 100) };
+      }
     }
 
     res.json({ success: true, command, message: command.message || '✅ تم التنفيذ' });
