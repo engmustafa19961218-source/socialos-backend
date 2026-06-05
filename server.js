@@ -79,6 +79,14 @@ setInterval(() => {
 }, 10 * 60 * 1000);
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+// ========== CURRENCY FORMATTER ==========
+function formatCurrency(amount, currency = 'IQD') {
+  const num = parseFloat(amount) || 0;
+  const symbols = { IQD: 'د.ع', SAR: 'ر.س', USD: '$', EUR: '€', KWD: 'د.ك', AED: 'د.إ' };
+  const symbol = symbols[currency] || currency;
+  return `${num.toLocaleString('ar-IQ')} ${symbol}`;
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'socialos_secret_key';
 
 function authenticateToken(req, res, next) {
@@ -240,14 +248,33 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
       const result = await pool.query('INSERT INTO orders (user_id, customer_name, customer_phone, customer_address, items, total, deposit, deposit_type, payment_method, delivery_company, delivery_link, notes, platform) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
         [userId, customer_name, customer_phone, customer_address, JSON.stringify(items || []), total || 0, deposit || 0, deposit_type || 'full', payment_method || 'cash', delivery_company || '', delivery_link || '', notes || '', platform || '']);
       const newOrder = result.rows[0];
-      // Auto notification
+      // Auto notification داخلي
       try {
         await pool.query(
           'INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)',
-          [userId, '🛒 طلب جديد!', `طلب جديد من ${customer_name} - ${total} ر.س`, 'order']
+          [userId, '🛒 طلب جديد!', `طلب جديد من ${customer_name} - ${formatCurrency(total)}`, 'order']
         );
       } catch(e) {}
-      return res.json({ success: true, order: newOrder });
+
+      // إشعار واتساب تلقائي للمدير
+      let waOrderUrl = null;
+      try {
+        const settingsRes = await pool.query('SELECT whatsapp_number FROM user_settings WHERE user_id=$1', [userId]);
+        const waNumber = settingsRes.rows[0]?.whatsapp_number;
+        if (waNumber) {
+          const cleanWa = waNumber.replace(/[^0-9]/g, '');
+          const waPhone = cleanWa.startsWith('0') ? '964' + cleanWa.slice(1) : cleanWa;
+          let itemsText = '';
+          try { itemsText = (items || []).map(i => i.description || '').filter(Boolean).join(', ') || 'طلب'; } catch(e) {}
+          const depositLine = (deposit && parseFloat(deposit) > 0)
+            ? `\n💵 العربون: ${formatCurrency(deposit)}\n💳 المتبقي: ${formatCurrency(total - deposit)}`
+            : '';
+          const waMsg = `🛒 *طلب جديد #${newOrder.id}*\n\n👤 العميل: ${customer_name}\n📱 الهاتف: ${customer_phone}\n📦 الطلب: ${itemsText}\n💰 المبلغ: ${formatCurrency(total)}${depositLine}${notes ? '\n📝 ملاحظات: ' + notes : ''}\n${delivery_company ? '🚚 شركة التوصيل: ' + delivery_company : ''}\n\n⚡ SocialOS`;
+          waOrderUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMsg)}`;
+        }
+      } catch(e) {}
+
+      return res.json({ success: true, order: newOrder, wa_notify_url: waOrderUrl });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
   const order = { id: Date.now(), user_id: userId, customer_name, customer_phone, total, status: 'new', created_at: new Date() };
@@ -714,9 +741,9 @@ app.get('/api/orders/:id/whatsapp', authenticateToken, async (req, res) => {
 
 📦 التفاصيل: ${itemsText}
 
-💰 المبلغ الإجمالي: ${order.total} ر.س${order.deposit > 0 ? `
-💵 العربون: ${order.deposit} ر.س
-💳 المتبقي: ${order.total - order.deposit} ر.س` : ''}
+💰 المبلغ الإجمالي: ${formatCurrency(order.total)}${order.deposit > 0 ? `
+💵 العربون: ${formatCurrency(order.deposit)}
+💳 المتبقي: ${formatCurrency(order.total - order.deposit)}` : ''}
 
 ${order.notes ? `📝 ملاحظات: ${order.notes}
 
@@ -899,6 +926,14 @@ app.post('/api/agent/chat', authenticateToken, rateLimit(20, 60*1000), async (re
     }
   } catch(e) {}
 
+  const dialectMap = {
+    'عراقي':   'اكتب بلهجة عراقية دارجة طبيعية. استخدم مفردات عراقية مثل: هواية، چنه، بس، هسه، ماكو، أكو، شلون، وين، شنو، يبه، عمي. تجنب الفصحى الجافة واجعل الأسلوب قريب ومحبوب.',
+    'خليجي':   'اكتب بلهجة خليجية. استخدم مفردات خليجية مثل: زين، وايد، ابد، الحين، شفيك، عيل، يبيلك.',
+    'فصحى':    'اكتب بعربية فصحى مبسطة واضحة ومهنية.',
+    'ودي وقريب': 'اكتب بأسلوب ودي وقريب من القارئ، مزيج من العامية والفصحى المبسطة.'
+  };
+  const dialectInstruction = dialectMap[bizSettings.content_style] || dialectMap['ودي وقريب'];
+
   const systemPrompt = `أنت خبير تسويق رقمي ومساعد ذكي متخصص لإدارة منصة SocialOS. أنت تعمل لصالح صاحب المتجر وهدفك زيادة مبيعاته وانتشاره.
 
 🏪 معلومات المتجر:
@@ -910,11 +945,14 @@ app.post('/api/agent/chat', authenticateToken, rateLimit(20, 60*1000), async (re
 - المنطقة: ${bizSettings.location || 'العراق'}
 
 📊 بياناتك الحالية:
-- الطلبات: ${context.orders} طلب | الإيرادات: ${context.revenue} 
+- الطلبات: ${context.orders} طلب | الإيرادات: ${Number(context.revenue).toLocaleString('ar-IQ')} د.ع
 - المنشورات: ${context.posts} منشور | الرسائل: ${context.messages} رسالة
 
 📦 كتالوج المنتجات:
-${context.products && context.products.length > 0 ? context.products.map(p => `- ${p.name} | السعر: ${p.price} | الفئة: ${p.category} | المخزون: ${p.stock}`).join('\n') : '- لا توجد منتجات مضافة بعد'}
+${context.products && context.products.length > 0 ? context.products.map(p => `- ${p.name} | السعر: ${Number(p.price).toLocaleString('ar-IQ')} د.ع | الفئة: ${p.category} | المخزون: ${p.stock}`).join('\n') : '- لا توجد منتجات مضافة بعد'}
+
+🗣️ أسلوب الكتابة المطلوب:
+${dialectInstruction}
 
 🎯 تخصصاتك:
 1. كتابة محتوى تسويقي احترافي (منشورات، إعلانات، كابشن)
@@ -933,6 +971,7 @@ ${context.products && context.products.length > 0 ? context.products.map(p => `-
 - أضف هاشتاقات عربية وإنجليزية قوية
 - اجعل المحتوى جذاباً ومحفزاً على التفاعل
 - راعِ طبيعة المنتج والجمهور المستهدف
+- التزم بأسلوب الكتابة المحدد أعلاه في كل ردودك ومحتواك
 
 🔥 عند طلب محتوى ترند:
 - اقترح 3 أفكار منشورات تناسب الترند الحالي
@@ -940,13 +979,13 @@ ${context.products && context.products.length > 0 ? context.products.map(p => `-
 - اقترح هاشتاقات ترند
 
 💡 عند الرد على العملاء:
-- كن ودياً ومحترفاً
+- كن ودياً ومحترفاً بالأسلوب المحدد
 - أجب على استفساراتهم بشكل كامل
 - حفّزهم على الشراء بلطف
 
 ⚠️ قواعد مهمة:
 - لا تحذف أي شيء بدون تأكيد صريح
-- أجب دائماً بالعربية
+- أجب دائماً بالعربية بالأسلوب المحدد
 - كن موجزاً وعملياً
 - استخدم إيموجي لجعل ردودك أوضح وأجمل`;
 
@@ -1370,7 +1409,7 @@ app.get('/api/reports/pdf', authenticateToken, async (req, res) => {
 
       const totalRevenue = orders.rows.reduce((s, o) => s + parseFloat(o.total || 0), 0);
       const totalOrders = orders.rows.length;
-      const avgOrder = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : 0;
+      const avgOrder = totalOrders > 0 ? formatCurrency(totalRevenue / totalOrders) : formatCurrency(0);
       const periodLabel = period === 'month' ? 'الشهر الماضي' : period === 'year' ? 'السنة الماضية' : 'الأسبوع الماضي';
 
       const html = `<!DOCTYPE html>
@@ -1410,7 +1449,7 @@ app.get('/api/reports/pdf', authenticateToken, async (req, res) => {
 </div>
 <div class="container">
   <div class="stats-grid">
-    <div class="stat-box"><div class="stat-value">${totalRevenue.toFixed(0)}</div><div class="stat-label">إجمالي الإيرادات</div></div>
+    <div class="stat-box"><div class="stat-value">${formatCurrency(totalRevenue)}</div><div class="stat-label">إجمالي الإيرادات</div></div>
     <div class="stat-box"><div class="stat-value">${totalOrders}</div><div class="stat-label">إجمالي الطلبات</div></div>
     <div class="stat-box"><div class="stat-value">${avgOrder}</div><div class="stat-label">متوسط قيمة الطلب</div></div>
     <div class="stat-box"><div class="stat-value">${products.rows[0]?.total || 0}</div><div class="stat-label">المنتجات</div></div>
@@ -1420,7 +1459,7 @@ app.get('/api/reports/pdf', authenticateToken, async (req, res) => {
     <h2>🏆 أفضل العملاء</h2>
     <table>
       <tr><th>العميل</th><th>الهاتف</th><th>الطلبات</th><th>الإجمالي</th></tr>
-      ${topCustomers.rows.map(c => `<tr><td>${c.customer_name}</td><td dir="ltr">${c.customer_phone}</td><td>${c.orders}</td><td>${parseFloat(c.spent).toFixed(0)}</td></tr>`).join('')}
+      ${topCustomers.rows.map(c => `<tr><td>${c.customer_name}</td><td dir="ltr">${c.customer_phone}</td><td>${c.orders}</td><td>${formatCurrency(c.spent)}</td></tr>`).join('')}
     </table>
   </div>
 
@@ -1428,7 +1467,7 @@ app.get('/api/reports/pdf', authenticateToken, async (req, res) => {
     <h2>📋 آخر الطلبات</h2>
     <table>
       <tr><th>#</th><th>العميل</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr>
-      ${orders.rows.slice(0,20).map(o => `<tr><td>${o.id}</td><td>${o.customer_name}</td><td>${parseFloat(o.total).toFixed(0)}</td><td><span class="badge badge-${o.status}">${o.status}</span></td><td>${new Date(o.created_at).toLocaleDateString('ar')}</td></tr>`).join('')}
+      ${orders.rows.slice(0,20).map(o => `<tr><td>${o.id}</td><td>${o.customer_name}</td><td>${formatCurrency(o.total)}</td><td><span class="badge badge-${o.status}">${o.status}</span></td><td>${new Date(o.created_at).toLocaleDateString('ar')}</td></tr>`).join('')}
     </table>
   </div>
 </div>
@@ -1546,6 +1585,166 @@ app.get('/api/mobile/dashboard', authenticateToken, async (req, res) => {
       });
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ========== VOICE COMMAND (Claude AI) ==========
+app.post('/api/voice-command', authenticateToken, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ success: false });
+
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    if (!ANTHROPIC_KEY) return res.status(500).json({ success: false, message: 'Anthropic key missing' });
+
+    const systemPrompt = `أنت منفذ أوامر لتطبيق سوشيال ميديا. مهمتك الوحيدة: تحليل الأمر وإرجاع JSON فقط بدون أي كلام أو أسئلة.
+
+قواعد صارمة:
+1. لا تسأل أي أسئلة أبداً
+2. نفذ الأمر فوراً بناءً على فهمك
+3. أرجع JSON فقط
+
+الأوامر:
+- design: تصميم صورة. prompt = وصف بالإنجليزي (ترجم أنت)
+- create_post: إنشاء منشور. content = نص المنشور
+- new_order: طلب جديد
+- new_product: منتج جديد  
+- navigate: انتقال. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
+- generate_content: توليد محتوى. prompt = الموضوع
+- answer: رد نصي. text = الرد
+
+أمثلة:
+"صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, elegant living room furniture, professional photography, dark background","message":"🎨 جاري تصميم الكنب الفاخر..."}
+"صمم شعار لمتجر عطور" → {"action":"design","prompt":"luxury perfume store logo, elegant, gold and black, minimal design","message":"🎨 جاري تصميم الشعار..."}
+"افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
+"كم عدد طلباتي" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
+"اكتب منشور عن خصم 50%" → {"action":"create_post","content":"🎉 خصم 50% على جميع المنتجات! لا تفوت الفرصة","message":"✅ تم كتابة المنشور"}
+"أضف طلب جديد" → {"action":"new_order","message":"✅ فتح نموذج الطلب"}
+
+أرجع JSON فقط بدون أي نص إضافي.`;
+
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 200,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: text }]
+      })
+    });
+
+    const aiData = await response.json();
+    console.log('Voice AI response:', JSON.stringify(aiData.content?.[0]?.text?.substring(0,200)));
+    // prefilled with '{' so we prepend it back
+    let rawText = '{' + (aiData.content?.[0]?.text || '"}');
+    
+    let command;
+    try {
+      // Extract complete JSON object
+      const jsonMatch = rawText.match(/\{[^{}]*\}/);
+      command = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      if(!command || !command.action) throw new Error('no action');
+    } catch(e) {
+      // Smart fallback based on user text
+      if(/صمم|تصميم|صورة/.test(text)) {
+        // Keep original Arabic text - server will translate it
+        const imageDesc = text.replace(/صمم لي صورة|صمم لي|صمم|اعمل لي صورة|اعمل صورة|ولد صورة|تصميم صورة عن|تصميم صورة/g,'').trim();
+        command = { action: 'design', prompt: imageDesc || text, message: '🎨 جاري التصميم...' };
+      } else if(/منشور|انشر/.test(text)) {
+        command = { action: 'create_post', content: text.replace(/اكتب منشور عن|منشور عن|انشر/g,'').trim(), message: '✅ تم كتابة المنشور' };
+      } else if(/طلب/.test(text)) {
+        command = { action: 'new_order', message: '✅ فتح نموذج الطلب' };
+      } else if(/منتج/.test(text)) {
+        command = { action: 'new_product', message: '✅ فتح نموذج المنتج' };
+      } else if(/تحليل|إحصائيات/.test(text)) {
+        command = { action: 'navigate', page: 'analytics', message: '✅ فتح التحليلات' };
+      } else {
+        command = { action: 'navigate', page: 'ai', message: '✅ تم الفتح' };
+      }
+    }
+
+    res.json({ success: true, command, message: command.message || '✅ تم التنفيذ' });
+  } catch(e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ========== GENERATE IMAGE (REPLICATE FLUX) ==========
+app.post('/api/generate-image', authenticateToken, async (req, res) => {
+  try {
+    let { prompt, width = 1024, height = 1024 } = req.body;
+    if (!prompt) return res.status(400).json({ message: 'prompt required' });
+
+    const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
+    if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'Replicate token not configured' });
+
+    // Translate Arabic to English if needed
+    const hasArabic = /[\u0600-\u06FF]/.test(prompt);
+    if (hasArabic) {
+      try {
+        const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+        if (ANTHROPIC_KEY) {
+          const translateRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 300,
+              messages: [{ role: 'user', content: `Translate this Arabic image description to English for an AI image generator. Return ONLY the English translation, nothing else:\n${prompt}` }]
+            })
+          });
+          const translateData = await translateRes.json();
+          if (translateData.content?.[0]?.text) {
+            prompt = translateData.content[0].text.trim() + ', no text, no words, no letters, no watermark';
+          }
+        }
+      } catch(e) { console.log('Translation failed, using original prompt'); }
+    }
+
+    const https = require('https');
+    const body = JSON.stringify({
+      input: { prompt, width: parseInt(width), height: parseInt(height), num_outputs: 1, num_inference_steps: 4, output_format: 'jpg', output_quality: 90 }
+    });
+
+    const makeRequest = (url, options, postData) => new Promise((resolve, reject) => {
+      const req = https.request(url, options, (r) => {
+        let data = '';
+        r.on('data', chunk => data += chunk);
+        r.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      if (postData) req.write(postData);
+      req.end();
+    });
+
+    // Create prediction
+    let prediction = await makeRequest(
+      'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions',
+      { method: 'POST', headers: { 'Authorization': `Bearer ${REPLICATE_TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait' } },
+      body
+    );
+
+    // Poll if not done
+    let attempts = 0;
+    while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < 30) {
+      await new Promise(r => setTimeout(r, 1500));
+      prediction = await makeRequest(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
+        method: 'GET', headers: { 'Authorization': `Bearer ${REPLICATE_TOKEN}` }
+      });
+      attempts++;
+    }
+
+    if (prediction.status === 'succeeded' && prediction.output?.[0]) {
+      res.json({ success: true, image_url: prediction.output[0] });
+    } else {
+      res.status(500).json({ success: false, message: prediction.error || 'فشل التوليد' });
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 const PORT = process.env.PORT || 3000;
@@ -1752,12 +1951,12 @@ body{font-family:Arial,sans-serif;padding:40px;color:#333;direction:rtl;}
 <table class="items-table">
   <thead><tr><th>الوصف</th><th>المبلغ</th></tr></thead>
   <tbody>
-    <tr><td>${itemsText}</td><td>${order.total} ر.س</td></tr>
+    <tr><td>${itemsText}</td><td>${formatCurrency(order.total)}</td></tr>
   </tbody>
 </table>
 <div class="total-section">
-  <div class="total-row"><span>المجموع:</span><span>${order.total} ر.س</span></div>
-  ${order.deposit > 0 ? `<div class="total-row"><span>العربون المدفوع:</span><span>${order.deposit} ر.س</span></div><div class="total-row total-final"><span>المتبقي:</span><span>${order.total - order.deposit} ر.س</span></div>` : `<div class="total-row total-final"><span>الإجمالي:</span><span>${order.total} ر.س</span></div>`}
+  <div class="total-row"><span>المجموع:</span><span>${formatCurrency(order.total)}</span></div>
+  ${order.deposit > 0 ? `<div class="total-row"><span>العربون المدفوع:</span><span>${formatCurrency(order.deposit)}</span></div><div class="total-row total-final"><span>المتبقي:</span><span>${formatCurrency(order.total - order.deposit)}</span></div>` : `<div class="total-row total-final"><span>الإجمالي:</span><span>${formatCurrency(order.total)}</span></div>`}
 </div>
 ${order.delivery_company ? `<p><strong>شركة التوصيل:</strong> ${order.delivery_company}</p>` : ''}
 ${order.notes ? `<p><strong>ملاحظات:</strong> ${order.notes}</p>` : ''}

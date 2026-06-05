@@ -19,6 +19,36 @@
   --text:#e8edf5;--text2:#6b7a99;--danger:#ff4466;--radius:14px;
   --shadow:0 4px 24px rgba(0,0,0,.4);--glow:0 0 40px rgba(79,142,247,.15);
 }
+
+/* ثيمات نوع العمل */
+[data-theme="fashion"] {
+  --accent:#f472b6;--accent2:#ec4899;--glow:0 0 40px rgba(244,114,182,.15);
+  --bg:#0f0810;--surface:#1a0f18;--surface2:#221528;--border:#2e1a2e;
+}
+[data-theme="restaurant"] {
+  --accent:#f59e0b;--accent2:#ef4444;--glow:0 0 40px rgba(245,158,11,.15);
+  --bg:#0f0d08;--surface:#1a1508;--surface2:#221c0a;--border:#2e2510;
+}
+[data-theme="perfume"] {
+  --accent:#a78bfa;--accent2:#7c3aed;--glow:0 0 40px rgba(167,139,250,.15);
+  --bg:#08080f;--surface:#100f1a;--surface2:#161528;--border:#201e35;
+}
+[data-theme="jewelry"] {
+  --accent:#fbbf24;--accent2:#f59e0b;--glow:0 0 40px rgba(251,191,36,.15);
+  --bg:#0f0e08;--surface:#1a1808;--surface2:#22200a;--border:#302c10;
+}
+[data-theme="tech"] {
+  --accent:#00d4aa;--accent2:#06b6d4;--glow:0 0 40px rgba(0,212,170,.15);
+  --bg:#08100f;--surface:#0f1a18;--surface2:#152220;--border:#1a2e2c;
+}
+[data-theme="health"] {
+  --accent:#34d399;--accent2:#10b981;--glow:0 0 40px rgba(52,211,153,.15);
+  --bg:#08100c;--surface:#0f1a12;--surface2:#152218;--border:#1a2e20;
+}
+[data-theme="furniture"] {
+  --accent:#d97706;--accent2:#92400e;--glow:0 0 40px rgba(217,119,6,.15);
+  --bg:#100e08;--surface:#1a170a;--surface2:#221e0c;--border:#302a12;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
 body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;background:radial-gradient(ellipse at 60% 0%,rgba(79,142,247,.08) 0%,transparent 70%);pointer-events:none;z-index:0;}
@@ -85,6 +115,7 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 .status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);border-radius:20px;padding:4px 12px;font-size:.75rem;color:var(--accent);font-weight:600;}
 .status-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* CARDS */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:var(--shadow);transition:border-color .2s;}.card:hover{border-color:rgba(79,142,247,.2);}
@@ -473,7 +504,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
       <div class="card" id="design-result" style="display:none">
         <h3>✨ الصورة المُولَّدة</h3>
         <div style="text-align:center">
-          <img id="generated-image" src="" alt="صورة مُولَّدة" style="max-width:100%;border-radius:12px;margin-bottom:16px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+          <div id="design-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:16px">
+            <div style="width:56px;height:56px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+            <div style="color:var(--text2);font-size:.9rem">🎨 FLUX AI يولد صورتك...</div>
+            <div style="color:var(--text2);font-size:.75rem;opacity:.6">قد يستغرق 5-15 ثانية</div>
+          </div>
+          <img id="generated-image" src="" alt="صورة مُولَّدة" style="max-width:100%;border-radius:12px;margin-bottom:16px;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none">
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
             <a id="download-image" href="" download="socialos-design.jpg" class="btn btn-accent">⬇️ تحميل الصورة</a>
             <button class="btn btn-outline" onclick="generateImage()">🔄 توليد جديد</button>
@@ -589,11 +625,16 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
       <div class="card">
         <h3>💡 أوامر يمكنك قولها</h3>
         <div class="voice-commands">
-          <div class="voice-command-item"><span>"اكتب منشور عن..."</span> — ينشئ محتوى</div>
-          <div class="voice-command-item"><span>"أضف طلب جديد"</span> — يفتح نموذج الطلبات</div>
-          <div class="voice-command-item"><span>"اعرض التحليلات"</span> — يفتح صفحة التحليلات</div>
-          <div class="voice-command-item"><span>"كم عدد الطلبات"</span> — يعرض الإحصائيات</div>
-          <div class="voice-command-item"><span>"انشر على فيسبوك..."</span> — ينشر مباشرة</div>
+          <div class="voice-command-item"><span>"صمم لي صورة..."</span> — يولد صورة بالذكاء الاصطناعي</div>
+          <div class="voice-command-item"><span>"اكتب منشور عن..."</span> — ينشئ منشور</div>
+          <div class="voice-command-item"><span>"أضف طلب جديد"</span> — يفتح نموذج الطلب</div>
+          <div class="voice-command-item"><span>"أضف منتج جديد"</span> — يفتح نموذج المنتج</div>
+          <div class="voice-command-item"><span>"افتح الطلبات"</span> — يفتح صفحة الطلبات</div>
+          <div class="voice-command-item"><span>"افتح التحليلات"</span> — يفتح الإحصائيات</div>
+          <div class="voice-command-item"><span>"افتح العملاء"</span> — يفتح صفحة العملاء</div>
+          <div class="voice-command-item"><span>"افتح المنتجات"</span> — يفتح المتجر</div>
+          <div class="voice-command-item"><span>"افتح الإعدادات"</span> — يفتح الإعدادات</div>
+          <div class="voice-command-item"><span>"افتح الجدولة"</span> — يفتح جدولة المنشورات</div>
         </div>
       </div>
     </div>
@@ -669,10 +710,10 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
         </div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="ana-revenue">0</div><div class="stat-label">إجمالي الإيرادات (ر.س)</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="ana-revenue">0</div><div class="stat-label">إجمالي الإيرادات (د.ع)</div></div>
         <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value" id="ana-orders">0</div><div class="stat-label">إجمالي الطلبات</div></div>
         <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="ana-posts">0</div><div class="stat-label">إجمالي المنشورات</div></div>
-        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value" id="ana-avg">0</div><div class="stat-label">متوسط قيمة الطلب (ر.س)</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value" id="ana-avg">0</div><div class="stat-label">متوسط قيمة الطلب (د.ع)</div></div>
       </div>
       <div class="grid-2">
         <div class="card"><h3>📊 الطلبات حسب الحالة</h3><div id="orders-by-status"></div></div>
@@ -1000,9 +1041,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
         </div>
 
         <div class="form-group-item">
-          <label class="form-label">أسلوب المحتوى</label>
+          <label class="form-label">أسلوب المحتوى واللهجة</label>
           <select class="form-select" id="set-content-style">
-            <option value="ودي وقريب">😊 ودي وقريب</option>
+            <option value="عراقي">🇮🇶 عراقي — لهجة عراقية دارجة</option>
+            <option value="ودي وقريب">😊 ودي وقريب — مزيج عامي مبسط</option>
+            <option value="فصحى">📖 فصحى — عربية فصحى مبسطة</option>
+            <option value="خليجي">🇸🇦 خليجي — لهجة خليجية</option>
             <option value="احترافي ورسمي">💼 احترافي ورسمي</option>
             <option value="مرح وترفيهي">😄 مرح وترفيهي</option>
             <option value="فاخر وراقي">✨ فاخر وراقي</option>
@@ -1303,6 +1347,15 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 <script>
 const API = 'https://socialos-production-4aa6.up.railway.app';
 let currentUser = null, token = null;
+
+// ─── تنسيق العملة ───
+function fmtCurrency(amount) {
+  const num = parseFloat(amount) || 0;
+  const currency = userSettings?.currency || 'IQD';
+  const symbols = { IQD: 'د.ع', SAR: 'ر.س', USD: '$', EUR: '€', KWD: 'د.ك', AED: 'د.إ' };
+  const symbol = symbols[currency] || currency;
+  return `${num.toLocaleString('ar-IQ')} ${symbol}`;
+}
 let selectedPlatforms = ['facebook'];
 let currentAIType = 'post';
 let currentPeriod = 'monthly';
@@ -1558,22 +1611,23 @@ async function publishPost(){
 // ─── IMAGE DESIGN ───
 let currentDesignType = 'product';
 let currentImageUrl = '';
+const REPLICATE_TOKEN = ''; // يأتي من السيرفر
 
 const designTypePrompts = {
-  product: 'professional product photography, studio lighting, white background, commercial quality, ultra detailed',
-  poster: 'professional advertising poster, bold typography, vibrant colors, marketing design, commercial',
-  social: 'social media post design, instagram style, trendy, aesthetic, modern design',
-  logo: 'modern logo design, minimal, professional, vector style, clean',
+  product: 'professional product photography, studio lighting, white background, commercial quality, ultra detailed, sharp focus',
+  poster: 'professional advertising poster, bold typography, vibrant colors, marketing design, commercial, high impact',
+  social: 'social media post design, instagram style, trendy, aesthetic, modern design, eye-catching',
+  logo: 'modern logo design, minimal, professional, vector style, clean, brand identity',
   custom: ''
 };
 
 const designStyles = {
-  realistic: 'photorealistic, 8k resolution, professional photography',
-  artistic: 'artistic, creative, painterly, expressive',
-  minimal: 'minimalist, clean, elegant, simple, white space',
-  '3d': '3D render, cinema 4d, octane render, volumetric lighting',
-  cartoon: 'cartoon style, colorful, playful, illustration',
-  luxury: 'luxury, premium, gold accents, sophisticated, high-end'
+  realistic: 'photorealistic, 8k resolution, professional photography, hyperrealistic',
+  artistic: 'artistic, creative, painterly, expressive, fine art',
+  minimal: 'minimalist, clean, elegant, simple, white space, modern',
+  '3d': '3D render, cinema 4d, octane render, volumetric lighting, CGI',
+  cartoon: 'cartoon style, colorful, playful, illustration, digital art',
+  luxury: 'luxury, premium, gold accents, sophisticated, high-end, elegant'
 };
 
 function setDesignType(type, btn){
@@ -1602,35 +1656,50 @@ async function generateImage(){
   const btn = document.getElementById('design-btn');
   btn.disabled = true;
   btn.innerHTML = '⏳ جاري التوليد...';
-  
-  showToast('🎨 جاري توليد الصورة...');
+
+  // Show loading UI
+  const resultDiv = document.getElementById('design-result');
+  const generatedImg = document.getElementById('generated-image');
+  generatedImg.src = '';
+  resultDiv.style.display = 'block';
+  generatedImg.style.display = 'none';
+  document.getElementById('design-loading').style.display = 'flex';
+  resultDiv.scrollIntoView({ behavior: 'smooth' });
   
   try {
-    // Use Pollinations AI - completely free
-    const encodedPrompt = encodeURIComponent(fullPrompt);
-    const seed = Math.floor(Math.random() * 999999);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`;
-    
-    // Pre-load image
-    const img = new Image();
-    img.onload = () => {
-      document.getElementById('generated-image').src = imageUrl;
-      document.getElementById('download-image').href = imageUrl;
-      document.getElementById('design-result').style.display = 'block';
-      document.getElementById('design-result').scrollIntoView({ behavior: 'smooth' });
-      currentImageUrl = imageUrl;
-      showToast('✅ تم توليد الصورة!');
-      btn.disabled = false;
-      btn.innerHTML = '🎨 توليد الصورة';
-    };
-    img.onerror = () => {
-      showToast('❌ فشل التوليد، جرب مرة أخرى');
-      btn.disabled = false;
-      btn.innerHTML = '🎨 توليد الصورة';
-    };
-    img.src = imageUrl;
+    // Send to our backend which has the Replicate token
+    const createRes = await fetch(`${API}/api/generate-image`, {
+      method: 'POST',
+      headers: authH(),
+      body: JSON.stringify({
+        prompt: fullPrompt,
+        width: parseInt(width),
+        height: parseInt(height)
+      })
+    });
+
+    const result = await createRes.json();
+
+    if(result.success && result.image_url) {
+      const imageUrl = result.image_url;
+      generatedImg.onload = () => {
+        document.getElementById('design-loading').style.display = 'none';
+        generatedImg.style.display = 'block';
+        document.getElementById('download-image').href = imageUrl;
+        currentImageUrl = imageUrl;
+        showToast('✅ تم توليد الصورة بنجاح!');
+        btn.disabled = false;
+        btn.innerHTML = '🎨 توليد الصورة';
+      };
+      generatedImg.src = imageUrl;
+    } else {
+      throw new Error(result.message || 'فشل التوليد');
+    }
+
   } catch(e) {
-    showToast('❌ تعذر توليد الصورة');
+    document.getElementById('design-loading').style.display = 'none';
+    resultDiv.style.display = 'none';
+    showToast('❌ ' + (e.message || 'تعذر توليد الصورة، حاول مرة أخرى'));
     btn.disabled = false;
     btn.innerHTML = '🎨 توليد الصورة';
   }
@@ -1646,6 +1715,26 @@ function sendImageToPost(){
 }
 
 function loadDesign(){ /* Nothing to load */ }
+
+// ─── SMART THEME ───
+const businessThemeMap = {
+  'ملابس وأزياء': 'fashion',
+  'عطور ومستحضرات': 'perfume',
+  'إلكترونيات وتقنية': 'tech',
+  'مطعم وكافيه': 'restaurant',
+  'مجوهرات واكسسوارات': 'jewelry',
+  'صحة ولياقة': 'health',
+  'أثاث وديكور': 'furniture',
+};
+
+function applyBusinessTheme(businessType) {
+  const theme = businessThemeMap[businessType] || '';
+  document.documentElement.setAttribute('data-theme', theme);
+  // Update theme-color meta
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', accent || '#4f8ef7');
+  if(theme) showToast('🎨 تم تطبيق ثيم ' + businessType);
+}
 
 // ─── AI ───
 function setAIType(type,btn){currentAIType=type;document.querySelectorAll('.ai-type-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
@@ -1720,50 +1809,64 @@ function toggleVoice(){
 async function processVoiceCommand(text){
   const responseEl=document.getElementById('voice-response');
   responseEl.style.display='block';
-  responseEl.textContent='جاري المعالجة...';
-  
-  // تحليل الأمر محلياً أولاً
-  const lower=text.toLowerCase();
-  
-  if(lower.includes('طلب')||lower.includes('طلبات')){
-    showPage('orders',document.querySelector('[onclick*=orders]'));
-    responseEl.textContent='✅ تم فتح صفحة الطلبات';
-    return;
-  }
-  if(lower.includes('تحليل')||lower.includes('تقرير')){
-    showPage('analytics',document.querySelector('[onclick*=analytics]'));
-    responseEl.textContent='✅ تم فتح صفحة التحليلات';
-    return;
-  }
-  if(lower.includes('رسائل')){
-    showPage('messages',document.querySelector('[onclick*=messages]'));
-    responseEl.textContent='✅ تم فتح الرسائل';
-    return;
-  }
-  if(lower.includes('بروفايل')||lower.includes('ملف')){
-    showPage('profile',document.querySelector('[onclick*=profile]'));
-    responseEl.textContent='✅ تم فتح البروفايل';
-    return;
-  }
-  
-  // إرسال للذكاء الاصطناعي للأوامر المعقدة
-  try{
-    const res=await fetch(`${API}/api/ai/generate`,{method:'POST',headers:authH(),body:JSON.stringify({prompt:`المستخدم قال: "${text}". أجب باختصار وبالعربية وساعده في تنفيذ الأمر.`,type:'default'})});
-    const data=await res.json();
-    if(data.success){
-      responseEl.textContent=data.content;
-      // إذا كان الأمر نشر منشور
-      if(lower.includes('انشر')||lower.includes('اكتب منشور')){
-        const postContent=text.replace(/انشر|اكتب منشور|على فيسبوك|على تيك توك/gi,'').trim();
-        if(postContent){
-          document.getElementById('post-content').value=postContent;
-          showPage('create',document.querySelector('[onclick*=create]'));
-        }
-      }
-    }
-  }catch(e){responseEl.textContent='❌ تعذر المعالجة';}
-}
+  responseEl.textContent='🧠 Claude يفهم أمرك...';
 
+  try{
+    // إرسال للـ Claude API ليفهم الأمر ويحدد الإجراء
+    const res=await fetch(`${API}/api/voice-command`,{
+      method:'POST',
+      headers:authH(),
+      body:JSON.stringify({text})
+    });
+    const data=await res.json();
+    if(!data.success){responseEl.textContent='❌ تعذرت المعالجة';return;}
+    
+    const cmd=data.command;
+    responseEl.textContent=data.message||'✅ تم التنفيذ';
+
+    // تنفيذ الأمر
+    switch(cmd.action){
+      case 'design':
+        showPage('design',document.querySelector('[onclick*=design]'));
+        if(cmd.prompt){
+          document.getElementById('design-prompt').value=cmd.prompt;
+          responseEl.textContent='🎨 جاري توليد الصورة...';
+          await generateImage();
+          responseEl.textContent='✅ تم توليد الصورة!';
+        }
+        break;
+      case 'create_post':
+        showPage('create',document.querySelector('[onclick*=create]'));
+        if(cmd.content) document.getElementById('post-content').value=cmd.content;
+        break;
+      case 'new_order':
+        showPage('orders',document.querySelector('[onclick*=orders]'));
+        setTimeout(()=>openOrderModal(),500);
+        break;
+      case 'new_product':
+        showPage('products',document.querySelector('[onclick*=products]'));
+        setTimeout(()=>openProductModal(),500);
+        break;
+      case 'navigate':
+        const pages={orders:'orders',analytics:'analytics',messages:'messages',profile:'profile',products:'products',customers:'customers',schedule:'schedule',settings:'settings',design:'design',ai:'ai',report:'report',create:'create'};
+        const pageId=pages[cmd.page];
+        if(pageId){
+          const navEl=document.querySelector(`[onclick*="${pageId}"]`);
+          showPage(pageId,navEl);
+        }
+        break;
+      case 'generate_content':
+        showPage('ai',document.querySelector('[onclick*="ai"]'));
+        if(cmd.prompt&&document.getElementById('ai-prompt')) document.getElementById('ai-prompt').value=cmd.prompt;
+        break;
+      case 'answer':
+        responseEl.textContent=cmd.text||data.message;
+        break;
+    }
+  }catch(e){
+    responseEl.textContent='❌ تعذر الاتصال';
+  }
+}
 // ─── POSTS ───
 async function loadPosts(){
   const container=document.getElementById('posts-list');
@@ -1839,7 +1942,20 @@ async function saveOrder(){
   try{
     const res=await fetch(`${API}/api/orders`,{method:'POST',headers:authH(),body:JSON.stringify(orderData)});
     const data=await res.json();
-    if(data.success){showToast('✅ تم حفظ الطلب!');sendLocalNotification('🛒 طلب جديد!','تم إضافة طلب جديد من '+name);closeOrderModal();loadOrders('');loadStats();['ord-name','ord-phone','ord-address','ord-items','ord-total','ord-deposit','ord-delivery','ord-delivery-link','ord-notes'].forEach(id=>document.getElementById(id).value='');}
+    if(data.success){
+      showToast('✅ تم حفظ الطلب!');
+      sendLocalNotification('🛒 طلب جديد!','تم إضافة طلب جديد من '+name);
+      closeOrderModal();
+      loadOrders('');
+      loadStats();
+      ['ord-name','ord-phone','ord-address','ord-items','ord-total','ord-deposit','ord-delivery','ord-delivery-link','ord-notes'].forEach(id=>document.getElementById(id).value='');
+      // إشعار واتساب للمدير لو رجع رابط
+      if(data.wa_notify_url){
+        if(confirm('📱 هل تريد إرسال إشعار واتساب للطلب الجديد؟')){
+          window.open(data.wa_notify_url,'_blank');
+        }
+      }
+    }
     else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
 }
@@ -1849,7 +1965,7 @@ function renderOrders(orders, container) {
   container.innerHTML=orders.map(o=>{
       let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
       const itemsText=items.map(i=>i.description||'').filter(Boolean).join(', ')||'لا تفاصيل';
-      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button>${o.delivery_company&&o.delivery_link?`<button class="btn btn-outline btn-sm" onclick="trackDelivery(${o.id},'${o.delivery_company}','${o.delivery_link}')" style="background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.3);color:var(--accent2)">🚚</button>`:''}<button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25d366">📱</button><button class="btn btn-outline btn-sm" onclick="openPaymentModal(${o.id},${o.total},'${o.customer_name}','${o.customer_phone}')" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--accent3)">💳</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
+      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${fmtCurrency(o.total)}</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button>${o.delivery_company&&o.delivery_link?`<button class="btn btn-outline btn-sm" onclick="trackDelivery(${o.id},'${o.delivery_company}','${o.delivery_link}')" style="background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.3);color:var(--accent2)">🚚</button>`:''}<button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25d366">📱</button><button class="btn btn-outline btn-sm" onclick="openPaymentModal(${o.id},${o.total},'${o.customer_name}','${o.customer_phone}')" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--accent3)">💳</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
     }).join('');
 }
 
@@ -2339,7 +2455,7 @@ async function loadSettings(){
       document.getElementById('set-master-rafidain').value=userSettings.master_rafidain_number||'';
       document.getElementById('set-card').value=userSettings.card_number||'';
       if(userSettings.currency)document.getElementById('set-currency').value=userSettings.currency;
-      if(userSettings.business_type)document.getElementById('set-business-type').value=userSettings.business_type;
+      if(userSettings.business_type){document.getElementById('set-business-type').value=userSettings.business_type;applyBusinessTheme(userSettings.business_type);}
       document.getElementById('set-business-desc').value=userSettings.business_desc||'';
       if(userSettings.target_audience)document.getElementById('set-target-audience').value=userSettings.target_audience;
       if(userSettings.content_style)document.getElementById('set-content-style').value=userSettings.content_style;
@@ -2366,7 +2482,7 @@ async function saveSettings(){
   try{
     const res=await fetch(`${API}/api/settings`,{method:'PUT',headers:authH(),body:JSON.stringify(settings)});
     const data=await res.json();
-    if(data.success){userSettings=settings;showToast('✅ تم حفظ الإعدادات!');}
+    if(data.success){userSettings=settings;applyBusinessTheme(settings.business_type);showToast('✅ تم حفظ الإعدادات!');}
     else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
 }
@@ -2522,7 +2638,7 @@ async function loadAnalytics(period='month'){
     document.getElementById('ana-avg').textContent=data.totals.orders>0?(data.totals.revenue/data.totals.orders).toFixed(0):0;
     const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
     document.getElementById('orders-by-status').innerHTML=data.orders_by_status.length?
-      data.orders_by_status.map(r=>`<div class="metric-row"><span class="metric-label">${statusLabels[r.status]||r.status}</span><span class="metric-value">${r.count} طلب · ${parseFloat(r.revenue||0).toFixed(0)} ر.س</span></div>`).join(''):
+      data.orders_by_status.map(r=>`<div class="metric-row"><span class="metric-label">${statusLabels[r.status]||r.status}</span><span class="metric-value">${r.count} طلب · ${fmtCurrency(r.revenue||0)}</span></div>`).join(''):
       '<p style="color:var(--text2);font-size:.9rem">لا توجد طلبات</p>';
     if(data.posts_chart.length>0){
       const maxVal=Math.max(...data.posts_chart.map(r=>parseInt(r.total||0)),1);
@@ -2530,7 +2646,7 @@ async function loadAnalytics(period='month'){
       document.getElementById('posts-chart-labels').innerHTML=data.posts_chart.slice(-14).map(r=>`<div class="chart-label">${new Date(r.day).toLocaleDateString('ar',{day:'numeric',month:'numeric'})}</div>`).join('');
     }
     document.getElementById('recent-orders-list').innerHTML=data.recent_orders.length?
-      data.recent_orders.map(o=>`<div class="metric-row"><span class="metric-label">${o.customer_name} · ${new Date(o.created_at).toLocaleDateString('ar')}</span><span class="metric-value">${o.total} ر.س</span></div>`).join(''):
+      data.recent_orders.map(o=>`<div class="metric-row"><span class="metric-label">${o.customer_name} · ${new Date(o.created_at).toLocaleDateString('ar')}</span><span class="metric-value">${fmtCurrency(o.total)}</span></div>`).join(''):
       '<p style="color:var(--text2);font-size:.9rem">لا توجد طلبات</p>';
   }catch(e){}
 }
@@ -2924,7 +3040,7 @@ async function loadReport(){
       </div>
       <div class="card">
         <h3>🏆 أكبر الطلبات هذا الأسبوع</h3>
-        ${data.top_orders.length?data.top_orders.map(o=>`<div class="metric-row"><span class="metric-label">${o.customer_name}</span><span class="metric-value">${o.total} ر.س</span></div>`).join(''):'<p style="color:var(--text2)">لا توجد طلبات</p>'}
+        ${data.top_orders.length?data.top_orders.map(o=>`<div class="metric-row"><span class="metric-label">${o.customer_name}</span><span class="metric-value">${fmtCurrency(o.total)}</span></div>`).join(''):'<p style="color:var(--text2)">لا توجد طلبات</p>'}
       </div>`;
   }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
