@@ -431,6 +431,10 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
         </div>
       </div>
       <div class="card" style="padding:12px 20px">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input class="form-input" id="orders-search" placeholder="🔍 بحث باسم العميل أو الهاتف..." oninput="searchOrders(this.value)" style="flex:1">
+          <button class="btn btn-outline btn-sm" onclick="exportOrders()" style="white-space:nowrap">📊 تصدير Excel</button>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="loadOrders('')">الكل</button>
           <button class="btn btn-outline btn-sm" onclick="loadOrders('new')">جديد</button>
@@ -751,6 +755,7 @@ function showDashboard(){
   loadStats();
   checkTrialStatus();
   loadHomeAccounts();
+  loadNotifCount();
 }
 
 function updatePlanBadge(plan){
@@ -982,6 +987,26 @@ async function deleteScheduled(id){
   try{await fetch(`${API}/api/schedule/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 تم الحذف');loadSchedule();}catch(e){}
 }
 
+// ─── SEARCH ORDERS ───
+let searchTimeout = null;
+function searchOrders(q) {
+  clearTimeout(searchTimeout);
+  if (!q || q.length < 2) { loadOrders(''); return; }
+  searchTimeout = setTimeout(async () => {
+    const container = document.getElementById('orders-list');
+    container.innerHTML = '<div class="empty-state"><div class="emoji">⏳</div><p>جاري البحث...</p></div>';
+    try {
+      const res = await fetch(`${API}/api/orders/search?q=${encodeURIComponent(q)}`, {headers: authH()});
+      const data = await res.json();
+      if (!data.orders || data.orders.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="emoji">🔍</div><p>لا توجد نتائج</p></div>';
+        return;
+      }
+      renderOrders(data.orders, container);
+    } catch(e) { container.innerHTML = '<div class="empty-state"><div class="emoji">❌</div><p>تعذر البحث</p></div>'; }
+  }, 400);
+}
+
 // ─── ORDERS ───
 function openOrderModal(){document.getElementById('order-modal').classList.add('show');}
 function closeOrderModal(){document.getElementById('order-modal').classList.remove('show');}
@@ -999,7 +1024,17 @@ async function saveOrder(){
   }catch(e){showToast('❌ تعذر الاتصال');}
 }
 
+function renderOrders(orders, container) {
+  const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
+  container.innerHTML=orders.map(o=>{
+      let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
+      const itemsText=items.map(i=>i.description||'').filter(Boolean).join(', ')||'لا تفاصيل';
+      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
+    }).join('');
+}
+
 async function loadOrders(status){
+  document.getElementById('orders-search').value='';
   const container=document.getElementById('orders-list');
   container.innerHTML='<div class="empty-state"><div class="emoji">⏳</div><p>جاري التحميل...</p></div>';
   try{
@@ -1007,12 +1042,7 @@ async function loadOrders(status){
     const res=await fetch(url,{headers:authH()});
     const data=await res.json();
     if(!data.orders||data.orders.length===0){container.innerHTML='<div class="empty-state"><div class="emoji">🛒</div><p>لا توجد طلبات</p></div>';return;}
-    const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
-    container.innerHTML=data.orders.map(o=>{
-      let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
-      const itemsText=items.map(i=>i.description||'').filter(Boolean).join(', ')||'لا تفاصيل';
-      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
-    }).join('');
+    renderOrders(data.orders, container);
   }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
 
@@ -1023,6 +1053,22 @@ async function updateOrderStatus(id,status){
 async function deleteOrder(id){
   if(!confirm('حذف الطلب؟'))return;
   try{await fetch(`${API}/api/orders/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 تم الحذف');loadOrders('');}catch(e){}
+}
+
+// ─── EXPORT ORDERS ───
+async function exportOrders(){
+  try{
+    showToast('⏳ جاري التصدير...');
+    const res=await fetch(`${API}/api/orders/export`,{headers:authH()});
+    const blob=await res.blob();
+    const url=window.URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='orders.csv';
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    showToast('✅ تم التصدير!');
+  }catch(e){showToast('❌ تعذر التصدير');}
 }
 
 // ─── MESSAGES ───
@@ -1214,6 +1260,16 @@ async function resetPassword(){
 }
 
 function showForgotError(msg){const el=document.getElementById('forgot-error');el.textContent=msg;el.style.display='block';}
+
+// ─── NOTIF COUNT ───
+async function loadNotifCount(){
+  try{
+    const res=await fetch(`${API}/api/notifications`,{headers:authH()});
+    const data=await res.json();
+    const unread=(data.notifications||[]).filter(n=>!n.is_read).length;
+    updateNotifBadge(unread);
+  }catch(e){}
+}
 
 // ─── NOTIFICATIONS ───
 async function loadNotifications(){

@@ -167,7 +167,15 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
     if (pool) {
       const result = await pool.query('INSERT INTO orders (user_id, customer_name, customer_phone, customer_address, items, total, deposit, deposit_type, payment_method, delivery_company, delivery_link, notes, platform) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
         [userId, customer_name, customer_phone, customer_address, JSON.stringify(items || []), total || 0, deposit || 0, deposit_type || 'full', payment_method || 'cash', delivery_company || '', delivery_link || '', notes || '', platform || '']);
-      return res.json({ success: true, order: result.rows[0] });
+      const newOrder = result.rows[0];
+      // Auto notification
+      try {
+        await pool.query(
+          'INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)',
+          [userId, '🛒 طلب جديد!', `طلب جديد من ${customer_name} - ${total} ر.س`, 'order']
+        );
+      } catch(e) {}
+      return res.json({ success: true, order: newOrder });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
   const order = { id: Date.now(), user_id: userId, customer_name, customer_phone, total, status: 'new', created_at: new Date() };
@@ -348,6 +356,54 @@ cron.schedule('* * * * *', async () => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));
+
+// ========== SEARCH ORDERS ==========
+app.get('/api/orders/search', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const { q } = req.query;
+  if (!q) return res.json({ orders: [] });
+  try {
+    if (pool) {
+      const r = await pool.query(
+        `SELECT * FROM orders WHERE user_id=$1 AND (
+          customer_name ILIKE $2 OR 
+          customer_phone ILIKE $2 OR 
+          items::text ILIKE $2 OR
+          notes ILIKE $2
+        ) ORDER BY created_at DESC LIMIT 20`,
+        [userId, `%${q}%`]
+      );
+      return res.json({ orders: r.rows });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+  res.json({ orders: [] });
+});
+
+// ========== EXPORT ORDERS ==========
+app.get('/api/orders/export', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query(
+        'SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC',
+        [userId]
+      );
+      const orders = r.rows;
+      // CSV format
+      const headers = ['ID', 'العميل', 'الهاتف', 'العنوان', 'المبلغ', 'العربون', 'الحالة', 'المنصة', 'التاريخ'];
+      const rows = orders.map(o => [
+        o.id, o.customer_name, o.customer_phone, o.customer_address || '',
+        o.total, o.deposit, o.status, o.platform || '',
+        new Date(o.created_at).toLocaleDateString('ar')
+      ]);
+      const csv = [headers, ...rows].map(r => r.join(',')).join('
+');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
+      return res.send('﻿' + csv); // BOM for Arabic Excel
+    }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
 
 // ========== NOTIFICATIONS ==========
 const notifications = {};
