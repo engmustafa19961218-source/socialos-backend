@@ -517,7 +517,18 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
         <div class="form-group-item"><label class="form-label">الاسم</label><input class="form-input" id="profile-name" placeholder="اسمك الكريم"></div>
         <div class="form-group-item"><label class="form-label">البريد الإلكتروني</label><input class="form-input" id="profile-email" placeholder="email@example.com" disabled style="opacity:.6"></div>
         <div class="form-group-item"><label class="form-label">نبذة شخصية</label><textarea class="form-textarea" id="profile-bio" placeholder="اكتب نبذة عنك..." style="min-height:80px"></textarea></div>
-        <div class="form-group-item"><label class="form-label">رابط الصورة الشخصية</label><input class="form-input" id="profile-avatar-url" placeholder="https://..."></div>
+        <div class="form-group-item">
+          <label class="form-label">الصورة الشخصية</label>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+            <div id="upload-preview" style="width:60px;height:60px;border-radius:50%;background:var(--surface2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:1.5rem;overflow:hidden">📷</div>
+            <div>
+              <input type="file" id="profile-image-file" accept="image/*" style="display:none" onchange="previewImage(this)">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('profile-image-file').click()">📷 اختر صورة</button>
+              <div style="font-size:.75rem;color:var(--text2);margin-top:4px">أو</div>
+              <input class="form-input" id="profile-avatar-url" placeholder="https://... رابط الصورة" style="margin-top:4px">
+            </div>
+          </div>
+        </div>
         <button class="btn btn-accent" onclick="saveProfile()">💾 حفظ التغييرات</button>
       </div>
     </div>
@@ -1036,6 +1047,20 @@ async function disconnectTikTok(){
   try{await fetch(`${API}/api/tiktok/disconnect`,{method:'DELETE',headers:authH()});showToast('✅ تم قطع الاتصال');loadAccounts();loadHomeAccounts();}catch(e){}
 }
 
+// ─── IMAGE UPLOAD ───
+function previewImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('upload-preview');
+    preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    document.getElementById('profile-avatar-url').value = '';
+    window._uploadedImageData = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 // ─── PROFILE ───
 async function loadProfile(){
   try{
@@ -1045,6 +1070,7 @@ async function loadProfile(){
     document.getElementById('profile-email').value=data.email||'';
     document.getElementById('profile-bio').value=data.bio||'';
     document.getElementById('profile-avatar-url').value=data.avatar_url||'';
+    if(data.avatar_url){const preview=document.getElementById('upload-preview');if(preview)preview.innerHTML=\;}
     const av=document.getElementById('profile-avatar-display');
     if(data.avatar_url){av.innerHTML=`<img src="${data.avatar_url}" onerror="this.parentElement.textContent='${(data.name||'U').charAt(0).toUpperCase()}'">`;} 
     else av.textContent=(data.name||'U').charAt(0).toUpperCase();
@@ -1061,7 +1087,7 @@ async function loadProfile(){
 async function saveProfile(){
   const name=document.getElementById('profile-name').value.trim();
   const bio=document.getElementById('profile-bio').value.trim();
-  const avatar_url=document.getElementById('profile-avatar-url').value.trim();
+  const avatar_url = window._uploadedImageData || document.getElementById('profile-avatar-url').value.trim();
   try{
     const res=await fetch(`${API}/api/profile`,{method:'PUT',headers:authH(),body:JSON.stringify({name,bio,avatar_url})});
     const data=await res.json();
