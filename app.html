@@ -811,6 +811,7 @@ function showDashboard(){
   checkTrialStatus();
   loadHomeAccounts();
   loadNotifCount();
+  setTimeout(checkPendingOrders, 3000);
 }
 
 function updatePlanBadge(plan){
@@ -1084,7 +1085,7 @@ function renderOrders(orders, container) {
   container.innerHTML=orders.map(o=>{
       let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
       const itemsText=items.map(i=>i.description||'').filter(Boolean).join(', ')||'لا تفاصيل';
-      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
+      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button><button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25d366">📱</button><button class="btn btn-outline btn-sm" onclick="payOrder(${o.id},${o.total})" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--accent3)">💳</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
     }).join('');
 }
 
@@ -1108,6 +1109,43 @@ async function updateOrderStatus(id,status){
 async function deleteOrder(id){
   if(!confirm('حذف الطلب؟'))return;
   try{await fetch(`${API}/api/orders/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 تم الحذف');loadOrders('');}catch(e){}
+}
+
+// ─── WHATSAPP INVOICE ───
+async function sendWhatsApp(orderId){
+  try{
+    const res=await fetch(`${API}/api/orders/${orderId}/whatsapp`,{headers:authH()});
+    const data=await res.json();
+    if(data.success){window.open(data.url,'_blank');showToast('📱 جاري فتح واتساب!');}
+    else showToast('❌ '+(data.message||'فشل'));
+  }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+// ─── MOYASAR PAYMENT ───
+async function payOrder(orderId, amount){
+  if(!confirm(`إنشاء رابط دفع بمبلغ ${amount} ر.س؟`))return;
+  try{
+    const res=await fetch(`${API}/api/payment/moyasar`,{method:'POST',headers:authH(),body:JSON.stringify({order_id:orderId,amount})});
+    const data=await res.json();
+    if(data.success){
+      window.open(data.payment_url,'_blank');
+      showToast('💳 تم إنشاء رابط الدفع!');
+    }else{
+      showToast('⚠️ '+(data.message||'تأكد من إضافة MOYASAR_API_KEY في Railway'));
+    }
+  }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+// ─── PENDING REMINDER ───
+async function checkPendingOrders(){
+  try{
+    const res=await fetch(`${API}/api/orders/pending-reminder`,{headers:authH()});
+    const data=await res.json();
+    if(data.count>0){
+      showToast(`⚠️ لديك ${data.count} طلب معلق منذ أكثر من 24 ساعة!`);
+      updateNotifBadge(data.count);
+    }
+  }catch(e){}
 }
 
 // ─── EXPORT ORDERS ───

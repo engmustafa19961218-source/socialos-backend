@@ -477,6 +477,83 @@ if (pool) {
   )`).catch(e => console.log('templates table:', e.message));
 }
 
+
+// ========== PENDING ORDERS REMINDER ==========
+app.get('/api/orders/pending-reminder', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query(
+        `SELECT * FROM orders WHERE user_id=$1 AND status IN ('new','confirmed') AND created_at <= NOW() - INTERVAL '24 hours' ORDER BY created_at ASC`,
+        [userId]
+      );
+      return res.json({ orders: r.rows, count: r.rows.length });
+    }
+  } catch (e) {}
+  res.json({ orders: [], count: 0 });
+});
+
+// ========== WHATSAPP INVOICE ==========
+app.get('/api/orders/:id/whatsapp', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, userId]);
+      if (r.rows.length === 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+      const order = r.rows[0];
+      let items = [];
+      try { items = JSON.parse(order.items || '[]'); } catch(e) {}
+      const itemsText = items.map(i => i.description || '').filter(Boolean).join(', ') || 'طلب';
+      const message = `🧾 *فاتورة طلب #${order.id}*
+
+👤 العميل: ${order.customer_name}
+📱 الهاتف: ${order.customer_phone}
+
+📦 التفاصيل: ${itemsText}
+
+💰 المبلغ الإجمالي: ${order.total} ر.س${order.deposit > 0 ? `
+💵 العربون: ${order.deposit} ر.س
+💳 المتبقي: ${order.total - order.deposit} ر.س` : ''}
+
+${order.notes ? `📝 ملاحظات: ${order.notes}
+
+` : ''}شكراً لتعاملكم معنا! ⚡ SocialOS`;
+      const phone = order.customer_phone.replace(/[^0-9]/g, '');
+      const waPhone = phone.startsWith('0') ? '966' + phone.slice(1) : phone;
+      const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
+      return res.json({ success: true, url: waUrl, message });
+    }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ========== MOYASAR PAYMENT ==========
+app.post('/api/payment/moyasar', authenticateToken, async (req, res) => {
+  const { order_id, amount, callback_url } = req.body;
+  const MOYASAR_KEY = process.env.MOYASAR_API_KEY;
+  if (!MOYASAR_KEY) return res.status(400).json({ success: false, message: 'مفتاح Moyasar غير مضاف في المتغيرات' });
+  try {
+    const response = await fetch('https://api.moyasar.com/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(MOYASAR_KEY + ':').toString('base64'),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: Math.round(amount * 100),
+        currency: 'SAR',
+        description: `طلب رقم ${order_id}`,
+        callback_url: callback_url || 'https://socialos-production-4aa6.up.railway.app',
+        source: { type: 'creditcard' }
+      })
+    });
+    const data = await response.json();
+    if (data.id) {
+      return res.json({ success: true, payment_url: data.url, payment_id: data.id });
+    }
+    return res.json({ success: false, message: data.message || 'فشل إنشاء الدفع', data });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));
 
