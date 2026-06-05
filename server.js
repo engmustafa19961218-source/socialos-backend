@@ -578,7 +578,7 @@ app.post('/api/payment/iraqi', authenticateToken, async (req, res) => {
         `INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)`,
         [userId, '💳 طلب تأكيد دفع', `طلب #${order_id} - ${info.name} - ${amount} د.ع - المرجع: ${transfer_ref}`, 'payment']
       );
-      await pool.query('UPDATE orders SET payment_method=$1, notes=COALESCE(notes,'')||$2 WHERE id=$3 AND user_id=$4',
+      await pool.query("UPDATE orders SET payment_method=$1, notes=COALESCE(notes,'')||$2 WHERE id=$3 AND user_id=$4",
         [method, ` | دفع ${info.name}: ${transfer_ref}`, order_id, userId]);
     }
     return res.json({ 
