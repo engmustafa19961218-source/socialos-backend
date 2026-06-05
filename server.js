@@ -715,41 +715,26 @@ app.post('/api/agent/chat', authenticateToken, async (req, res) => {
   }
 
   try {
-    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
     let aiResponse = '';
     let action = null;
 
-    if (ANTHROPIC_KEY) {
-      // Use Anthropic API directly
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': ANTHROPIC_KEY,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-haiku-20241022',
-          max_tokens: 2048,
-          system: systemPrompt,
-          messages: agentConversations[userId]
-        })
-      });
-      const data = await response.json();
-      aiResponse = data.content?.[0]?.text || 'عذراً، لم أتمكن من المعالجة';
-    } else {
-      // Fallback to OpenRouter
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'anthropic/claude-3-5-haiku',
-          messages: [{ role: 'system', content: systemPrompt }, ...agentConversations[userId]]
-        })
-      });
-      const data = await response.json();
-      aiResponse = data.choices?.[0]?.message?.content || 'عذراً، لم أتمكن من المعالجة';
+    const agentRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`, 
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3-5-haiku',
+        max_tokens: 2048,
+        messages: [{ role: 'system', content: systemPrompt }, ...agentConversations[userId]]
+      })
+    });
+    const agentData = await agentRes.json();
+    if (agentData.error) {
+      return res.json({ success: false, message: 'خطأ: ' + (agentData.error.message || JSON.stringify(agentData.error)) });
     }
+    aiResponse = agentData.choices?.[0]?.message?.content || 'عذراً، لم أتمكن من المعالجة';
 
     // Add response to history
     agentConversations[userId].push({ role: 'assistant', content: aiResponse });
