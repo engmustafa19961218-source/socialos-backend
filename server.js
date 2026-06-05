@@ -1574,7 +1574,7 @@ app.post('/api/generate-image', authenticateToken, async (req, res) => {
           });
           const translateData = await translateRes.json();
           if (translateData.content?.[0]?.text) {
-            prompt = translateData.content[0].text.trim();
+            prompt = translateData.content[0].text.trim() + ', no text, no words, no letters, no watermark';
           }
         }
       } catch(e) { console.log('Translation failed, using original prompt'); }
