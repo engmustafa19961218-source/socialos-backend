@@ -1551,11 +1551,34 @@ app.get('/api/mobile/dashboard', authenticateToken, async (req, res) => {
 // ========== GENERATE IMAGE (REPLICATE FLUX) ==========
 app.post('/api/generate-image', authenticateToken, async (req, res) => {
   try {
-    const { prompt, width = 1024, height = 1024 } = req.body;
+    let { prompt, width = 1024, height = 1024 } = req.body;
     if (!prompt) return res.status(400).json({ message: 'prompt required' });
 
     const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
     if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'Replicate token not configured' });
+
+    // Translate Arabic to English if needed
+    const hasArabic = /[\u0600-\u06FF]/.test(prompt);
+    if (hasArabic) {
+      try {
+        const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+        if (ANTHROPIC_KEY) {
+          const translateRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 300,
+              messages: [{ role: 'user', content: `Translate this Arabic image description to English for an AI image generator. Return ONLY the English translation, nothing else:\n${prompt}` }]
+            })
+          });
+          const translateData = await translateRes.json();
+          if (translateData.content?.[0]?.text) {
+            prompt = translateData.content[0].text.trim();
+          }
+        }
+      } catch(e) { console.log('Translation failed, using original prompt'); }
+    }
 
     const https = require('https');
     const body = JSON.stringify({
