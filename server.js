@@ -348,3 +348,158 @@ cron.schedule('* * * * *', async () => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));
+
+// ========== NOTIFICATIONS ==========
+const notifications = {};
+
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query(
+        'SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',
+        [userId]
+      );
+      return res.json({ notifications: r.rows });
+    }
+  } catch (e) {}
+  res.json({ notifications: notifications[userId] || [] });
+});
+
+app.put('/api/notifications/read', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      await pool.query('UPDATE notifications SET is_read=true WHERE user_id=$1', [userId]);
+      return res.json({ success: true });
+    }
+  } catch (e) {}
+  res.json({ success: true });
+});
+
+// ========== PASSWORD RESET ==========
+const resetCodes = {};
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, message: 'البريد مطلوب' });
+  try {
+    if (pool) {
+      const result = await pool.query('SELECT id, name FROM users WHERE email=$1', [email]);
+      if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'البريد غير موجود' });
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      resetCodes[email] = { code, expires: Date.now() + 15 * 60 * 1000 };
+      console.log(`Reset code for ${email}: ${code}`);
+      return res.json({ success: true, message: 'تم إرسال رمز التحقق', dev_code: code });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+  res.status(404).json({ success: false, message: 'البريد غير موجود' });
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { email, code, new_password } = req.body;
+  if (!email || !code || !new_password) return res.status(400).json({ success: false, message: 'جميع الحقول مطلوبة' });
+  if (new_password.length < 6) return res.status(400).json({ success: false, message: 'كلمة المرور 6 أحرف على الأقل' });
+  const stored = resetCodes[email];
+  if (!stored) return res.status(400).json({ success: false, message: 'لا يوجد طلب إعادة تعيين' });
+  if (stored.code !== code) return res.status(400).json({ success: false, message: 'رمز التحقق غير صحيح' });
+  if (Date.now() > stored.expires) return res.status(400).json({ success: false, message: 'انتهت صلاحية الرمز' });
+  try {
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    if (pool) {
+      await pool.query('UPDATE users SET password=$1 WHERE email=$2', [hashedPassword, email]);
+      delete resetCodes[email];
+      return res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+  res.status(500).json({ success: false, message: 'خطأ في السيرفر' });
+});
+
+// ========== PDF INVOICE ==========
+app.get('/api/orders/:id/invoice', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, userId]);
+      if (r.rows.length === 0) return res.status(404).json({ message: 'الطلب غير موجود' });
+      const order = r.rows[0];
+      let items = [];
+      try { items = JSON.parse(order.items || '[]'); } catch(e) {}
+      const itemsText = items.map(i => i.description || '').filter(Boolean).join(', ') || 'لا تفاصيل';
+      const invoiceHTML = `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head><meta charset="UTF-8"><title>فاتورة #${order.id}</title>
+<style>
+body{font-family:Arial,sans-serif;padding:40px;color:#333;direction:rtl;}
+.header{text-align:center;margin-bottom:30px;border-bottom:3px solid #00ff88;padding-bottom:20px;}
+.header h1{color:#00ff88;font-size:2rem;margin:0;}
+.header p{color:#666;margin:5px 0;}
+.invoice-info{display:flex;justify-content:space-between;margin-bottom:30px;}
+.info-block{background:#f9f9f9;padding:15px;border-radius:8px;flex:1;margin:0 5px;}
+.info-block h3{margin:0 0 10px;color:#333;font-size:.9rem;text-transform:uppercase;}
+.items-table{width:100%;border-collapse:collapse;margin-bottom:30px;}
+.items-table th{background:#00ff88;color:#000;padding:10px;text-align:right;}
+.items-table td{padding:10px;border-bottom:1px solid #eee;}
+.total-section{text-align:left;margin-top:20px;}
+.total-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;}
+.total-final{font-size:1.3rem;font-weight:bold;color:#00ff88;border-top:2px solid #00ff88;padding-top:10px;}
+.footer{text-align:center;margin-top:40px;color:#999;font-size:.85rem;}
+.status-badge{padding:5px 15px;border-radius:20px;font-size:.8rem;font-weight:bold;background:#e8fff4;color:#00cc70;}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>⚡ SocialOS</h1>
+  <p>فاتورة رسمية</p>
+</div>
+<div class="invoice-info">
+  <div class="info-block">
+    <h3>معلومات الفاتورة</h3>
+    <p><strong>رقم الفاتورة:</strong> #${order.id}</p>
+    <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleDateString('ar')}</p>
+    <p><strong>الحالة:</strong> <span class="status-badge">${order.status}</span></p>
+  </div>
+  <div class="info-block">
+    <h3>معلومات العميل</h3>
+    <p><strong>الاسم:</strong> ${order.customer_name}</p>
+    <p><strong>الهاتف:</strong> ${order.customer_phone}</p>
+    <p><strong>العنوان:</strong> ${order.customer_address || 'غير محدد'}</p>
+  </div>
+</div>
+<table class="items-table">
+  <thead><tr><th>الوصف</th><th>المبلغ</th></tr></thead>
+  <tbody>
+    <tr><td>${itemsText}</td><td>${order.total} ر.س</td></tr>
+  </tbody>
+</table>
+<div class="total-section">
+  <div class="total-row"><span>المجموع:</span><span>${order.total} ر.س</span></div>
+  ${order.deposit > 0 ? `<div class="total-row"><span>العربون المدفوع:</span><span>${order.deposit} ر.س</span></div><div class="total-row total-final"><span>المتبقي:</span><span>${order.total - order.deposit} ر.س</span></div>` : `<div class="total-row total-final"><span>الإجمالي:</span><span>${order.total} ر.س</span></div>`}
+</div>
+${order.delivery_company ? `<p><strong>شركة التوصيل:</strong> ${order.delivery_company}</p>` : ''}
+${order.notes ? `<p><strong>ملاحظات:</strong> ${order.notes}</p>` : ''}
+<div class="footer">
+  <p>شكراً لتعاملكم معنا | SocialOS ⚡</p>
+  <p>تم إنشاء هذه الفاتورة تلقائياً</p>
+</div>
+</body>
+</html>`;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(invoiceHTML);
+    }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ========== CREATE NOTIFICATIONS TABLE ==========
+if (pool) {
+  pool.query(`CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    title VARCHAR(255),
+    message TEXT,
+    type VARCHAR(50) DEFAULT 'info',
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`).catch(e => console.log('notifications table:', e.message));
+}

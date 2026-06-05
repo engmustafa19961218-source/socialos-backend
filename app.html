@@ -253,6 +253,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
       <div class="form-group"><label>البريد الإلكتروني</label><input type="email" id="login-email" placeholder="example@email.com"></div>
       <div class="form-group"><label>كلمة المرور</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="btn-primary" id="login-btn" onclick="doLogin()">دخول ←</button>
+      <p style="text-align:center;margin-top:12px;font-size:.85rem"><span style="color:var(--accent);cursor:pointer" onclick="showForgotPassword()">نسيت كلمة المرور؟</span></p>
     </div>
     <div id="register-form" style="display:none">
       <div class="form-group"><label>الاسم</label><input type="text" id="reg-name" placeholder="اسمك الكريم"></div>
@@ -267,7 +268,16 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- DASHBOARD -->
 <div id="dashboard">
   <nav class="sidebar">
-    <div class="sidebar-logo"><h2>SocialOS ⚡</h2><p id="sidebar-greeting">مرحباً</p></div>
+    <div class="sidebar-logo">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2>SocialOS ⚡</h2>
+        <button onclick="showPage('notifications',this)" style="background:none;border:none;cursor:pointer;position:relative;padding:4px">
+          <span style="font-size:1.3rem">🔔</span>
+          <span id="notif-badge" style="display:none;position:absolute;top:0;right:0;background:var(--danger);color:#fff;border-radius:50%;width:16px;height:16px;font-size:.6rem;display:flex;align-items:center;justify-content:center;font-weight:700" id="notif-count">0</span>
+        </button>
+      </div>
+      <p id="sidebar-greeting">مرحباً</p>
+    </div>
     <div class="nav-section">الرئيسية</div>
     <div class="nav-item active" onclick="showPage('home',this)"><span class="icon">⚡</span> الرئيسية</div>
     <div class="nav-section">المحتوى</div>
@@ -283,6 +293,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="nav-item" onclick="showPage('analytics',this)"><span class="icon">📊</span> التحليلات</div>
     <div class="nav-item" onclick="showPage('accounts',this)"><span class="icon">🔗</span> ربط الحسابات</div>
     <div class="nav-item" onclick="showPage('profile',this)"><span class="icon">👤</span> البروفايل</div>
+    <div class="nav-item" onclick="showPage('notifications',this)"><span class="icon">🔔</span> الإشعارات</div>
     <div class="nav-item" onclick="showPage('subscription',this)"><span class="icon">⭐</span> الاشتراك</div>
     <div class="sidebar-bottom">
       <div class="user-info">
@@ -533,6 +544,17 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
       </div>
     </div>
 
+    <!-- NOTIFICATIONS -->
+    <div class="page" id="page-notifications">
+      <div class="page-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h1>🔔 الإشعارات</h1><p>آخر التنبيهات والأحداث</p></div>
+          <button class="btn btn-outline btn-sm" onclick="markAllRead()">تعليم الكل كمقروء</button>
+        </div>
+      </div>
+      <div id="notifications-list"><div class="empty-state"><div class="emoji">🔔</div><p>لا توجد إشعارات</p></div></div>
+    </div>
+
     <!-- SUBSCRIPTION -->
     <div class="page" id="page-subscription">
       <div class="page-header"><h1>⭐ الاشتراك</h1><p>اختر الخطة المناسبة</p></div>
@@ -580,6 +602,31 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
     </div>
 
   </main>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div class="modal-overlay" id="forgot-modal">
+  <div class="modal">
+    <h2>🔑 استعادة كلمة المرور</h2>
+    <div id="forgot-step1">
+      <p style="color:var(--text2);margin-bottom:16px;font-size:.9rem">أدخل بريدك الإلكتروني وسنرسل لك رمز التحقق</p>
+      <div class="form-group-item"><label class="form-label">البريد الإلكتروني</label><input class="form-input" id="forgot-email" placeholder="example@email.com"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeForgotPassword()">إلغاء</button>
+        <button class="btn btn-accent" onclick="sendResetCode()">إرسال الرمز</button>
+      </div>
+    </div>
+    <div id="forgot-step2" style="display:none">
+      <p style="color:var(--text2);margin-bottom:16px;font-size:.9rem">أدخل رمز التحقق وكلمة المرور الجديدة</p>
+      <div class="form-group-item"><label class="form-label">رمز التحقق</label><input class="form-input" id="reset-code" placeholder="123456" dir="ltr"></div>
+      <div class="form-group-item"><label class="form-label">كلمة المرور الجديدة</label><input class="form-input" type="password" id="new-password" placeholder="••••••••"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeForgotPassword()">إلغاء</button>
+        <button class="btn btn-accent" onclick="resetPassword()">تغيير كلمة المرور</button>
+      </div>
+    </div>
+    <div class="auth-error" id="forgot-error" style="display:none"></div>
+  </div>
 </div>
 
 <!-- ORDER MODAL -->
@@ -729,7 +776,7 @@ function showPage(name,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(el)el.classList.add('active');
-  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile};
+  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications};
   if(loaders[name])loaders[name]();
 }
 
@@ -964,7 +1011,7 @@ async function loadOrders(status){
     container.innerHTML=data.orders.map(o=>{
       let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
       const itemsText=items.map(i=>i.description||'').filter(Boolean).join(', ')||'لا تفاصيل';
-      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
+      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${o.total} ر.س</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
     }).join('');
   }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
@@ -1128,6 +1175,85 @@ async function subscribe(plan){
     if(data.success){currentUser.plan=plan;localStorage.setItem('socialos_user',JSON.stringify(currentUser));updatePlanBadge(plan);showToast('✅ تم تفعيل الخطة!');loadSubscriptionPage();}
     else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
+}
+
+// ─── FORGOT PASSWORD ───
+function showForgotPassword(){
+  document.getElementById('forgot-modal').classList.add('show');
+  document.getElementById('forgot-step1').style.display='block';
+  document.getElementById('forgot-step2').style.display='none';
+  document.getElementById('forgot-error').style.display='none';
+}
+function closeForgotPassword(){document.getElementById('forgot-modal').classList.remove('show');}
+
+async function sendResetCode(){
+  const email=document.getElementById('forgot-email').value.trim();
+  if(!email)return showForgotError('أدخل البريد الإلكتروني');
+  try{
+    const res=await fetch(`${API}/api/auth/forgot-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const data=await res.json();
+    if(data.success){
+      document.getElementById('forgot-step1').style.display='none';
+      document.getElementById('forgot-step2').style.display='block';
+      if(data.dev_code)showToast('رمز التحقق: '+data.dev_code+' (للتطوير فقط)');
+    }else showForgotError(data.message||'فشل الإرسال');
+  }catch(e){showForgotError('تعذر الاتصال');}
+}
+
+async function resetPassword(){
+  const email=document.getElementById('forgot-email').value.trim();
+  const code=document.getElementById('reset-code').value.trim();
+  const newPass=document.getElementById('new-password').value;
+  if(!code||!newPass)return showForgotError('أكمل جميع الحقول');
+  try{
+    const res=await fetch(`${API}/api/auth/reset-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,code,new_password:newPass})});
+    const data=await res.json();
+    if(data.success){closeForgotPassword();showToast('✅ تم تغيير كلمة المرور!');}
+    else showForgotError(data.message||'فشل التغيير');
+  }catch(e){showForgotError('تعذر الاتصال');}
+}
+
+function showForgotError(msg){const el=document.getElementById('forgot-error');el.textContent=msg;el.style.display='block';}
+
+// ─── NOTIFICATIONS ───
+async function loadNotifications(){
+  const container=document.getElementById('notifications-list');
+  try{
+    const res=await fetch(`${API}/api/notifications`,{headers:authH()});
+    const data=await res.json();
+    if(!data.notifications||data.notifications.length===0){
+      container.innerHTML='<div class="empty-state"><div class="emoji">🔔</div><p>لا توجد إشعارات</p></div>';
+      return;
+    }
+    container.innerHTML=data.notifications.map(n=>`
+      <div style="background:${n.is_read?'var(--surface2)':'rgba(0,255,136,0.05)'};border:1px solid ${n.is_read?'var(--border)':'rgba(0,255,136,0.2)'};border-radius:10px;padding:16px;margin-bottom:10px">
+        <div style="font-weight:700;margin-bottom:4px">${n.title}</div>
+        <div style="color:var(--text2);font-size:.85rem">${n.message}</div>
+        <div style="color:var(--text2);font-size:.75rem;margin-top:6px">${new Date(n.created_at).toLocaleString('ar')}</div>
+      </div>`).join('');
+    updateNotifBadge(data.notifications.filter(n=>!n.is_read).length);
+  }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
+}
+
+function updateNotifBadge(count){
+  const badge=document.getElementById('notif-badge');
+  if(badge){badge.textContent=count;badge.style.display=count>0?'flex':'none';}
+}
+
+async function markAllRead(){
+  try{
+    await fetch(`${API}/api/notifications/read`,{method:'PUT',headers:authH()});
+    showToast('✅ تم تعليم الكل كمقروء');
+    loadNotifications();
+  }catch(e){}
+}
+
+// ─── INVOICE ───
+function openInvoice(orderId){
+  fetch(`${API}/api/orders/${orderId}/invoice`,{headers:authH()})
+    .then(r=>r.text())
+    .then(html=>{const w=window.open('','_blank');w.document.write(html);w.document.close();})
+    .catch(()=>showToast('❌ تعذر فتح الفاتورة'));
 }
 
 // ─── TOAST ───
