@@ -1600,6 +1600,7 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
     });
 
     const aiData = await response.json();
+    console.log('Voice AI response:', JSON.stringify(aiData.content?.[0]?.text?.substring(0,200)));
     // prefilled with '{' so we prepend it back
     let rawText = '{' + (aiData.content?.[0]?.text || '"}');
     
@@ -1612,7 +1613,9 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
     } catch(e) {
       // Smart fallback based on user text
       if(/صمم|تصميم|صورة/.test(text)) {
-        command = { action: 'design', prompt: text.replace(/صمم لي|صمم|اعمل لي|صورة/g,'').trim(), message: '🎨 جاري التصميم...' };
+        // Keep original Arabic text - server will translate it
+        const imageDesc = text.replace(/صمم لي صورة|صمم لي|صمم|اعمل لي صورة|اعمل صورة|ولد صورة|تصميم صورة عن|تصميم صورة/g,'').trim();
+        command = { action: 'design', prompt: imageDesc || text, message: '🎨 جاري التصميم...' };
       } else if(/منشور|انشر/.test(text)) {
         command = { action: 'create_post', content: text.replace(/اكتب منشور عن|منشور عن|انشر/g,'').trim(), message: '✅ تم كتابة المنشور' };
       } else if(/طلب/.test(text)) {
