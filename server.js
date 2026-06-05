@@ -1600,21 +1600,29 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
     });
 
     const aiData = await response.json();
-    let rawText = aiData.content?.[0]?.text || '{}';
-    // Extract JSON from response
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    rawText = jsonMatch ? jsonMatch[0] : '{}';
+    // prefilled with '{' so we prepend it back
+    let rawText = '{' + (aiData.content?.[0]?.text || '"}');
     
     let command;
     try {
-      command = JSON.parse(rawText);
+      // Extract complete JSON object
+      const jsonMatch = rawText.match(/\{[^{}]*\}/);
+      command = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      if(!command || !command.action) throw new Error('no action');
     } catch(e) {
-      // Fallback: try to detect action from text
-      const txt = aiData.content?.[0]?.text || '';
-      if(/design|صمم|صورة/i.test(txt)) {
-        command = { action: 'design', prompt: text, message: '🎨 جاري التصميم...' };
+      // Smart fallback based on user text
+      if(/صمم|تصميم|صورة/.test(text)) {
+        command = { action: 'design', prompt: text.replace(/صمم لي|صمم|اعمل لي|صورة/g,'').trim(), message: '🎨 جاري التصميم...' };
+      } else if(/منشور|انشر/.test(text)) {
+        command = { action: 'create_post', content: text.replace(/اكتب منشور عن|منشور عن|انشر/g,'').trim(), message: '✅ تم كتابة المنشور' };
+      } else if(/طلب/.test(text)) {
+        command = { action: 'new_order', message: '✅ فتح نموذج الطلب' };
+      } else if(/منتج/.test(text)) {
+        command = { action: 'new_product', message: '✅ فتح نموذج المنتج' };
+      } else if(/تحليل|إحصائيات/.test(text)) {
+        command = { action: 'navigate', page: 'analytics', message: '✅ فتح التحليلات' };
       } else {
-        command = { action: 'answer', text: txt.substring(0, 100) };
+        command = { action: 'navigate', page: 'ai', message: '✅ تم الفتح' };
       }
     }
 
