@@ -750,6 +750,17 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
         <label class="form-label">اسم المرسل</label>
         <input class="form-input" id="sender-name" placeholder="اسمك">
       </div>
+      <div class="form-group-item">
+        <label class="form-label">📎 صورة وصل التحويل (اختياري)</label>
+        <input type="file" id="payment-receipt" accept="image/*" style="display:none" onchange="previewReceipt(this)">
+        <div onclick="document.getElementById('payment-receipt').click()" 
+             id="receipt-preview"
+             style="background:var(--surface2);border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s"
+             onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:2rem">📷</div>
+          <div style="color:var(--text2);font-size:.85rem;margin-top:6px">اضغط لاختيار صورة الوصل</div>
+        </div>
+      </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="backToMethods()">رجوع</button>
         <button class="btn btn-accent" onclick="confirmPayment()">✅ تأكيد الدفع</button>
@@ -1244,6 +1255,8 @@ async function openPaymentModal(orderId, amount, customerName, customerPhone){
   document.getElementById('payment-step1').style.display='block';
   document.getElementById('payment-step2').style.display='none';
   document.getElementById('payment-footer1').style.display='flex';
+  window._receiptImageData=null;
+  document.getElementById('receipt-preview').innerHTML='<div style="font-size:2rem">📷</div><div style="color:var(--text2);font-size:.85rem;margin-top:6px">اضغط لاختيار صورة الوصل</div>';
   
   // Load from settings
   const methods = [
@@ -1282,6 +1295,19 @@ function selectPaymentMethod(id, name, icon, number){
   document.getElementById('sender-name').value = currentPaymentOrder.customerName || '';
 }
 
+function previewReceipt(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    const preview=document.getElementById('receipt-preview');
+    preview.innerHTML=`<img src="${e.target.result}" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:contain">
+      <div style="color:var(--accent);font-size:.8rem;margin-top:6px">✅ تم اختيار الصورة</div>`;
+    window._receiptImageData=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function backToMethods(){
   document.getElementById('payment-step1').style.display='block';
   document.getElementById('payment-step2').style.display='none';
@@ -1298,7 +1324,8 @@ async function confirmPayment(){
     const res=await fetch(`${API}/api/payment/iraqi`,{method:'POST',headers:authH(),body:JSON.stringify({
       order_id:currentPaymentOrder.id, method:currentPaymentMethod.id,
       amount:currentPaymentOrder.amount, sender_name:senderName,
-      sender_phone:currentPaymentOrder.customerPhone, transfer_ref:ref
+      sender_phone:currentPaymentOrder.customerPhone, transfer_ref:ref,
+      receipt_image: window._receiptImageData||null
     })});
     const data=await res.json();
     if(data.success){
