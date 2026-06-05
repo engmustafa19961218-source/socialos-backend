@@ -1557,23 +1557,32 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
     const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
     if (!ANTHROPIC_KEY) return res.status(500).json({ success: false, message: 'Anthropic key missing' });
 
-    const systemPrompt = `أنت مساعد ذكي لتطبيق إدارة سوشيال ميديا. 
-تحليل أمر المستخدم وأرجع JSON فقط بدون أي نص آخر.
+    const systemPrompt = `أنت منفذ أوامر لتطبيق سوشيال ميديا. مهمتك الوحيدة: تحليل الأمر وإرجاع JSON فقط بدون أي كلام أو أسئلة.
 
-الأوامر المتاحة:
-- design: تصميم صورة (prompt: وصف الصورة بالإنجليزي)
-- create_post: إنشاء منشور (content: نص المنشور)
-- new_order: إضافة طلب جديد
-- new_product: إضافة منتج جديد
-- navigate: الانتقال لصفحة (page: orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create)
-- generate_content: توليد محتوى (prompt: الموضوع)
-- answer: الرد بنص (text: الرد)
+قواعد صارمة:
+1. لا تسأل أي أسئلة أبداً
+2. نفذ الأمر فوراً بناءً على فهمك
+3. أرجع JSON فقط
 
-مثال: "صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, professional photography","message":"🎨 جاري تصميم الصورة..."}
-مثال: "افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
-مثال: "اكتب منشور عن عروض رمضان" → {"action":"create_post","content":"عروض رمضان المميزة...","message":"✅ تم إنشاء المنشور"}
+الأوامر:
+- design: تصميم صورة. prompt = وصف بالإنجليزي (ترجم أنت)
+- create_post: إنشاء منشور. content = نص المنشور
+- new_order: طلب جديد
+- new_product: منتج جديد  
+- navigate: انتقال. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
+- generate_content: توليد محتوى. prompt = الموضوع
+- answer: رد نصي. text = الرد
 
-أرجع JSON فقط.`;
+أمثلة:
+"صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, elegant living room furniture, professional photography, dark background","message":"🎨 جاري تصميم الكنب الفاخر..."}
+"صمم شعار لمتجر عطور" → {"action":"design","prompt":"luxury perfume store logo, elegant, gold and black, minimal design","message":"🎨 جاري تصميم الشعار..."}
+"افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
+"كم عدد طلباتي" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
+"اكتب منشور عن خصم 50%" → {"action":"create_post","content":"🎉 خصم 50% على جميع المنتجات! لا تفوت الفرصة","message":"✅ تم كتابة المنشور"}
+"أضف طلب جديد" → {"action":"new_order","message":"✅ فتح نموذج الطلب"}
+
+أرجع JSON فقط بدون أي نص إضافي.`;
+
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -1583,7 +1592,7 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-4-6',
         max_tokens: 300,
         system: systemPrompt,
         messages: [{ role: 'user', content: text }]
