@@ -1603,24 +1603,31 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
 2. نفذ الأمر فوراً بناءً على فهمك
 3. أرجع JSON فقط
 
-الأوامر:
-- design: تصميم صورة. prompt = وصف بالإنجليزي (ترجم أنت)
-- create_post: إنشاء منشور. content = نص المنشور
-- new_order: طلب جديد
-- new_product: منتج جديد  
-- navigate: انتقال. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
-- generate_content: توليد محتوى. prompt = الموضوع
-- answer: رد نصي. text = الرد
+الأوامر المتاحة:
+- design: تصميم أو توليد صورة. prompt = وصف مفصّل بالإنجليزي (أنت تترجم وتطوّر الوصف ليكون prompt احترافي لـ Flux، أضف دائماً: no text, no letters, no watermark)
+- create_post: إنشاء منشور. content = نص المنشور كاملاً
+- new_order: فتح نموذج طلب جديد
+- new_product: فتح نموذج منتج جديد
+- navigate: انتقال لصفحة. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
+- generate_content: توليد محتوى نصي. prompt = الموضوع
+- answer: رد على سؤال. text = الرد
+
+قواعد الـ design prompt:
+- شعار/لوغو → أضف: "minimal logo design, vector style, no text, no letters, professional"
+- منتج → أضف: "product photography, studio lighting, commercial, no text"
+- بوستر/إعلان → أضف: "advertising poster, professional design, no text, no letters"
+- صورة عامة → أضف: "high quality, professional, detailed, no text, no watermark"
 
 أمثلة:
-"صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, elegant living room furniture, professional photography, dark background","message":"🎨 جاري تصميم الكنب الفاخر..."}
-"صمم شعار لمتجر عطور" → {"action":"design","prompt":"luxury perfume store logo, elegant, gold and black, minimal design","message":"🎨 جاري تصميم الشعار..."}
+"صمم شعار لمتجر عطور فاخر" → {"action":"design","prompt":"luxury perfume store logo, minimal elegant design, gold and black color palette, no text, no letters, professional brand identity, vector style, high quality","message":"🎨 جاري تصميم شعار متجر العطور..."}
+"صمم صورة منتج عطر" → {"action":"design","prompt":"luxury perfume bottle product photography, studio lighting, dark elegant background, golden accents, commercial quality, no text, no watermark, sharp focus","message":"🎨 جاري تصميم صورة العطر..."}
+"صمم بوستر خصم 50%" → {"action":"design","prompt":"professional sale poster, 50% discount promotion, bold modern design, vibrant colors, elegant typography layout, no Arabic text, no letters, commercial advertising","message":"🎨 جاري تصميم البوستر..."}
+"اكتب منشور عن وصول منتج جديد" → {"action":"create_post","content":"🎉 وصل الجديد! منتجنا الجديد متوفر الحين 🔥 لا تفوّت الفرصة","message":"✅ تم كتابة المنشور"}
 "افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
-"كم عدد طلباتي" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
-"اكتب منشور عن خصم 50%" → {"action":"create_post","content":"🎉 خصم 50% على جميع المنتجات! لا تفوت الفرصة","message":"✅ تم كتابة المنشور"}
 "أضف طلب جديد" → {"action":"new_order","message":"✅ فتح نموذج الطلب"}
+"كم مبيعاتي اليوم" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
 
-أرجع JSON فقط بدون أي نص إضافي.`;
+أرجع JSON فقط بدون أي نص إضافي أو شرح.`;
 
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1639,9 +1646,8 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
     });
 
     const aiData = await response.json();
-    console.log('Voice AI response:', JSON.stringify(aiData.content?.[0]?.text?.substring(0,200)));
-    // prefilled with '{' so we prepend it back
-    let rawText = '{' + (aiData.content?.[0]?.text || '"}');
+    let rawText = aiData.content?.[0]?.text || '';
+    
     
     let command;
     try {
@@ -1674,110 +1680,86 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
   }
 });
 
-// ========== GENERATE IMAGE (DALL-E 3 + REPLICATE FALLBACK) ==========
+// ========== GENERATE IMAGE (REPLICATE FLUX) ==========
 app.post('/api/generate-image', authenticateToken, async (req, res) => {
   try {
     let { prompt, width = 1024, height = 1024 } = req.body;
     if (!prompt) return res.status(400).json({ message: 'prompt required' });
 
-    const OPENAI_KEY = process.env.OPENAI_API_KEY;
     const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
-    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'Replicate token not configured' });
 
-    // ========== محاولة DALL-E 3 أولاً (الأفضل للعربي) ==========
-    if (OPENAI_KEY) {
+    // ترجمة وتحسين الـ prompt تلقائياً
+    const hasArabic = /[\u0600-\u06FF]/.test(prompt);
+    if (hasArabic) {
       try {
-        // تحسين الـ prompt بـ Claude أولاً
-        let enhancedPrompt = prompt;
+        const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
         if (ANTHROPIC_KEY) {
-          const enhanceRes = await fetch('https://api.anthropic.com/v1/messages', {
+          const translateRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: 'claude-haiku-4-5-20251001',
-              max_tokens: 300,
-              messages: [{ role: 'user', content: `You are an expert DALL-E 3 prompt engineer.
-The user wants this image (in Arabic or English): "${prompt}"
+              max_tokens: 400,
+              messages: [{ role: 'user', content: `You are an expert AI image generation prompt engineer for Flux image generator.
 
-Rules:
-1. Detect type: شعار/لوغو=LOGO | منتج=PRODUCT | بوستر/إعلان=POSTER | طعام/أكل=FOOD | غرفة/ديكور=INTERIOR | شخص/موديل=PORTRAIT | ملابس=FASHION | طبيعة/منظر=LANDSCAPE | other=GENERAL
-2. Write a detailed English prompt:
-   - LOGO: "minimalist flat vector logo, [subject], clean iconic symbol, white background, no text, no letters"
-   - PRODUCT: "professional product photography, [subject], studio lighting, white background, commercial quality"
-   - POSTER: "professional advertising poster design, [subject], bold modern layout, vibrant colors, no text"
-   - FOOD: "[food name], professional food photography, beautiful styling, soft lighting, appetizing"
-   - INTERIOR: "professional interior design photo, [room type], modern elegant style, natural lighting, beautiful decor"
-   - PORTRAIT: "professional portrait photography, [subject], studio lighting, bokeh background"
-   - FASHION: "professional fashion photography, [clothing], editorial style, high fashion"
-   - LANDSCAPE: "professional landscape photography, [scene], golden hour, cinematic"
-   - GENERAL: "professional high quality image, [subject], detailed, perfect lighting"
-3. End with: "ultra high quality, 8k, professional"
+The user wrote in Arabic: "${prompt}"
 
-Return ONLY the English prompt.` }]
+Your job:
+1. Understand what type of image they want (logo, product, poster, social post, etc.)
+2. Translate and expand into a detailed professional English prompt
+3. Add relevant quality keywords based on type:
+   - Logo/شعار: add "minimal logo design, vector style, clean, professional brand identity, no text, no letters"
+   - Product/منتج: add "professional product photography, studio lighting, commercial quality, sharp focus"
+   - Poster/بوستر: add "professional poster design, vibrant colors, high impact"
+   - Default: add "high quality, professional, detailed"
+4. Always end with: "no text, no letters, no words, no watermark, high quality"
+
+Return ONLY the English prompt, nothing else.` }]
             })
           });
-          const enhanceData = await enhanceRes.json();
-          if (enhanceData.content?.[0]?.text) enhancedPrompt = enhanceData.content[0].text.trim();
+          const translateData = await translateRes.json();
+          if (translateData.content?.[0]?.text) {
+            prompt = translateData.content[0].text.trim();
+            if (!prompt.toLowerCase().includes('no text')) {
+              prompt += ', no text, no letters, no words, no watermark';
+            }
+          }
         }
-
-        const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'dall-e-3',
-            prompt: enhancedPrompt,
-            n: 1,
-            size: width === height ? '1024x1024' : width > height ? '1792x1024' : '1024x1792',
-            quality: 'standard',
-            response_format: 'url'
-          })
-        });
-        const dalleData = await dalleRes.json();
-        if (dalleData.data?.[0]?.url) {
-          return res.json({ success: true, image_url: dalleData.data[0].url, model: 'dall-e-3' });
-        }
-        console.log('DALL-E 3 failed:', JSON.stringify(dalleData));
-      } catch(e) { console.log('DALL-E 3 error:', e.message); }
-    }
-
-    // ========== Fallback: Replicate Flux ==========
-    if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'لا يوجد OPENAI_API_KEY أو REPLICATE_API_TOKEN' });
-
-    // ترجمة للإنجليزي إذا عربي
-    const hasArabic = /[\u0600-\u06FF]/.test(prompt);
-    if (hasArabic && ANTHROPIC_KEY) {
-      try {
-        const trRes = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001', max_tokens: 200,
-            messages: [{ role: 'user', content: `Translate to English for image generator, detect type and add quality keywords. Return prompt only: ${prompt}` }]
-          })
-        });
-        const trData = await trRes.json();
-        if (trData.content?.[0]?.text) prompt = trData.content[0].text.trim() + ', no text, no watermark';
-      } catch(e) {}
+      } catch(e) {
+        console.log('Translation failed, using original');
+        prompt = prompt + ', no text, no letters, no watermark';
+      }
+    } else {
+      if (!prompt.toLowerCase().includes('no text')) {
+        prompt += ', no text, no letters, no watermark';
+      }
     }
 
     const https = require('https');
     const body = JSON.stringify({
       input: { prompt, width: parseInt(width), height: parseInt(height), num_outputs: 1, num_inference_steps: 4, output_format: 'jpg', output_quality: 90 }
     });
+
     const makeRequest = (url, options, postData) => new Promise((resolve, reject) => {
       const req = https.request(url, options, (r) => {
-        let data = ''; r.on('data', c => data += c);
+        let data = '';
+        r.on('data', chunk => data += chunk);
         r.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
       });
       req.on('error', reject);
       if (postData) req.write(postData);
       req.end();
     });
+
+    // Create prediction
     let prediction = await makeRequest(
       'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions',
       { method: 'POST', headers: { 'Authorization': `Bearer ${REPLICATE_TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait' } },
       body
     );
+
+    // Poll if not done
     let attempts = 0;
     while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < 30) {
       await new Promise(r => setTimeout(r, 1500));
@@ -1786,10 +1768,12 @@ Return ONLY the English prompt.` }]
       });
       attempts++;
     }
+
     if (prediction.status === 'succeeded' && prediction.output?.[0]) {
-      return res.json({ success: true, image_url: prediction.output[0], model: 'flux' });
+      res.json({ success: true, image_url: prediction.output[0] });
+    } else {
+      res.status(500).json({ success: false, message: prediction.error || 'فشل التوليد' });
     }
-    res.status(500).json({ success: false, message: prediction.error || 'فشل التوليد' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
