@@ -1651,27 +1651,18 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
       if(!command || !command.action) throw new Error('no action');
     } catch(e) {
       // Smart fallback based on user text
-      const designKeywords = /صمم|تصميم|صورة|ارسم|اعمل صورة|ولد صورة|شعار|لوغو|بوستر|إعلان|اعلان|منظر|طعام|أكل|اكل|ديكور|موضة|مودل|شخص/;
-      if(designKeywords.test(text)) {
-        // أرسل الـ prompt العربي كما هو — السيرفر سيترجمه ويحسنه
-        const imageDesc = text.replace(/صمم لي|صمم|اعمل لي|اعمل|ولد|ارسم|تصميم/g,'').trim();
-        const msg = text.includes('شعار') || text.includes('لوغو') ? '🎨 جاري تصميم الشعار...' :
-                    text.includes('بوستر') || text.includes('إعلان') || text.includes('اعلان') ? '🎨 جاري تصميم البوستر...' :
-                    text.includes('منتج') || text.includes('صورة منتج') ? '🎨 جاري تصميم صورة المنتج...' :
-                    '🎨 جاري توليد الصورة...';
-        command = { action: 'design', prompt: imageDesc || text, message: msg };
-      } else if(/منشور|انشر|اكتب/.test(text)) {
-        command = { action: 'create_post', content: text.replace(/اكتب منشور عن|منشور عن|انشر|اكتب/g,'').trim(), message: '✅ تم كتابة المنشور' };
-      } else if(/طلب جديد|أضف طلب|اضف طلب/.test(text)) {
+      if(/صمم|تصميم|صورة/.test(text)) {
+        // Keep original Arabic text - server will translate it
+        const imageDesc = text.replace(/صمم لي صورة|صمم لي|صمم|اعمل لي صورة|اعمل صورة|ولد صورة|تصميم صورة عن|تصميم صورة/g,'').trim();
+        command = { action: 'design', prompt: imageDesc || text, message: '🎨 جاري التصميم...' };
+      } else if(/منشور|انشر/.test(text)) {
+        command = { action: 'create_post', content: text.replace(/اكتب منشور عن|منشور عن|انشر/g,'').trim(), message: '✅ تم كتابة المنشور' };
+      } else if(/طلب/.test(text)) {
         command = { action: 'new_order', message: '✅ فتح نموذج الطلب' };
-      } else if(/منتج جديد|أضف منتج|اضف منتج/.test(text)) {
+      } else if(/منتج/.test(text)) {
         command = { action: 'new_product', message: '✅ فتح نموذج المنتج' };
-      } else if(/تحليل|إحصائيات|احصائيات|مبيعات|إيرادات/.test(text)) {
-        command = { action: 'navigate', page: 'analytics', message: '✅ جاري فتح التحليلات' };
-      } else if(/الطلبات|طلباتي/.test(text)) {
-        command = { action: 'navigate', page: 'orders', message: '✅ جاري فتح الطلبات' };
-      } else if(/العملاء|عملائي/.test(text)) {
-        command = { action: 'navigate', page: 'customers', message: '✅ جاري فتح العملاء' };
+      } else if(/تحليل|إحصائيات/.test(text)) {
+        command = { action: 'navigate', page: 'analytics', message: '✅ فتح التحليلات' };
       } else {
         command = { action: 'navigate', page: 'ai', message: '✅ تم الفتح' };
       }
@@ -1704,40 +1695,43 @@ app.post('/api/generate-image', authenticateToken, async (req, res) => {
             body: JSON.stringify({
               model: 'claude-haiku-4-5-20251001',
               max_tokens: 300,
-              messages: [{ role: 'user', content: `You are an expert Flux AI image generation prompt engineer. Your job is to convert any Arabic request into a perfect English prompt.
+              messages: [{ role: 'user', content: `You are an expert Flux AI image generation prompt engineer. Convert any Arabic request into a perfect English prompt.
 
-User request in Arabic: "${prompt}"
+User request: "${prompt}"
 
-Step 1 - Identify what the user wants by keywords:
-- شعار / لوغو / علامة تجارية → LOGO
-- منتج / صورة منتج / عرض منتج → PRODUCT PHOTO
-- بوستر / إعلان / تصميم ترويجي / خصم / عرض → ADVERTISING POSTER
-- طعام / أكل / مطعم / وجبة / برغر / بيتزا → FOOD PHOTOGRAPHY
-- شخص / موديل / صورة شخصية → PORTRAIT
-- ديكور / غرفة / منزل / أثاث → INTERIOR DESIGN
-- طبيعة / منظر / مكان → LANDSCAPE
-- ملابس / فستان / موضة → FASHION PHOTOGRAPHY
-- أي شيء آخر → GENERAL CREATIVE IMAGE
+Step 1 - Identify type from keywords:
+- شعار/لوغو/علامة → LOGO
+- منتج/صورة منتج → PRODUCT PHOTO
+- بوستر/إعلان/خصم/عرض → ADVERTISING POSTER
+- طعام/أكل/مطعم/برغر/بيتزا/وجبة → FOOD PHOTOGRAPHY
+- غرفة/ديكور/منزل/أثاث/غرفة نوم/صالة → INTERIOR DESIGN
+- شخص/موديل/صورة شخصية → PORTRAIT
+- ملابس/فستان/موضة/أزياء → FASHION PHOTOGRAPHY
+- طبيعة/منظر/شاطئ/جبل → LANDSCAPE
+- أي شيء آخر → GENERAL
 
-Step 2 - Build the perfect prompt based on type:
-- LOGO → "flat 2D vector logo, [subject], minimal iconic design, clean lines, professional brand mark, solid white background, no text, no letters, no words, no typography, symbol only"
-- PRODUCT PHOTO → "professional commercial product photography, [subject], studio setup, soft box lighting, clean white or gradient background, sharp focus, high detail, commercial quality, no text"
-- ADVERTISING POSTER → "professional advertising poster design, [subject and offer], bold layout, vibrant colors, modern graphic design style, commercial quality, no Arabic text, no letters"
-- FOOD PHOTOGRAPHY → "[food item], professional food photography, styled plating, soft natural lighting, shallow depth of field, appetizing, restaurant quality, no text"
-- PORTRAIT → "professional portrait photography, [description], studio lighting, bokeh background, high quality, no text"
-- INTERIOR DESIGN → "professional interior design photography, [room type], [style], natural lighting, architectural photography, no text"
-- LANDSCAPE → "professional landscape photography, [scene], golden hour lighting, high resolution, cinematic, no text"
-- FASHION PHOTOGRAPHY → "professional fashion photography, [clothing item], editorial style, studio or outdoor, high fashion, no text"
-- GENERAL → "professional high quality image, [description], detailed, perfect composition, no text, no watermark"
+Step 2 - Build prompt by type:
+- LOGO → "flat 2D vector logo mark, [subject], minimal iconic symbol, clean lines, solid white background, no text, no letters, no words, professional brand mark only"
+- PRODUCT PHOTO → "professional commercial product photography, [subject], studio lighting, clean white background, sharp focus, high detail, commercial quality, no text"
+- ADVERTISING POSTER → "professional advertising poster, [subject], bold modern layout, vibrant colors, commercial design, no text, no letters"
+- FOOD PHOTOGRAPHY → "[food], professional food photography, beautiful plating, soft lighting, appetizing, restaurant quality, no text"
+- INTERIOR DESIGN → "professional interior design photography, [room], modern style, natural lighting, architectural photography, beautiful furniture, no text"
+- PORTRAIT → "professional portrait photo, [person], studio lighting, bokeh background, high quality, no text"
+- FASHION PHOTOGRAPHY → "professional fashion editorial, [clothing], studio or outdoor, high fashion photography, no text"
+- LANDSCAPE → "professional landscape photography, [scene], golden hour, cinematic, high resolution, no text"
+- GENERAL → "professional high quality image, [description], perfect composition, detailed, no text, no watermark"
 
-Step 3 - Always end with: "no text, no letters, no numbers, no watermark, ultra high quality, 8k"
+Step 3 - Always end with: "no text, no letters, no numbers, no watermark, ultra high quality"
 
-Return ONLY the final English prompt. Nothing else. No explanation. No intro.` }]
+Return ONLY the final English prompt. Nothing else.` }]
             })
           });
           const translateData = await translateRes.json();
           if (translateData.content?.[0]?.text) {
-            prompt = translateData.content[0].text.trim() + ', no text, no words, no letters, no watermark';
+            prompt = translateData.content[0].text.trim();
+            if (!prompt.toLowerCase().includes('no text')) {
+              prompt += ', no text, no letters, no words, no watermark';
+            }
           }
         }
       } catch(e) { console.log('Translation failed, using original prompt'); }
@@ -1745,7 +1739,7 @@ Return ONLY the final English prompt. Nothing else. No explanation. No intro.` }
 
     const https = require('https');
     const body = JSON.stringify({
-      input: { prompt, width: parseInt(width), height: parseInt(height), num_outputs: 1, num_inference_steps: 4, output_format: 'jpg', output_quality: 90 }
+      input: { prompt, width: parseInt(width), height: parseInt(height), num_outputs: 1, num_inference_steps: 28, output_format: 'jpg', output_quality: 90 }
     });
 
     const makeRequest = (url, options, postData) => new Promise((resolve, reject) => {
@@ -1761,7 +1755,7 @@ Return ONLY the final English prompt. Nothing else. No explanation. No intro.` }
 
     // Create prediction
     let prediction = await makeRequest(
-      'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions',
+      'https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions',
       { method: 'POST', headers: { 'Authorization': `Bearer ${REPLICATE_TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait' } },
       body
     );
