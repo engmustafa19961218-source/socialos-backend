@@ -77,25 +77,81 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
 /* DASHBOARD */
 #dashboard{display:none;min-height:100vh;}
-.sidebar{position:fixed;right:0;top:0;width:260px;height:100vh;background:var(--surface);border-left:1px solid var(--border);padding:24px 0;display:flex;flex-direction:column;z-index:100;overflow-y:auto;backdrop-filter:blur(20px);}
-.sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-.sidebar-logo h2{font-size:1.5rem;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px;}
-.sidebar-logo p{color:var(--text2);font-size:.75rem;}
-.nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;color:var(--text2);font-size:.88rem;font-weight:600;transition:all .2s;border-right:3px solid transparent;margin:1px 8px;border-radius:10px;}
-.nav-item:hover{color:var(--text);background:rgba(79,142,247,.08);}
-.nav-item.active{color:var(--accent);border-right-color:var(--accent);background:rgba(79,142,247,.12);}
-.nav-item .icon{font-size:1.1rem;width:22px;text-align:center;}
-.nav-section{padding:12px 28px 4px;font-size:.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:2.5px;font-weight:800;margin-top:4px;opacity:.6;}
-.sidebar-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);}
-.user-info{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#00ccff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#000;overflow:hidden;}
+/* ===== TOP BAR ===== */
+.topbar{position:fixed;top:0;right:0;left:0;height:52px;background:rgba(8,11,20,.95);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);display:flex;align-items:center;gap:0;z-index:200;}
+.topbar-logo{display:flex;align-items:center;gap:10px;padding:0 16px;width:220px;border-left:1px solid var(--border);height:100%;}
+.topbar-logo h2{font-size:1.1rem;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.topbar-nav{display:flex;align-items:center;flex:1;height:100%;overflow-x:auto;scrollbar-width:none;}
+.topbar-nav::-webkit-scrollbar{display:none;}
+.topbar-group{display:flex;align-items:center;height:100%;border-left:1px solid var(--border);padding:0 4px;}
+.topbar-group-label{font-size:.6rem;color:var(--text2);opacity:.5;padding:0 8px;white-space:nowrap;display:none;}
+.topbar-item{display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;color:var(--text2);font-size:.8rem;font-weight:600;transition:all .15s;border-radius:6px;white-space:nowrap;border:none;background:transparent;font-family:'Tajawal',sans-serif;height:36px;}
+.topbar-item:hover{color:var(--text);background:rgba(79,142,247,.08);}
+.topbar-item.active{color:var(--accent);background:rgba(79,142,247,.12);}
+.topbar-item .icon{font-size:.95rem;}
+.topbar-right{display:flex;align-items:center;gap:8px;padding:0 12px;margin-right:auto;border-right:1px solid var(--border);}
+
+/* ===== MIC BUTTON (الزر الرئيسي) ===== */
+.mic-main-btn{
+  width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+  transition:all .3s;position:relative;flex-shrink:0;
+}
+.mic-main-btn.idle{
+  background:linear-gradient(135deg,var(--accent2),#a855f7);
+  box-shadow:0 0 0 0 rgba(124,58,237,.4);
+}
+.mic-main-btn.idle:hover{
+  transform:scale(1.1);
+  box-shadow:0 0 20px rgba(124,58,237,.5);
+}
+.mic-main-btn.listening{
+  background:linear-gradient(135deg,var(--danger),#ff6b88);
+  box-shadow:0 0 0 0 rgba(255,68,102,.4);
+  animation:micPulse 1s infinite;
+}
+.mic-main-btn.processing{
+  background:linear-gradient(135deg,var(--accent3),#fbbf24);
+}
+@keyframes micPulse{
+  0%{box-shadow:0 0 0 0 rgba(255,68,102,.6)}
+  70%{box-shadow:0 0 0 12px rgba(255,68,102,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,68,102,0)}
+}
+
+/* ===== NOTIF BADGE ===== */
+.notif-btn{position:relative;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:var(--text2);transition:all .2s;}
+.notif-btn:hover{border-color:var(--accent);color:var(--accent);}
+.notif-badge{position:absolute;top:-4px;left:-4px;width:16px;height:16px;background:var(--danger);border-radius:50%;font-size:.55rem;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center;}
+
+/* ===== USER PILL ===== */
+.user-pill{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;transition:all .2s;}
+.user-pill:hover{border-color:var(--accent);}
+.user-avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#00ccff);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;color:#000;overflow:hidden;flex-shrink:0;}
 .user-avatar img{width:100%;height:100%;object-fit:cover;}
-.user-name{font-size:.85rem;font-weight:700;}
-.user-plan{font-size:.7rem;color:var(--text2);}
-.plan-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:700;background:rgba(0,255,136,.15);color:var(--accent);}
-.btn-logout{width:100%;padding:8px;background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.2);border-radius:8px;color:var(--danger);cursor:pointer;font-family:'Tajawal',sans-serif;font-size:.85rem;font-weight:600;transition:all .2s;}
-.btn-logout:hover{background:rgba(255,68,102,.2);}
-.main-content{margin-right:260px;padding:32px 36px;min-height:100vh;}
+.user-name{font-size:.78rem;font-weight:700;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.plan-badge{display:inline-block;padding:1px 6px;border-radius:20px;font-size:.55rem;font-weight:700;background:rgba(0,255,136,.15);color:var(--accent);}
+
+/* ===== SIDEBAR (hidden on desktop, drawer on mobile) ===== */
+.sidebar{display:none;}
+.sidebar-logo,.sidebar-bottom,.nav-section,.nav-item,.btn-logout{display:none;}
+.user-plan{display:none;}
+
+/* ===== MAIN CONTENT ===== */
+.main-content{margin-right:0;padding:24px 32px;min-height:100vh;padding-top:76px;}
+
+/* ===== MIC POPUP ===== */
+.mic-popup{
+  position:fixed;top:60px;left:50%;transform:translateX(-50%) scale(.95);
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:20px 24px;width:90%;max-width:440px;z-index:500;
+  display:none;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  transition:all .2s;
+}
+.mic-popup.show{display:block;transform:translateX(-50%) scale(1);}
+.mic-popup-status{text-align:center;font-size:.85rem;color:var(--text2);margin-bottom:10px;}
+.mic-popup-transcript{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.9rem;min-height:44px;line-height:1.5;}
+.mic-popup-response{background:rgba(79,142,247,.06);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:12px;font-size:.85rem;margin-top:8px;display:none;line-height:1.5;}
 
 /* PAGES */
 .page{display:none;animation:fadeIn .3s ease;}
@@ -283,14 +339,19 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
 /* RESPONSIVE */
 @media(max-width:768px){
-  .sidebar{width:100%;height:auto;position:fixed;bottom:0;top:auto;flex-direction:row;padding:0;border-left:none;border-top:1px solid var(--border);}
-  .sidebar-logo,.sidebar-bottom,.nav-section{display:none;}
-  .nav-item{flex:1;flex-direction:column;padding:10px 8px;font-size:.6rem;gap:4px;border-right:none;border-top:3px solid transparent;text-align:center;}
-  .nav-item.active{border-top-color:var(--accent);border-right:none;}
-  .nav-item .icon{font-size:1.3rem;width:auto;}
-  .main-content{margin-right:0;padding:20px 16px;padding-bottom:90px;}
+  .topbar-group{padding:0 2px;}
+  .topbar-item{padding:6px 8px;font-size:.75rem;}
+  .topbar-item span:not(.icon){display:none;}
+  .topbar-logo{width:auto;padding:0 12px;}
+  .topbar-logo h2{font-size:1rem;}
+  .main-content{padding:16px 14px;padding-top:68px;}
   .stats-grid,.grid-2{grid-template-columns:1fr 1fr;}
   .plans-grid{grid-template-columns:1fr;}
+  .user-name{display:none;}
+}
+@media(max-width:480px){
+  .topbar-item{padding:4px 6px;font-size:.7rem;}
+  .topbar-group{border:none;}
 }
 </style>
 </head>
@@ -354,79 +415,141 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
 <!-- DASHBOARD -->
 <div id="dashboard">
-  <nav class="sidebar">
-    <div class="sidebar-logo">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h2>SocialOS ⚡</h2>
-        <button onclick="showPage('notifications',this)" style="background:none;border:none;cursor:pointer;position:relative;padding:4px">
-          <span style="font-size:1.3rem">🔔</span>
-          <span id="notif-badge" style="display:none;position:absolute;top:0;right:0;background:var(--danger);color:#fff;border-radius:50%;width:16px;height:16px;font-size:.6rem;display:flex;align-items:center;justify-content:center;font-weight:700" id="notif-count">0</span>
-        </button>
-      </div>
-      <p id="sidebar-greeting">مرحباً</p>
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <span style="font-size:1.3rem">⚡</span>
+      <h2>SocialOS</h2>
     </div>
-        <div class="nav-section">الرئيسية</div>
-    <div class="nav-item active" onclick="showPage('home',this)"><span class="icon">⚡</span> لوحة التحكم</div>
-    <div class="nav-item" onclick="showPage('analytics',this)"><span class="icon">📊</span> التحليلات المتقدمة</div>
-    <div class="nav-item" onclick="showPage('notifications',this)"><span class="icon">🔔</span> الإشعارات</div>
-    <div class="nav-section">الذكاء الاصطناعي</div>
-    <div class="nav-item" onclick="showPage('agent',this)"><span class="icon">🧠</span> AI Agent</div>
-    <div class="nav-item" onclick="showPage('voice',this)"><span class="icon">🎤</span> التحكم الصوتي</div>
-    <div class="nav-item" onclick="showPage('ai',this)"><span class="icon">🤖</span> توليد المحتوى</div>
-    <div class="nav-item" onclick="showPage('design',this)"><span class="icon">🎨</span> تصميم الصور</div>
-    <div class="nav-section">النشر والمحتوى</div>
-    <div class="nav-item" onclick="showPage('create',this)"><span class="icon">✨</span> إنشاء منشور</div>
-    <div class="nav-item" onclick="showPage('schedule',this)"><span class="icon">📅</span> الجدولة</div>
-    <div class="nav-item" onclick="showPage('posts',this)"><span class="icon">📝</span> المنشورات</div>
-    <div class="nav-item" onclick="showPage('accounts',this)"><span class="icon">🔗</span> ربط الحسابات</div>
-    <div class="nav-section">المبيعات</div>
-    <div class="nav-item" onclick="showPage('orders',this)"><span class="icon">🛒</span> الطلبات</div>
-    <div class="nav-item" onclick="showPage('products',this)"><span class="icon">📦</span> المنتجات</div>
-    <div class="nav-item" onclick="showPage('customers',this)"><span class="icon">👥</span> العملاء</div>
-    <div class="nav-item" onclick="showPage('crm',this)"><span class="icon">📇</span> CRM</div>
-    <div class="nav-item" onclick="showPage('messages',this)"><span class="icon">💬</span> الرسائل</div>
-    <div class="nav-item" onclick="showPage('templates',this)"><span class="icon">📋</span> قوالب الردود</div>
-    <div class="nav-item" onclick="showPage('report',this)"><span class="icon">📈</span> التقرير الأسبوعي</div>
-    <div class="nav-item" onclick="showPage('inventory',this)"><span class="icon">📉</span> المخزون</div>
-    <div class="nav-item" onclick="showPage('team',this)"><span class="icon">👨‍💼</span> الفريق</div>
-    <div class="nav-section">الإعدادات</div>
-    <div class="nav-item" onclick="showPage('profile',this)"><span class="icon">👤</span> البروفايل</div>
-    <div class="nav-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span> الإعدادات</div>
-    <div class="nav-item" onclick="showPage('security',this)"><span class="icon">🔐</span> الأمان</div>
-    <div class="nav-item" onclick="showPage('marketplace',this)"><span class="icon">🛒</span> متجري العام</div>
-    <div class="nav-item" onclick="showPage('subscription',this)"><span class="icon">⭐</span> الاشتراك</div>
-    <div class="sidebar-bottom">
-      <div class="user-info">
+
+    <nav class="topbar-nav">
+      <!-- الرئيسية -->
+      <div class="topbar-group">
+        <button class="topbar-item active" onclick="showPage('home',this)"><span class="icon">🏠</span><span>الرئيسية</span></button>
+        <button class="topbar-item" onclick="showPage('notifications',this)"><span class="icon">🔔</span><span>الإشعارات</span></button>
+      </div>
+
+      <!-- المبيعات -->
+      <div class="topbar-group">
+        <button class="topbar-item" onclick="showPage('orders',this)"><span class="icon">🛒</span><span>الطلبات</span></button>
+        <button class="topbar-item" onclick="showPage('customers',this)"><span class="icon">👥</span><span>العملاء</span></button>
+        <button class="topbar-item" onclick="showPage('crm',this)"><span class="icon">📇</span><span>CRM</span></button>
+        <button class="topbar-item" onclick="showPage('messages',this)"><span class="icon">💬</span><span>الرسائل</span></button>
+      </div>
+
+      <!-- المتجر -->
+      <div class="topbar-group">
+        <button class="topbar-item" onclick="showPage('products',this)"><span class="icon">📦</span><span>المنتجات</span></button>
+        <button class="topbar-item" onclick="showPage('inventory',this)"><span class="icon">📉</span><span>المخزون</span></button>
+        <button class="topbar-item" onclick="showPage('marketplace',this)"><span class="icon">🏪</span><span>متجري</span></button>
+      </div>
+
+      <!-- التسويق -->
+      <div class="topbar-group">
+        <button class="topbar-item" onclick="showPage('create',this)"><span class="icon">✨</span><span>إنشاء</span></button>
+        <button class="topbar-item" onclick="showPage('schedule',this)"><span class="icon">📅</span><span>الجدولة</span></button>
+        <button class="topbar-item" onclick="showPage('accounts',this)"><span class="icon">🔗</span><span>الحسابات</span></button>
+      </div>
+
+      <!-- الذكاء الاصطناعي -->
+      <div class="topbar-group">
+        <button class="topbar-item" onclick="showPage('agent',this)"><span class="icon">🧠</span><span>Agent</span></button>
+        <button class="topbar-item" onclick="showPage('ai',this)"><span class="icon">🤖</span><span>المحتوى</span></button>
+        <button class="topbar-item" onclick="showPage('design',this)"><span class="icon">🎨</span><span>التصميم</span></button>
+      </div>
+
+      <!-- التقارير -->
+      <div class="topbar-group">
+        <button class="topbar-item" onclick="showPage('analytics',this)"><span class="icon">📊</span><span>التحليلات</span></button>
+        <button class="topbar-item" onclick="showPage('report',this)"><span class="icon">📈</span><span>التقارير</span></button>
+      </div>
+
+      <!-- الإدارة -->
+      <div class="topbar-group">
+        <button class="topbar-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span><span>الإعدادات</span></button>
+        <button class="topbar-item" onclick="showPage('team',this)"><span class="icon">👨‍💼</span><span>الفريق</span></button>
+        <button class="topbar-item" onclick="showPage('security',this)"><span class="icon">🔐</span><span>الأمان</span></button>
+        <button class="topbar-item" onclick="showPage('subscription',this)"><span class="icon">⭐</span><span>الاشتراك</span></button>
+      </div>
+    </nav>
+
+    <!-- الجانب الأيمن -->
+    <div class="topbar-right">
+      <!-- زر الميكروفون الرئيسي -->
+      <button class="mic-main-btn idle" id="mic-main-btn" onclick="toggleMainMic()" title="التحكم الصوتي">🎤</button>
+
+      <!-- الإشعارات -->
+      <button class="notif-btn" onclick="showPage('notifications',document.querySelector('[onclick*=notifications]'))">
+        🔔
+        <span class="notif-badge" id="notif-count" style="display:none">0</span>
+      </button>
+
+      <!-- المستخدم -->
+      <div class="user-pill" onclick="showPage('profile',document.querySelector('[onclick*=profile]'))">
         <div class="user-avatar" id="user-avatar">U</div>
-        <div><div class="user-name" id="user-name-2">المستخدم</div><div class="user-plan"><span class="plan-badge" id="plan-badge">تجريبي</span></div></div>
+        <span class="user-name" id="user-name-2">المستخدم</span>
+        <span class="plan-badge" id="plan-badge">تجريبي</span>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <button onclick="switchLang('ar')" id="lang-ar" class="btn btn-outline btn-sm" style="flex:1;font-size:.75rem">عربي</button>
-        <button onclick="switchLang('en')" id="lang-en" class="btn btn-outline btn-sm" style="flex:1;font-size:.75rem">EN</button>
-        <button onclick="switchLang('ku')" id="lang-ku" class="btn btn-outline btn-sm" style="flex:1;font-size:.75rem">کوردی</button>
-      </div>
-      <button class="btn-logout" onclick="logout()">تسجيل الخروج</button>
+
+      <!-- خروج -->
+      <button onclick="logout()" style="padding:4px 10px;background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.2);border-radius:6px;color:var(--danger);cursor:pointer;font-size:.75rem;font-family:Tajawal,sans-serif;font-weight:700">خروج</button>
     </div>
-  </nav>
+  </header>
+
+  <!-- MIC POPUP -->
+  <div class="mic-popup" id="mic-popup">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font-weight:700;font-size:.9rem">🎤 التحكم الصوتي</span>
+      <button onclick="closeMicPopup()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.1rem">✕</button>
+    </div>
+    <div class="mic-popup-status" id="mic-popup-status">اضغط واتكلم بأي أمر...</div>
+    <div class="mic-popup-transcript" id="mic-popup-transcript" style="display:none"></div>
+    <div class="mic-popup-response" id="mic-popup-response"></div>
+    <div style="margin-top:12px;font-size:.75rem;color:var(--text2);line-height:1.8">
+      <strong style="color:var(--accent)">أمثلة:</strong><br>
+      "صمم شعار لمتجر ملابس" · "اكتب منشور عن خصم" · "افتح الطلبات" · "أضف طلب جديد"
+    </div>
+  </div>
+
+  <!-- INVISIBLE OLD SIDEBAR (للتوافق مع الكود القديم) -->
+  <nav class="sidebar" style="display:none">
+    <div class="sidebar-logo"><h2>SocialOS</h2><p id="sidebar-greeting">مرحباً</p></div></nav>
 
   <main class="main-content">
 
     <!-- HOME -->
     <div class="page active" id="page-home">
-      <div class="page-header"><h1 id="home-greeting">مرحباً! 👋</h1><p>إليك ملخص نشاطك اليوم</p></div>
-      <div class="stats-grid">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <div>
+          <h1 id="home-greeting" style="font-size:1.6rem;font-weight:900;letter-spacing:-.5px">مرحباً! 👋</h1>
+          <p style="color:var(--text2);font-size:.85rem;margin-top:4px">إليك ملخص نشاطك اليوم</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-accent" onclick="showPage('create',document.querySelector('[onclick*=create]'))" style="padding:9px 16px;font-size:.85rem">✨ إنشاء منشور</button>
+          <button class="btn btn-outline" onclick="openOrderModal()" style="padding:9px 16px;font-size:.85rem">🛒 طلب جديد</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" style="margin-bottom:24px">
         <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="stat-posts">-</div><div class="stat-label">المنشورات</div></div>
         <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value" id="stat-orders">-</div><div class="stat-label">الطلبات</div></div>
         <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-value" id="stat-messages">-</div><div class="stat-label">الرسائل</div></div>
-        <div class="stat-card"><div class="stat-icon">🌐</div><div class="stat-value"><span class="status-badge"><span class="status-dot"></span>نشط</span></div><div class="stat-label">حالة السيرفر</div></div>
+        <div class="stat-card"><div class="stat-icon">🌐</div><div class="stat-value"><span class="status-badge"><span class="status-dot"></span>نشط</span></div><div class="stat-label">السيرفر</div></div>
       </div>
+
+      <!-- Quick Actions + Accounts -->
       <div class="grid-2">
         <div class="card">
-          <h3>🚀 إجراءات سريعة</h3>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <button class="btn btn-accent" onclick="showPage('create',document.querySelector('[onclick*=create]'))">✨ إنشاء منشور</button>
-            <button class="btn btn-outline" onclick="showPage('voice',document.querySelector('[onclick*=voice]'))">🎤 تحكم صوتي</button>
-            <button class="btn btn-outline" onclick="showPage('orders',document.querySelector('[onclick*=orders]'))">🛒 إضافة طلب</button>
+          <h3>⚡ إجراءات سريعة</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="btn btn-accent" onclick="showPage('create',document.querySelector('[onclick*=create]'))" style="font-size:.82rem;padding:10px">✨ منشور</button>
+            <button class="btn btn-outline" onclick="toggleMainMic()" style="font-size:.82rem;padding:10px">🎤 صوتي</button>
+            <button class="btn btn-outline" onclick="openOrderModal()" style="font-size:.82rem;padding:10px">🛒 طلب</button>
+            <button class="btn btn-outline" onclick="showPage('agent',document.querySelector('[onclick*=agent]'))" style="font-size:.82rem;padding:10px">🧠 Agent</button>
+            <button class="btn btn-outline" onclick="showPage('design',document.querySelector('[onclick*=design]'))" style="font-size:.82rem;padding:10px">🎨 تصميم</button>
+            <button class="btn btn-outline" onclick="showPage('analytics',document.querySelector('[onclick*=analytics]'))" style="font-size:.82rem;padding:10px">📊 تحليلات</button>
           </div>
         </div>
         <div class="card">
@@ -1583,10 +1706,15 @@ function logout(){localStorage.clear();currentUser=null;token=null;document.getE
 // ─── NAVIGATION ───
 function showPage(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  if(el)el.classList.add('active');
-  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport,settings:loadSettings,agent:loadAgent,design:loadDesign,products:loadProducts,security:loadSecurity,team:loadTeam,inventory:loadInventory,crm:loadCRM,marketplace:loadMarketplace};
+  document.querySelectorAll('.nav-item,.topbar-item').forEach(n=>n.classList.remove('active'));
+  const page = document.getElementById('page-'+name);
+  if(page) page.classList.add('active');
+  if(el) el.classList.add('active');
+  // تحديث الـ topbar item المناسب
+  document.querySelectorAll('.topbar-item').forEach(btn=>{
+    if(btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'"+name+"'")) btn.classList.add('active');
+  });
+  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport,settings:loadSettings,agent:loadAgent,design:loadDesign,products:loadProducts,security:loadSecurity,team:loadTeam,inventory:loadInventory,crm:loadCRM,marketplace:loadMarketplace,voice:()=>{}};
   if(loaders[name])loaders[name]();
 }
 
@@ -1803,16 +1931,53 @@ function initVoice(){
     recognition.interimResults=false;
     recognition.onresult=async(e)=>{
       const transcript=e.results[0][0].transcript;
-      document.getElementById('voice-transcript').textContent=transcript;
-      document.getElementById('voice-transcript').style.display='block';
-      document.getElementById('voice-status').textContent='جاري المعالجة...';
+      // تحديث الـ voice page القديمة
+      const vt=document.getElementById('voice-transcript');
+      const vs=document.getElementById('voice-status');
+      if(vt){vt.textContent=transcript;vt.style.display='block';}
+      if(vs)vs.textContent='جاري المعالجة...';
       setVoiceState('processing');
+      // تحديث الـ mic popup
+      setMicState('processing');
+      const pt=document.getElementById('mic-popup-transcript');
+      if(pt){pt.textContent=transcript;pt.style.display='block';}
       await processVoiceCommand(transcript);
       setVoiceState('idle');
+      setMicState('idle');
     };
-    recognition.onerror=()=>{setVoiceState('idle');showToast('❌ تعذر التعرف على الصوت');};
-    recognition.onend=()=>{if(isListening){isListening=false;setVoiceState('idle');}};
+    recognition.onerror=()=>{
+      setVoiceState('idle');setMicState('idle');
+      showToast('❌ تعذر التعرف على الصوت');
+    };
+    recognition.onend=()=>{
+      if(isListening){isListening=false;setVoiceState('idle');setMicState('idle');}
+    };
   }
+}
+
+// ─── الميكروفون الرئيسي في الـ topbar ───
+function toggleMainMic(){
+  const popup=document.getElementById('mic-popup');
+  if(!popup.classList.contains('show')){
+    popup.classList.add('show');
+  }
+  toggleVoice();
+}
+
+function closeMicPopup(){
+  document.getElementById('mic-popup').classList.remove('show');
+  if(isListening){recognition.stop();isListening=false;}
+  setMicState('idle');
+}
+
+function setMicState(state){
+  const btn=document.getElementById('mic-main-btn');
+  const status=document.getElementById('mic-popup-status');
+  if(!btn)return;
+  btn.className='mic-main-btn '+state;
+  if(state==='idle'){btn.textContent='🎤';if(status)status.textContent='اضغط واتكلم بأي أمر...';}
+  else if(state==='listening'){btn.textContent='⏹';if(status)status.textContent='🔴 جاري الاستماع...';}
+  else if(state==='processing'){btn.textContent='⏳';if(status)status.textContent='⏳ جاري التنفيذ...';}
 }
 
 function setVoiceState(state){
@@ -1831,22 +1996,30 @@ function toggleVoice(){
 }
 
 async function processVoiceCommand(text){
+  // تحديث الـ voice page
   const responseEl=document.getElementById('voice-response');
-  responseEl.style.display='block';
-  responseEl.textContent='🧠 Claude يفهم أمرك...';
+  if(responseEl){responseEl.style.display='block';responseEl.textContent='🧠 جاري التنفيذ...';}
+  // تحديث الـ mic popup
+  const popupResp=document.getElementById('mic-popup-response');
+  if(popupResp){popupResp.style.display='block';popupResp.textContent='🧠 Claude يفهم أمرك...';}
 
   try{
-    // إرسال للـ Claude API ليفهم الأمر ويحدد الإجراء
     const res=await fetch(`${API}/api/voice-command`,{
       method:'POST',
       headers:authH(),
       body:JSON.stringify({text})
     });
     const data=await res.json();
-    if(!data.success){responseEl.textContent='❌ تعذرت المعالجة';return;}
-    
+    const errMsg='❌ تعذرت المعالجة';
+    if(!data.success){
+      if(responseEl)responseEl.textContent=errMsg;
+      if(popupResp)popupResp.textContent=errMsg;
+      return;
+    }
     const cmd=data.command;
-    responseEl.textContent=data.message||'✅ تم التنفيذ';
+    const msg=data.message||'✅ تم التنفيذ';
+    if(responseEl)responseEl.textContent=msg;
+    if(popupResp)popupResp.textContent=msg;
 
     // تنفيذ الأمر
     switch(cmd.action){
@@ -3173,8 +3346,12 @@ async function loadNotifications(){
 }
 
 function updateNotifBadge(count){
-  const badge=document.getElementById('notif-badge');
-  if(badge){badge.textContent=count;badge.style.display=count>0?'flex':'none';}
+  // الـ badge في الـ topbar
+  const badge=document.getElementById('notif-count');
+  if(badge){badge.textContent=count>9?'9+':count;badge.style.display=count>0?'flex':'none';}
+  // الـ badge القديم
+  const oldBadge=document.getElementById('notif-badge');
+  if(oldBadge){oldBadge.textContent=count;oldBadge.style.display=count>0?'flex':'none';}
 }
 
 async function markAllRead(){
