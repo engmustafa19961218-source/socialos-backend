@@ -1603,31 +1603,24 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
 2. نفذ الأمر فوراً بناءً على فهمك
 3. أرجع JSON فقط
 
-الأوامر المتاحة:
-- design: تصميم أو توليد صورة. prompt = وصف مفصّل بالإنجليزي (أنت تترجم وتطوّر الوصف ليكون prompt احترافي لـ Flux، أضف دائماً: no text, no letters, no watermark)
-- create_post: إنشاء منشور. content = نص المنشور كاملاً
-- new_order: فتح نموذج طلب جديد
-- new_product: فتح نموذج منتج جديد
-- navigate: انتقال لصفحة. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
-- generate_content: توليد محتوى نصي. prompt = الموضوع
-- answer: رد على سؤال. text = الرد
-
-قواعد الـ design prompt:
-- شعار/لوغو → أضف: "minimal logo design, vector style, no text, no letters, professional"
-- منتج → أضف: "product photography, studio lighting, commercial, no text"
-- بوستر/إعلان → أضف: "advertising poster, professional design, no text, no letters"
-- صورة عامة → أضف: "high quality, professional, detailed, no text, no watermark"
+الأوامر:
+- design: تصميم صورة. prompt = وصف بالإنجليزي (ترجم أنت)
+- create_post: إنشاء منشور. content = نص المنشور
+- new_order: طلب جديد
+- new_product: منتج جديد  
+- navigate: انتقال. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
+- generate_content: توليد محتوى. prompt = الموضوع
+- answer: رد نصي. text = الرد
 
 أمثلة:
-"صمم شعار لمتجر عطور فاخر" → {"action":"design","prompt":"luxury perfume store logo, minimal elegant design, gold and black color palette, no text, no letters, professional brand identity, vector style, high quality","message":"🎨 جاري تصميم شعار متجر العطور..."}
-"صمم صورة منتج عطر" → {"action":"design","prompt":"luxury perfume bottle product photography, studio lighting, dark elegant background, golden accents, commercial quality, no text, no watermark, sharp focus","message":"🎨 جاري تصميم صورة العطر..."}
-"صمم بوستر خصم 50%" → {"action":"design","prompt":"professional sale poster, 50% discount promotion, bold modern design, vibrant colors, elegant typography layout, no Arabic text, no letters, commercial advertising","message":"🎨 جاري تصميم البوستر..."}
-"اكتب منشور عن وصول منتج جديد" → {"action":"create_post","content":"🎉 وصل الجديد! منتجنا الجديد متوفر الحين 🔥 لا تفوّت الفرصة","message":"✅ تم كتابة المنشور"}
+"صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, elegant living room furniture, professional photography, dark background","message":"🎨 جاري تصميم الكنب الفاخر..."}
+"صمم شعار لمتجر عطور" → {"action":"design","prompt":"luxury perfume store logo, elegant, gold and black, minimal design","message":"🎨 جاري تصميم الشعار..."}
 "افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
+"كم عدد طلباتي" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
+"اكتب منشور عن خصم 50%" → {"action":"create_post","content":"🎉 خصم 50% على جميع المنتجات! لا تفوت الفرصة","message":"✅ تم كتابة المنشور"}
 "أضف طلب جديد" → {"action":"new_order","message":"✅ فتح نموذج الطلب"}
-"كم مبيعاتي اليوم" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
 
-أرجع JSON فقط بدون أي نص إضافي أو شرح.`;
+أرجع JSON فقط بدون أي نص إضافي.`;
 
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1646,8 +1639,9 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
     });
 
     const aiData = await response.json();
-    let rawText = aiData.content?.[0]?.text || '';
-    
+    console.log('Voice AI response:', JSON.stringify(aiData.content?.[0]?.text?.substring(0,200)));
+    // prefilled with '{' so we prepend it back
+    let rawText = '{' + (aiData.content?.[0]?.text || '"}');
     
     let command;
     try {
@@ -1657,18 +1651,27 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
       if(!command || !command.action) throw new Error('no action');
     } catch(e) {
       // Smart fallback based on user text
-      if(/صمم|تصميم|صورة/.test(text)) {
-        // Keep original Arabic text - server will translate it
-        const imageDesc = text.replace(/صمم لي صورة|صمم لي|صمم|اعمل لي صورة|اعمل صورة|ولد صورة|تصميم صورة عن|تصميم صورة/g,'').trim();
-        command = { action: 'design', prompt: imageDesc || text, message: '🎨 جاري التصميم...' };
-      } else if(/منشور|انشر/.test(text)) {
-        command = { action: 'create_post', content: text.replace(/اكتب منشور عن|منشور عن|انشر/g,'').trim(), message: '✅ تم كتابة المنشور' };
-      } else if(/طلب/.test(text)) {
+      const designKeywords = /صمم|تصميم|صورة|ارسم|اعمل صورة|ولد صورة|شعار|لوغو|بوستر|إعلان|اعلان|منظر|طعام|أكل|اكل|ديكور|موضة|مودل|شخص/;
+      if(designKeywords.test(text)) {
+        // أرسل الـ prompt العربي كما هو — السيرفر سيترجمه ويحسنه
+        const imageDesc = text.replace(/صمم لي|صمم|اعمل لي|اعمل|ولد|ارسم|تصميم/g,'').trim();
+        const msg = text.includes('شعار') || text.includes('لوغو') ? '🎨 جاري تصميم الشعار...' :
+                    text.includes('بوستر') || text.includes('إعلان') || text.includes('اعلان') ? '🎨 جاري تصميم البوستر...' :
+                    text.includes('منتج') || text.includes('صورة منتج') ? '🎨 جاري تصميم صورة المنتج...' :
+                    '🎨 جاري توليد الصورة...';
+        command = { action: 'design', prompt: imageDesc || text, message: msg };
+      } else if(/منشور|انشر|اكتب/.test(text)) {
+        command = { action: 'create_post', content: text.replace(/اكتب منشور عن|منشور عن|انشر|اكتب/g,'').trim(), message: '✅ تم كتابة المنشور' };
+      } else if(/طلب جديد|أضف طلب|اضف طلب/.test(text)) {
         command = { action: 'new_order', message: '✅ فتح نموذج الطلب' };
-      } else if(/منتج/.test(text)) {
+      } else if(/منتج جديد|أضف منتج|اضف منتج/.test(text)) {
         command = { action: 'new_product', message: '✅ فتح نموذج المنتج' };
-      } else if(/تحليل|إحصائيات/.test(text)) {
-        command = { action: 'navigate', page: 'analytics', message: '✅ فتح التحليلات' };
+      } else if(/تحليل|إحصائيات|احصائيات|مبيعات|إيرادات/.test(text)) {
+        command = { action: 'navigate', page: 'analytics', message: '✅ جاري فتح التحليلات' };
+      } else if(/الطلبات|طلباتي/.test(text)) {
+        command = { action: 'navigate', page: 'orders', message: '✅ جاري فتح الطلبات' };
+      } else if(/العملاء|عملائي/.test(text)) {
+        command = { action: 'navigate', page: 'customers', message: '✅ جاري فتح العملاء' };
       } else {
         command = { action: 'navigate', page: 'ai', message: '✅ تم الفتح' };
       }
@@ -1689,7 +1692,7 @@ app.post('/api/generate-image', authenticateToken, async (req, res) => {
     const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
     if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'Replicate token not configured' });
 
-    // ترجمة وتحسين الـ prompt تلقائياً
+    // Translate Arabic to English if needed
     const hasArabic = /[\u0600-\u06FF]/.test(prompt);
     if (hasArabic) {
       try {
@@ -1700,40 +1703,44 @@ app.post('/api/generate-image', authenticateToken, async (req, res) => {
             headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: 'claude-haiku-4-5-20251001',
-              max_tokens: 400,
-              messages: [{ role: 'user', content: `You are an expert AI image generation prompt engineer for Flux image generator.
+              max_tokens: 300,
+              messages: [{ role: 'user', content: `You are an expert Flux AI image generation prompt engineer. Your job is to convert any Arabic request into a perfect English prompt.
 
-The user wrote in Arabic: "${prompt}"
+User request in Arabic: "${prompt}"
 
-Your job:
-1. Understand what type of image they want (logo, product, poster, social post, etc.)
-2. Translate and expand into a detailed professional English prompt
-3. Add relevant quality keywords based on type:
-   - Logo/شعار: add "minimal logo design, vector style, clean, professional brand identity, no text, no letters"
-   - Product/منتج: add "professional product photography, studio lighting, commercial quality, sharp focus"
-   - Poster/بوستر: add "professional poster design, vibrant colors, high impact"
-   - Default: add "high quality, professional, detailed"
-4. Always end with: "no text, no letters, no words, no watermark, high quality"
+Step 1 - Identify what the user wants by keywords:
+- شعار / لوغو / علامة تجارية → LOGO
+- منتج / صورة منتج / عرض منتج → PRODUCT PHOTO
+- بوستر / إعلان / تصميم ترويجي / خصم / عرض → ADVERTISING POSTER
+- طعام / أكل / مطعم / وجبة / برغر / بيتزا → FOOD PHOTOGRAPHY
+- شخص / موديل / صورة شخصية → PORTRAIT
+- ديكور / غرفة / منزل / أثاث → INTERIOR DESIGN
+- طبيعة / منظر / مكان → LANDSCAPE
+- ملابس / فستان / موضة → FASHION PHOTOGRAPHY
+- أي شيء آخر → GENERAL CREATIVE IMAGE
 
-Return ONLY the English prompt, nothing else.` }]
+Step 2 - Build the perfect prompt based on type:
+- LOGO → "flat 2D vector logo, [subject], minimal iconic design, clean lines, professional brand mark, solid white background, no text, no letters, no words, no typography, symbol only"
+- PRODUCT PHOTO → "professional commercial product photography, [subject], studio setup, soft box lighting, clean white or gradient background, sharp focus, high detail, commercial quality, no text"
+- ADVERTISING POSTER → "professional advertising poster design, [subject and offer], bold layout, vibrant colors, modern graphic design style, commercial quality, no Arabic text, no letters"
+- FOOD PHOTOGRAPHY → "[food item], professional food photography, styled plating, soft natural lighting, shallow depth of field, appetizing, restaurant quality, no text"
+- PORTRAIT → "professional portrait photography, [description], studio lighting, bokeh background, high quality, no text"
+- INTERIOR DESIGN → "professional interior design photography, [room type], [style], natural lighting, architectural photography, no text"
+- LANDSCAPE → "professional landscape photography, [scene], golden hour lighting, high resolution, cinematic, no text"
+- FASHION PHOTOGRAPHY → "professional fashion photography, [clothing item], editorial style, studio or outdoor, high fashion, no text"
+- GENERAL → "professional high quality image, [description], detailed, perfect composition, no text, no watermark"
+
+Step 3 - Always end with: "no text, no letters, no numbers, no watermark, ultra high quality, 8k"
+
+Return ONLY the final English prompt. Nothing else. No explanation. No intro.` }]
             })
           });
           const translateData = await translateRes.json();
           if (translateData.content?.[0]?.text) {
-            prompt = translateData.content[0].text.trim();
-            if (!prompt.toLowerCase().includes('no text')) {
-              prompt += ', no text, no letters, no words, no watermark';
-            }
+            prompt = translateData.content[0].text.trim() + ', no text, no words, no letters, no watermark';
           }
         }
-      } catch(e) {
-        console.log('Translation failed, using original');
-        prompt = prompt + ', no text, no letters, no watermark';
-      }
-    } else {
-      if (!prompt.toLowerCase().includes('no text')) {
-        prompt += ', no text, no letters, no watermark';
-      }
+      } catch(e) { console.log('Translation failed, using original prompt'); }
     }
 
     const https = require('https');
