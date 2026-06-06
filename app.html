@@ -337,21 +337,90 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 .empty-state{text-align:center;padding:40px;color:var(--text2);font-size:.9rem;}
 .empty-state .emoji{font-size:2.5rem;margin-bottom:12px;}
 
-/* RESPONSIVE */
+/* ===== RESPONSIVE — MOBILE ===== */
 @media(max-width:768px){
-  .topbar-group{padding:0 2px;}
-  .topbar-item{padding:6px 8px;font-size:.75rem;}
-  .topbar-item span:not(.icon){display:none;}
-  .topbar-logo{width:auto;padding:0 12px;}
+
+  /* الـ topbar يصير شريط علوي مبسط */
+  .topbar{height:52px;justify-content:space-between;}
+  .topbar-logo{width:auto;padding:0 14px;border:none;}
   .topbar-logo h2{font-size:1rem;}
-  .main-content{padding:16px 14px;padding-top:68px;}
-  .stats-grid,.grid-2{grid-template-columns:1fr 1fr;}
+
+  /* إخفاء الـ nav الأفقي على الهاتف */
+  .topbar-nav{display:none;}
+
+  /* الـ main content */
+  .main-content{
+    padding:14px 12px;
+    padding-top:64px;
+    padding-bottom:76px; /* مساحة للـ bottom nav */
+  }
+
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .grid-2{grid-template-columns:1fr 1fr;gap:10px;}
   .plans-grid{grid-template-columns:1fr;}
   .user-name{display:none;}
+  .plan-badge{display:none;}
+
+  /* شريط التنقل السفلي على الهاتف */
+  .mobile-bottom-nav{
+    display:flex !important;
+    position:fixed;
+    bottom:0;left:0;right:0;
+    height:64px;
+    background:rgba(8,11,20,.97);
+    border-top:1px solid var(--border);
+    backdrop-filter:blur(20px);
+    z-index:300;
+    align-items:stretch;
+  }
+  .mobile-nav-item{
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:3px;cursor:pointer;color:var(--text2);
+    font-size:.58rem;font-weight:700;
+    border:none;background:transparent;
+    font-family:'Tajawal',sans-serif;
+    transition:all .15s;padding:0 4px;
+    border-top:2px solid transparent;
+  }
+  .mobile-nav-item.active{color:var(--accent);border-top-color:var(--accent);}
+  .mobile-nav-item .icon{font-size:1.3rem;line-height:1;}
+
+  /* زر الميكروفون في المنتصف */
+  .mobile-mic-btn{
+    flex:0 0 64px;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    cursor:pointer;border:none;background:transparent;
+    font-family:'Tajawal',sans-serif;
+    position:relative;
+  }
+  .mobile-mic-inner{
+    width:46px;height:46px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.3rem;
+    background:linear-gradient(135deg,var(--accent2),#a855f7);
+    box-shadow:0 0 20px rgba(124,58,237,.4);
+    transition:all .2s;
+    margin-top:-16px;
+    border:3px solid var(--bg);
+  }
+  .mobile-mic-inner.listening{
+    background:linear-gradient(135deg,var(--danger),#ff6b88);
+    animation:micPulse 1s infinite;
+  }
+  .mobile-mic-label{font-size:.55rem;color:var(--text2);font-weight:700;margin-top:4px;}
+
+  /* إخفاء الـ topbar right على الهاتف */
+  .topbar-right .notif-btn{display:none;}
+  .user-pill{padding:3px 8px;}
+
+  /* mic popup */
+  .mic-popup{top:58px;width:94%;}
 }
-@media(max-width:480px){
-  .topbar-item{padding:4px 6px;font-size:.7rem;}
-  .topbar-group{border:none;}
+
+@media(min-width:769px){
+  .mobile-bottom-nav{display:none !important;}
 }
 </style>
 </head>
@@ -1488,6 +1557,53 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
   </div>
 </div>
 
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav" style="display:none">
+  <!-- الرئيسية -->
+  <button class="mobile-nav-item active" id="mnav-home" onclick="showPageMobile('home',this)">
+    <span class="icon">🏠</span><span>الرئيسية</span>
+  </button>
+
+  <!-- المبيعات -->
+  <button class="mobile-nav-item" id="mnav-orders" onclick="showPageMobile('orders',this)">
+    <span class="icon">🛒</span><span>الطلبات</span>
+  </button>
+
+  <!-- الميكروفون المركزي -->
+  <button class="mobile-mic-btn" onclick="toggleMainMic()">
+    <div class="mobile-mic-inner" id="mobile-mic-inner">🎤</div>
+    <span class="mobile-mic-label">صوتي</span>
+  </button>
+
+  <!-- المنتجات -->
+  <button class="mobile-nav-item" id="mnav-products" onclick="showPageMobile('products',this)">
+    <span class="icon">📦</span><span>المنتجات</span>
+  </button>
+
+  <!-- المزيد -->
+  <button class="mobile-nav-item" id="mnav-more" onclick="toggleMobileMenu()">
+    <span class="icon">⋯</span><span>المزيد</span>
+  </button>
+</nav>
+
+<!-- MOBILE MORE MENU -->
+<div id="mobile-more-menu" style="display:none;position:fixed;bottom:64px;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:299;padding:12px;display:none">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    <button onclick="showPageMobile('agent',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🧠</span>Agent</button>
+    <button onclick="showPageMobile('ai',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🤖</span>المحتوى</button>
+    <button onclick="showPageMobile('design',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🎨</span>تصميم</button>
+    <button onclick="showPageMobile('analytics',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">📊</span>تحليلات</button>
+    <button onclick="showPageMobile('customers',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">👥</span>العملاء</button>
+    <button onclick="showPageMobile('create',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">✨</span>إنشاء</button>
+    <button onclick="showPageMobile('messages',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">💬</span>رسائل</button>
+    <button onclick="showPageMobile('settings',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">⚙️</span>إعدادات</button>
+    <button onclick="showPageMobile('notifications',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🔔</span>إشعارات</button>
+    <button onclick="showPageMobile('report',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">📈</span>تقارير</button>
+    <button onclick="showPageMobile('profile',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">👤</span>بروفايل</button>
+    <button onclick="logout()" style="background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.2);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--danger);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🚪</span>خروج</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -1525,6 +1641,7 @@ window.onload = () => {
   const savedToken = localStorage.getItem('socialos_token');
   if(saved && savedToken){currentUser=JSON.parse(saved);token=savedToken;showDashboard();}
   initVoice();
+  initMobileNav();
 };
 
 // ─── OTP PHONE LOGIN ───
@@ -3447,6 +3564,59 @@ function sendLocalNotification(title, body) {
 }
 
 // ─── TOAST ───
+// ─── MOBILE NAVIGATION ───
+function isMobile(){ return window.innerWidth <= 768; }
+
+function showPageMobile(page, el){
+  showPage(page, el);
+  // تحديث الـ mobile bottom nav
+  document.querySelectorAll('.mobile-nav-item').forEach(b=>b.classList.remove('active'));
+  const map = {home:'mnav-home', orders:'mnav-orders', products:'mnav-products'};
+  if(map[page]){
+    const btn=document.getElementById(map[page]);
+    if(btn)btn.classList.add('active');
+  }
+  closeMobileMenu();
+}
+
+function toggleMobileMenu(){
+  const menu=document.getElementById('mobile-more-menu');
+  if(!menu)return;
+  menu.style.display = menu.style.display==='grid' ? 'none' : 'grid';
+}
+
+function closeMobileMenu(){
+  const menu=document.getElementById('mobile-more-menu');
+  if(menu)menu.style.display='none';
+}
+
+// تحديث الـ mobile mic icon
+const origSetMicState = typeof setMicState !== 'undefined' ? setMicState : null;
+function setMicState(state){
+  const btn=document.getElementById('mic-main-btn');
+  const mobileInner=document.getElementById('mobile-mic-inner');
+  const status=document.getElementById('mic-popup-status');
+  if(btn){btn.className='mic-main-btn '+state;}
+  if(mobileInner){
+    mobileInner.className='mobile-mic-inner'+(state==='listening'?' listening':'');
+    mobileInner.textContent=state==='idle'?'🎤':state==='listening'?'⏹':'⏳';
+  }
+  if(btn){btn.textContent=state==='idle'?'🎤':state==='listening'?'⏹':'⏳';}
+  if(status){
+    status.textContent=state==='idle'?'اضغط واتكلم بأي أمر...':
+      state==='listening'?'🔴 جاري الاستماع...':'⏳ جاري التنفيذ...';
+  }
+}
+
+// إظهار الـ mobile nav على الهاتف
+function initMobileNav(){
+  const nav=document.getElementById('mobile-bottom-nav');
+  if(nav && isMobile()) nav.style.display='flex';
+  window.addEventListener('resize',()=>{
+    if(nav) nav.style.display=isMobile()?'flex':'none';
+  });
+}
+
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3000);
