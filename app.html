@@ -11,6 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SocialOS ⚡</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -652,44 +653,77 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
     <!-- HOME -->
     <div class="page active" id="page-home">
       <!-- Header -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div>
-          <h1 id="home-greeting" style="font-size:1.6rem;font-weight:900;letter-spacing:-.5px">مرحباً! 👋</h1>
-          <p style="color:var(--text2);font-size:.85rem;margin-top:4px">إليك ملخص نشاطك اليوم</p>
+          <h1 id="home-greeting" style="font-size:1.5rem;font-weight:900;letter-spacing:-.5px">مرحباً! 👋</h1>
+          <p style="color:var(--text2);font-size:.82rem;margin-top:3px" id="home-date">إليك ملخص نشاطك اليوم</p>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-accent" onclick="showPage('create',document.querySelector('[onclick*=create]'))" style="padding:9px 16px;font-size:.85rem">✨ إنشاء منشور</button>
-          <button class="btn btn-outline" onclick="openOrderModal()" style="padding:9px 16px;font-size:.85rem">🛒 طلب جديد</button>
+          <button class="btn btn-accent" onclick="showPage('create',document.querySelector('[onclick*=create]'))" style="padding:9px 16px;font-size:.85rem">✨ إنشاء</button>
+          <button class="btn btn-outline" onclick="openOrderModal()" style="padding:9px 16px;font-size:.85rem">🛒 طلب</button>
         </div>
       </div>
 
-      <!-- Stats -->
-      <div class="stats-grid" style="margin-bottom:24px">
-        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="stat-posts">-</div><div class="stat-label">المنشورات</div></div>
-        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value" id="stat-orders">-</div><div class="stat-label">الطلبات</div></div>
-        <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-value" id="stat-messages">-</div><div class="stat-label">الرسائل</div></div>
-        <div class="stat-card"><div class="stat-icon">🌐</div><div class="stat-value"><span class="status-badge"><span class="status-dot"></span>نشط</span></div><div class="stat-label">السيرفر</div></div>
+      <!-- Stats Row -->
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card" onclick="showPage('orders',document.querySelector('[onclick*=orders]'))" style="cursor:pointer">
+          <div class="stat-icon">🛒</div><div class="stat-value" id="stat-orders">-</div><div class="stat-label">الطلبات</div>
+        </div>
+        <div class="stat-card" onclick="showPage('analytics',document.querySelector('[onclick*=analytics]'))" style="cursor:pointer">
+          <div class="stat-icon">💰</div><div class="stat-value" id="stat-revenue">-</div><div class="stat-label">الإيرادات</div>
+        </div>
+        <div class="stat-card" onclick="showPage('products',document.querySelector('[onclick*=products]'))" style="cursor:pointer">
+          <div class="stat-icon">📦</div><div class="stat-value" id="stat-products">-</div><div class="stat-label">المنتجات</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🌐</div>
+          <div class="stat-value"><span class="status-badge"><span class="status-dot"></span>نشط</span></div>
+          <div class="stat-label">السيرفر</div>
+        </div>
       </div>
 
-      <!-- Quick Actions + Accounts -->
-      <div class="grid-2">
-        <div class="card">
+      <!-- Charts + Actions -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <!-- Mini Revenue Chart -->
+        <div class="card" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin:0">📈 الإيرادات (7 أيام)</h3>
+          </div>
+          <canvas id="home-revenue-chart" height="100"></canvas>
+          <div id="home-chart-empty" style="text-align:center;padding:20px;color:var(--text2);font-size:.8rem">لا توجد بيانات بعد</div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card" style="padding:16px">
           <h3>⚡ إجراءات سريعة</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <button class="btn btn-accent" onclick="showPage('create',document.querySelector('[onclick*=create]'))" style="font-size:.82rem;padding:10px">✨ منشور</button>
-            <button class="btn btn-outline" onclick="toggleMainMic()" style="font-size:.82rem;padding:10px">🎤 صوتي</button>
-            <button class="btn btn-outline" onclick="openOrderModal()" style="font-size:.82rem;padding:10px">🛒 طلب</button>
-            <button class="btn btn-outline" onclick="showPage('agent',document.querySelector('[onclick*=agent]'))" style="font-size:.82rem;padding:10px">🧠 Agent</button>
-            <button class="btn btn-outline" onclick="showPage('design',document.querySelector('[onclick*=design]'))" style="font-size:.82rem;padding:10px">🎨 تصميم</button>
-            <button class="btn btn-outline" onclick="showPage('analytics',document.querySelector('[onclick*=analytics]'))" style="font-size:.82rem;padding:10px">📊 تحليلات</button>
+            <button class="btn btn-accent" onclick="showPage('create',document.querySelector('[onclick*=create]'))" style="font-size:.8rem;padding:10px">✨ منشور</button>
+            <button class="btn btn-outline" onclick="toggleMainMic()" style="font-size:.8rem;padding:10px">🎤 صوتي</button>
+            <button class="btn btn-outline" onclick="openOrderModal()" style="font-size:.8rem;padding:10px">🛒 طلب</button>
+            <button class="btn btn-outline" onclick="showPage('agent',document.querySelector('[onclick*=agent]'))" style="font-size:.8rem;padding:10px">🧠 Agent</button>
+            <button class="btn btn-outline" onclick="showPage('design',document.querySelector('[onclick*=design]'))" style="font-size:.8rem;padding:10px">🎨 تصميم</button>
+            <button class="btn btn-outline" onclick="showPage('analytics',document.querySelector('[onclick*=analytics]'))" style="font-size:.8rem;padding:10px">📊 تحليلات</button>
           </div>
         </div>
-        <div class="card">
+      </div>
+
+      <!-- Recent Orders + Accounts -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin:0">🛒 آخر الطلبات</h3>
+            <button class="btn btn-outline btn-sm" onclick="showPage('orders',document.querySelector('[onclick*=orders]'))">عرض الكل</button>
+          </div>
+          <div id="home-recent-orders"><div style="text-align:center;padding:20px;color:var(--text2);font-size:.8rem">جاري التحميل...</div></div>
+        </div>
+        <div class="card" style="padding:16px">
           <h3>🔗 الحسابات المربوطة</h3>
           <div id="home-accounts"></div>
           <div id="trial-notice" style="margin-top:12px"></div>
         </div>
       </div>
+
+      <style>@media(max-width:768px){#page-home .stats-grid{grid-template-columns:1fr 1fr}#page-home>div:nth-child(3),#page-home>div:nth-child(4){grid-template-columns:1fr!important}}</style>
     </div>
 
     <!-- CREATE -->
@@ -1039,32 +1073,58 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- ANALYTICS -->
     <div class="page" id="page-analytics">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-          <div><h1>📊 التحليلات المتقدمة</h1><p>تقارير الأداء والمبيعات</p></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-outline btn-sm" onclick="loadAnalytics('week')" id="period-week">أسبوع</button>
-            <button class="btn btn-accent btn-sm" onclick="loadAnalytics('month')" id="period-month">شهر</button>
-            <button class="btn btn-outline btn-sm" onclick="loadAnalytics('year')" id="period-year">سنة</button>
-          <button class="btn btn-outline btn-sm" onclick="downloadPDFReport()" style="background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#ef4444">📄 PDF</button>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>📊 التحليلات</h1>
+          <p>تقارير الأداء والمبيعات</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <div class="filter-bar" style="margin:0;padding:4px 8px">
+            <button class="filter-btn active" id="period-week" onclick="loadAnalytics('week');setFilter(this)">أسبوع</button>
+            <button class="filter-btn" id="period-month" onclick="loadAnalytics('month');setFilter(this)">شهر</button>
+            <button class="filter-btn" id="period-year" onclick="loadAnalytics('year');setFilter(this)">سنة</button>
           </div>
+          <button class="btn btn-outline btn-sm" onclick="downloadPDFReport()" style="color:#ef4444;border-color:rgba(239,68,68,.3)">📄 PDF</button>
         </div>
       </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="ana-revenue">0</div><div class="stat-label">إجمالي الإيرادات (د.ع)</div></div>
-        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value" id="ana-orders">0</div><div class="stat-label">إجمالي الطلبات</div></div>
-        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="ana-posts">0</div><div class="stat-label">إجمالي المنشورات</div></div>
-        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value" id="ana-avg">0</div><div class="stat-label">متوسط قيمة الطلب (د.ع)</div></div>
+
+      <!-- Stats -->
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="ana-revenue">0</div><div class="stat-label">الإيرادات</div></div>
+        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value" id="ana-orders">0</div><div class="stat-label">الطلبات</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value" id="ana-avg">0</div><div class="stat-label">متوسط الطلب</div></div>
+        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="ana-posts">0</div><div class="stat-label">المنشورات</div></div>
       </div>
-      <div class="grid-2">
-        <div class="card"><h3>📊 الطلبات حسب الحالة</h3><div id="orders-by-status"></div></div>
-        <div class="card">
-          <h3>📝 المنشورات (آخر 30 يوم)</h3>
-          <div class="chart-bar-container" id="posts-chart"></div>
-          <div class="chart-labels" id="posts-chart-labels"></div>
+
+      <!-- Charts Row -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
+        <!-- Revenue Chart -->
+        <div class="card" style="padding:16px">
+          <h3>📈 الإيرادات اليومية</h3>
+          <canvas id="revenue-chart" height="120"></canvas>
+          <div id="revenue-chart-empty" style="text-align:center;padding:30px;color:var(--text2);font-size:.85rem;display:none">لا توجد بيانات للفترة المحددة</div>
+        </div>
+        <!-- Orders by Status -->
+        <div class="card" style="padding:16px">
+          <h3>🥧 الطلبات حسب الحالة</h3>
+          <canvas id="status-chart" height="160"></canvas>
+          <div id="orders-by-status" style="margin-top:8px"></div>
         </div>
       </div>
-      <div class="card"><h3>🕐 آخر الطلبات</h3><div id="recent-orders-list"></div></div>
+
+      <!-- Top Products + Recent Orders -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card" style="padding:16px">
+          <h3>🏆 أفضل العملاء</h3>
+          <div id="top-customers-list"><div style="text-align:center;padding:20px;color:var(--text2);font-size:.82rem">جاري التحميل...</div></div>
+        </div>
+        <div class="card" style="padding:16px">
+          <h3>🕐 آخر الطلبات</h3>
+          <div id="recent-orders-list"><div style="text-align:center;padding:20px;color:var(--text2);font-size:.82rem">جاري التحميل...</div></div>
+        </div>
+      </div>
+
+      <style>@media(max-width:768px){#page-analytics .page-toolbar-actions{flex-wrap:wrap}#page-analytics>div:nth-child(3),#page-analytics>div:nth-child(4){grid-template-columns:1fr!important}}</style>
     </div>
 
     <!-- PRODUCTS -->
@@ -2031,14 +2091,104 @@ function showPage(name,el){
 }
 
 // ─── STATS ───
+// ─── CHARTS INSTANCES ───
+let homeRevenueChart = null;
+let analyticsRevenueChart = null;
+let analyticsStatusChart = null;
+
 async function loadStats(){
   try{
-    const res=await fetch(`${API}/api/stats`,{headers:authH()});
-    const data=await res.json();
-    document.getElementById('stat-posts').textContent=data.posts??0;
-    document.getElementById('stat-orders').textContent=data.orders??0;
-    document.getElementById('stat-messages').textContent=data.messages??0;
-  }catch(e){}
+    const [statsRes, analyticsRes] = await Promise.all([
+      fetch(`${API}/api/stats`,{headers:authH()}),
+      fetch(`${API}/api/analytics/dashboard`,{headers:authH()})
+    ]);
+    const stats = await statsRes.json();
+    const analytics = await analyticsRes.json();
+
+    // تحديث الأرقام
+    document.getElementById('stat-posts').textContent = stats.posts??0;
+    document.getElementById('stat-orders').textContent = stats.orders??0;
+    document.getElementById('stat-messages').textContent = stats.messages??0;
+    if(document.getElementById('stat-revenue'))
+      document.getElementById('stat-revenue').textContent = fmtCurrency(analytics.total_revenue||0);
+    if(document.getElementById('stat-products'))
+      document.getElementById('stat-products').textContent = analytics.products_count||0;
+
+    // تحديث التاريخ
+    const dateEl = document.getElementById('home-date');
+    if(dateEl) dateEl.textContent = new Date().toLocaleDateString('ar-IQ',{weekday:'long',day:'numeric',month:'long'});
+
+    // رسم chart الإيرادات في الـ Dashboard
+    drawHomeRevenueChart(analytics.revenue_chart||[]);
+
+    // تحميل آخر الطلبات
+    loadHomeRecentOrders(analytics.recent_orders||[]);
+
+  }catch(e){ console.log('loadStats error:', e); }
+}
+
+function drawHomeRevenueChart(data){
+  const canvas = document.getElementById('home-revenue-chart');
+  const emptyEl = document.getElementById('home-chart-empty');
+  if(!canvas) return;
+  if(!data || data.length === 0){
+    canvas.style.display='none';
+    if(emptyEl) emptyEl.style.display='block';
+    return;
+  }
+  canvas.style.display='block';
+  if(emptyEl) emptyEl.style.display='none';
+  if(homeRevenueChart) homeRevenueChart.destroy();
+  const ctx = canvas.getContext('2d');
+  homeRevenueChart = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels: data.map(d=>new Date(d.date).toLocaleDateString('ar-IQ',{day:'numeric',month:'short'})),
+      datasets:[{
+        label:'الإيرادات',
+        data: data.map(d=>parseFloat(d.revenue||0)),
+        borderColor:'#4f8ef7',
+        backgroundColor:'rgba(79,142,247,.1)',
+        borderWidth:2,
+        fill:true,
+        tension:.4,
+        pointRadius:3,
+        pointBackgroundColor:'#4f8ef7'
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},tooltip:{
+        callbacks:{label:ctx=>'💰 '+fmtCurrency(ctx.raw)}
+      }},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#6b7a99',font:{size:10}}},
+        y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#6b7a99',font:{size:10},callback:v=>fmtCurrency(v)}}
+      }
+    }
+  });
+}
+
+function loadHomeRecentOrders(orders){
+  const el = document.getElementById('home-recent-orders');
+  if(!el) return;
+  if(!orders || orders.length===0){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text2);font-size:.82rem">لا توجد طلبات حديثة</div>';
+    return;
+  }
+  const statusColors={new:'#7eb3ff',confirmed:'#00d4aa',processing:'#f59e0b',delivered:'#00cc88',cancelled:'#ff4466'};
+  const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'تجهيز',delivered:'تم',cancelled:'ملغي'};
+  el.innerHTML = orders.slice(0,5).map(o=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:700;font-size:.85rem">${o.customer_name}</div>
+        <div style="font-size:.75rem;color:var(--text2)">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar-IQ')}</div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-weight:900;font-size:.85rem;color:var(--accent)">${fmtCurrency(o.total)}</div>
+        <div style="font-size:.7rem;font-weight:700;color:${statusColors[o.status]||'#6b7a99'}">${statusLabels[o.status]||o.status}</div>
+      </div>
+    </div>`).join('');
 }
 
 // ─── HOME ACCOUNTS ───
@@ -3171,32 +3321,124 @@ async function loadMessages(){
 
 // ─── ANALYTICS ───
 async function loadAnalytics(period='month'){
-  ['week','month','year'].forEach(p=>{
-    const btn=document.getElementById('period-'+p);
-    if(btn){btn.className=p===period?'btn btn-accent btn-sm':'btn btn-outline btn-sm';}
-  });
   try{
     const res=await fetch(`${API}/api/analytics/dashboard`,{headers:authH()});
     const data=await res.json();
     if(!data.success)return;
-    document.getElementById('ana-revenue').textContent=data.totals.revenue.toFixed(0);
-    document.getElementById('ana-orders').textContent=data.totals.orders;
+
+    // Stats
+    document.getElementById('ana-revenue').textContent=fmtCurrency(data.totals.revenue||0);
+    document.getElementById('ana-orders').textContent=data.totals.orders||0;
     const postsTotal=data.posts_chart.reduce((s,r)=>s+parseInt(r.total||0),0);
     document.getElementById('ana-posts').textContent=postsTotal;
-    document.getElementById('ana-avg').textContent=data.totals.orders>0?(data.totals.revenue/data.totals.orders).toFixed(0):0;
-    const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
-    document.getElementById('orders-by-status').innerHTML=data.orders_by_status.length?
-      data.orders_by_status.map(r=>`<div class="metric-row"><span class="metric-label">${statusLabels[r.status]||r.status}</span><span class="metric-value">${r.count} طلب · ${fmtCurrency(r.revenue||0)}</span></div>`).join(''):
-      '<p style="color:var(--text2);font-size:.9rem">لا توجد طلبات</p>';
-    if(data.posts_chart.length>0){
-      const maxVal=Math.max(...data.posts_chart.map(r=>parseInt(r.total||0)),1);
-      document.getElementById('posts-chart').innerHTML=data.posts_chart.slice(-14).map(r=>`<div class="chart-bar" data-val="${r.total}" style="height:${(parseInt(r.total)/maxVal*100)}%"></div>`).join('');
-      document.getElementById('posts-chart-labels').innerHTML=data.posts_chart.slice(-14).map(r=>`<div class="chart-label">${new Date(r.day).toLocaleDateString('ar',{day:'numeric',month:'numeric'})}</div>`).join('');
+    document.getElementById('ana-avg').textContent=data.totals.orders>0?fmtCurrency(data.totals.revenue/data.totals.orders):'0';
+
+    // Revenue Line Chart
+    const revenueCanvas=document.getElementById('revenue-chart');
+    const revenueEmptyEl=document.getElementById('revenue-chart-empty');
+    if(revenueCanvas && data.revenue_chart && data.revenue_chart.length>0){
+      revenueCanvas.style.display='block';
+      if(revenueEmptyEl)revenueEmptyEl.style.display='none';
+      if(analyticsRevenueChart)analyticsRevenueChart.destroy();
+      analyticsRevenueChart=new Chart(revenueCanvas.getContext('2d'),{
+        type:'bar',
+        data:{
+          labels:data.revenue_chart.map(d=>new Date(d.date).toLocaleDateString('ar-IQ',{day:'numeric',month:'short'})),
+          datasets:[{
+            label:'الإيرادات',
+            data:data.revenue_chart.map(d=>parseFloat(d.revenue||0)),
+            backgroundColor:'rgba(79,142,247,.6)',
+            borderColor:'#4f8ef7',
+            borderWidth:1,
+            borderRadius:4
+          },{
+            label:'الطلبات',
+            data:data.revenue_chart.map(d=>parseInt(d.orders||0)),
+            backgroundColor:'rgba(124,58,237,.5)',
+            borderColor:'#7c3aed',
+            borderWidth:1,
+            borderRadius:4,
+            yAxisID:'y1'
+          }]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:true,
+          plugins:{legend:{labels:{color:'#6b7a99',font:{size:11}}},
+            tooltip:{callbacks:{label:ctx=>ctx.datasetIndex===0?'💰 '+fmtCurrency(ctx.raw):'🛒 '+ctx.raw+' طلب'}}},
+          scales:{
+            x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#6b7a99',font:{size:10}}},
+            y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#6b7a99',font:{size:10},callback:v=>fmtCurrency(v)},position:'right'},
+            y1:{display:false}
+          }
+        }
+      });
+    } else if(revenueCanvas){
+      revenueCanvas.style.display='none';
+      if(revenueEmptyEl)revenueEmptyEl.style.display='block';
     }
-    document.getElementById('recent-orders-list').innerHTML=data.recent_orders.length?
-      data.recent_orders.map(o=>`<div class="metric-row"><span class="metric-label">${o.customer_name} · ${new Date(o.created_at).toLocaleDateString('ar')}</span><span class="metric-value">${fmtCurrency(o.total)}</span></div>`).join(''):
-      '<p style="color:var(--text2);font-size:.9rem">لا توجد طلبات</p>';
-  }catch(e){}
+
+    // Status Donut Chart
+    const statusCanvas=document.getElementById('status-chart');
+    if(statusCanvas && data.orders_by_status && data.orders_by_status.length>0){
+      const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
+      const statusColors={new:'#4f8ef7',confirmed:'#00d4aa',processing:'#f59e0b',delivered:'#00cc88',cancelled:'#ff4466'};
+      if(analyticsStatusChart)analyticsStatusChart.destroy();
+      analyticsStatusChart=new Chart(statusCanvas.getContext('2d'),{
+        type:'doughnut',
+        data:{
+          labels:data.orders_by_status.map(r=>statusLabels[r.status]||r.status),
+          datasets:[{
+            data:data.orders_by_status.map(r=>parseInt(r.count||0)),
+            backgroundColor:data.orders_by_status.map(r=>statusColors[r.status]||'#6b7a99'),
+            borderWidth:2,borderColor:'#0f1420'
+          }]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:true,
+          plugins:{legend:{position:'bottom',labels:{color:'#6b7a99',font:{size:10},padding:8}}}
+        }
+      });
+      // نص تحت الـ chart
+      document.getElementById('orders-by-status').innerHTML=data.orders_by_status.map(r=>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.8rem">
+          <span style="color:${statusColors[r.status]||'#6b7a99'};font-weight:700">${statusLabels[r.status]||r.status}</span>
+          <span style="color:var(--text2)">${r.count} طلب · ${fmtCurrency(r.revenue||0)}</span>
+        </div>`).join('');
+    }
+
+    // Top Customers
+    const topCustEl=document.getElementById('top-customers-list');
+    if(topCustEl && data.top_customers && data.top_customers.length>0){
+      topCustEl.innerHTML=data.top_customers.slice(0,5).map((c,i)=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;color:var(--accent)">${i+1}</div>
+            <div>
+              <div style="font-weight:700;font-size:.85rem">${c.customer_name}</div>
+              <div style="font-size:.72rem;color:var(--text2)">${c.orders_count||c.count||1} طلب</div>
+            </div>
+          </div>
+          <div style="font-weight:900;font-size:.85rem;color:var(--accent)">${fmtCurrency(c.total_spent||c.total||0)}</div>
+        </div>`).join('');
+    } else if(topCustEl){
+      topCustEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--text2);font-size:.82rem">لا توجد بيانات</div>';
+    }
+
+    // Recent Orders
+    const recentEl=document.getElementById('recent-orders-list');
+    if(recentEl){
+      recentEl.innerHTML=data.recent_orders.length?
+        data.recent_orders.slice(0,5).map(o=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-weight:700;font-size:.85rem">${o.customer_name}</div>
+              <div style="font-size:.72rem;color:var(--text2)">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar-IQ')}</div>
+            </div>
+            <div style="font-weight:900;font-size:.85rem;color:var(--accent)">${fmtCurrency(o.total)}</div>
+          </div>`).join(''):
+        '<div style="text-align:center;padding:20px;color:var(--text2);font-size:.82rem">لا توجد طلبات</div>';
+    }
+  }catch(e){ console.log('Analytics error:', e); }
 }
 
 // ─── ACCOUNTS ───
