@@ -1202,7 +1202,31 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
       <div class="form-group-item"><label class="form-label">السعر *</label><input class="form-input" id="prod-price" type="number" placeholder="0" dir="ltr"></div>
       <div class="form-group-item"><label class="form-label">المخزون</label><input class="form-input" id="prod-stock" type="number" placeholder="0" dir="ltr"></div>
     </div>
-    <div class="form-group-item"><label class="form-label">رابط الصورة</label><input class="form-input" id="prod-image" placeholder="https://..." dir="ltr"></div>
+    <div class="form-group-item">
+      <label class="form-label">صورة المنتج</label>
+      <!-- معاينة الصورة -->
+      <div id="prod-image-preview" style="display:none;margin-bottom:10px;border-radius:10px;overflow:hidden;max-height:160px">
+        <img id="prod-image-preview-img" src="" style="width:100%;height:160px;object-fit:cover">
+      </div>
+      <!-- زر رفع الصورة -->
+      <div style="display:flex;gap:8px">
+        <div onclick="document.getElementById('prod-image-file').click()"
+             style="flex:1;background:var(--surface2);border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s"
+             onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:1.5rem">📷</div>
+          <div style="color:var(--text2);font-size:.8rem;margin-top:4px">اضغط لرفع صورة</div>
+        </div>
+        <input type="file" id="prod-image-file" accept="image/*" style="display:none" onchange="previewProductImage(this)">
+      </div>
+      <!-- أو رابط -->
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <div style="height:1px;flex:1;background:var(--border)"></div>
+        <span style="color:var(--text2);font-size:.75rem">أو</span>
+        <div style="height:1px;flex:1;background:var(--border)"></div>
+      </div>
+      <input class="form-input" id="prod-image" placeholder="رابط صورة https://..." dir="ltr" style="margin-top:8px" oninput="previewProductImageUrl(this.value)">
+      <input type="hidden" id="prod-image-base64">
+    </div>
     <div class="form-group-item" style="display:flex;align-items:center;gap:10px">
       <input type="checkbox" id="prod-available" checked style="width:18px;height:18px;accent-color:var(--accent)">
       <label for="prod-available" style="cursor:pointer">متاح للبيع</label>
@@ -1996,7 +2020,11 @@ async function sendWhatsApp(orderId){
   try{
     const res=await fetch(`${API}/api/orders/${orderId}/whatsapp`,{headers:authH()});
     const data=await res.json();
-    if(data.success){window.open(data.url,'_blank');showToast('📱 جاري فتح واتساب!');}
+    if(data.success){
+      showToast('📱 جاري فتح واتساب!');
+      // استخدام location.href يشتغل على الهاتف مباشرة
+      setTimeout(()=>{ window.location.href = data.url; }, 300);
+    }
     else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
 }
@@ -2768,6 +2796,29 @@ async function subscribe(plan){
 // ─── PRODUCTS CATALOG ───
 let allProducts = [];
 
+// ─── رفع صورة المنتج ───
+function previewProductImage(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 2 * 1024 * 1024){ showToast('⚠️ الصورة أكبر من 2MB'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    document.getElementById('prod-image-preview-img').src = base64;
+    document.getElementById('prod-image-preview').style.display = 'block';
+    document.getElementById('prod-image-base64').value = base64;
+    document.getElementById('prod-image').value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function previewProductImageUrl(url){
+  if(!url) { document.getElementById('prod-image-preview').style.display='none'; return; }
+  document.getElementById('prod-image-preview-img').src = url;
+  document.getElementById('prod-image-preview').style.display = 'block';
+  document.getElementById('prod-image-base64').value = '';
+}
+
 function openProductModal(product){
   document.getElementById('product-modal').classList.add('show');
   if(product){
@@ -2785,6 +2836,14 @@ function openProductModal(product){
     document.getElementById('product-edit-id').value='';
     ['prod-name','prod-category','prod-desc','prod-price','prod-stock','prod-image'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('prod-available').checked=true;
+    document.getElementById('prod-image-preview').style.display='none';
+    document.getElementById('prod-image-base64').value='';
+    document.getElementById('prod-image-file').value='';
+  }
+  // عرض الصورة الحالية عند التعديل
+  if(product && product.image_url){
+    document.getElementById('prod-image-preview-img').src=product.image_url;
+    document.getElementById('prod-image-preview').style.display='block';
   }
 }
 
@@ -2800,7 +2859,7 @@ async function saveProduct(){
     description:document.getElementById('prod-desc').value.trim(),
     category:document.getElementById('prod-category').value.trim()||'عام',
     stock:parseInt(document.getElementById('prod-stock').value)||0,
-    image_url:document.getElementById('prod-image').value.trim(),
+    image_url:document.getElementById('prod-image-base64').value || document.getElementById('prod-image').value.trim(),
     is_available:document.getElementById('prod-available').checked
   };
   try{
@@ -3130,7 +3189,30 @@ async function markAllRead(){
 function openInvoice(orderId){
   fetch(`${API}/api/orders/${orderId}/invoice`,{headers:authH()})
     .then(r=>r.text())
-    .then(html=>{const w=window.open('','_blank');w.document.write(html);w.document.close();})
+    .then(html=>{
+      // عرض الفاتورة في modal داخل التطبيق (يشتغل على الهاتف والكمبيوتر)
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;';
+      overlay.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0f1420;border-bottom:1px solid #1e2a40;flex-shrink:0">
+          <span style="font-weight:700;font-size:1rem;color:#e8edf5">🧾 الفاتورة</span>
+          <div style="display:flex;gap:8px">
+            <a href="${API}/api/orders/${orderId}/invoice" target="_blank"
+               style="padding:8px 16px;background:#4f8ef7;color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:700">
+              🔗 فتح في تاب
+            </a>
+            <button onclick="this.closest('div[style*=fixed]').remove()"
+                    style="padding:8px 16px;background:rgba(255,68,102,.15);border:1px solid rgba(255,68,102,.3);color:#ff4466;border-radius:8px;cursor:pointer;font-size:.85rem;font-family:Tajawal,sans-serif">
+              ✕ إغلاق
+            </button>
+          </div>
+        </div>
+        <iframe style="flex:1;border:none;background:#fff" srcdoc=""></iframe>`;
+      document.body.appendChild(overlay);
+      // ضع HTML في الـ iframe
+      const iframe = overlay.querySelector('iframe');
+      iframe.srcdoc = html;
+    })
     .catch(()=>showToast('❌ تعذر فتح الفاتورة'));
 }
 
