@@ -1674,93 +1674,110 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
   }
 });
 
-// ========== GENERATE IMAGE (REPLICATE FLUX) ==========
+// ========== GENERATE IMAGE (DALL-E 3 + REPLICATE FALLBACK) ==========
 app.post('/api/generate-image', authenticateToken, async (req, res) => {
   try {
     let { prompt, width = 1024, height = 1024 } = req.body;
     if (!prompt) return res.status(400).json({ message: 'prompt required' });
 
+    const OPENAI_KEY = process.env.OPENAI_API_KEY;
     const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN;
-    if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'Replicate token not configured' });
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
-    // Translate Arabic to English if needed
-    const hasArabic = /[\u0600-\u06FF]/.test(prompt);
-    if (hasArabic) {
+    // ========== محاولة DALL-E 3 أولاً (الأفضل للعربي) ==========
+    if (OPENAI_KEY) {
       try {
-        const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+        // تحسين الـ prompt بـ Claude أولاً
+        let enhancedPrompt = prompt;
         if (ANTHROPIC_KEY) {
-          const translateRes = await fetch('https://api.anthropic.com/v1/messages', {
+          const enhanceRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model: 'claude-haiku-4-5-20251001',
               max_tokens: 300,
-              messages: [{ role: 'user', content: `You are an expert Flux AI image generation prompt engineer. Convert any Arabic request into a perfect English prompt.
+              messages: [{ role: 'user', content: `You are an expert DALL-E 3 prompt engineer.
+The user wants this image (in Arabic or English): "${prompt}"
 
-User request: "${prompt}"
+Rules:
+1. Detect type: شعار/لوغو=LOGO | منتج=PRODUCT | بوستر/إعلان=POSTER | طعام/أكل=FOOD | غرفة/ديكور=INTERIOR | شخص/موديل=PORTRAIT | ملابس=FASHION | طبيعة/منظر=LANDSCAPE | other=GENERAL
+2. Write a detailed English prompt:
+   - LOGO: "minimalist flat vector logo, [subject], clean iconic symbol, white background, no text, no letters"
+   - PRODUCT: "professional product photography, [subject], studio lighting, white background, commercial quality"
+   - POSTER: "professional advertising poster design, [subject], bold modern layout, vibrant colors, no text"
+   - FOOD: "[food name], professional food photography, beautiful styling, soft lighting, appetizing"
+   - INTERIOR: "professional interior design photo, [room type], modern elegant style, natural lighting, beautiful decor"
+   - PORTRAIT: "professional portrait photography, [subject], studio lighting, bokeh background"
+   - FASHION: "professional fashion photography, [clothing], editorial style, high fashion"
+   - LANDSCAPE: "professional landscape photography, [scene], golden hour, cinematic"
+   - GENERAL: "professional high quality image, [subject], detailed, perfect lighting"
+3. End with: "ultra high quality, 8k, professional"
 
-Step 1 - Identify type from keywords:
-- شعار/لوغو/علامة → LOGO
-- منتج/صورة منتج → PRODUCT PHOTO
-- بوستر/إعلان/خصم/عرض → ADVERTISING POSTER
-- طعام/أكل/مطعم/برغر/بيتزا/وجبة → FOOD PHOTOGRAPHY
-- غرفة/ديكور/منزل/أثاث/غرفة نوم/صالة → INTERIOR DESIGN
-- شخص/موديل/صورة شخصية → PORTRAIT
-- ملابس/فستان/موضة/أزياء → FASHION PHOTOGRAPHY
-- طبيعة/منظر/شاطئ/جبل → LANDSCAPE
-- أي شيء آخر → GENERAL
-
-Step 2 - Build prompt by type:
-- LOGO → "flat 2D vector logo mark, [subject], minimal iconic symbol, clean lines, solid white background, no text, no letters, no words, professional brand mark only"
-- PRODUCT PHOTO → "professional commercial product photography, [subject], studio lighting, clean white background, sharp focus, high detail, commercial quality, no text"
-- ADVERTISING POSTER → "professional advertising poster, [subject], bold modern layout, vibrant colors, commercial design, no text, no letters"
-- FOOD PHOTOGRAPHY → "[food], professional food photography, beautiful plating, soft lighting, appetizing, restaurant quality, no text"
-- INTERIOR DESIGN → "professional interior design photography, [room], modern style, natural lighting, architectural photography, beautiful furniture, no text"
-- PORTRAIT → "professional portrait photo, [person], studio lighting, bokeh background, high quality, no text"
-- FASHION PHOTOGRAPHY → "professional fashion editorial, [clothing], studio or outdoor, high fashion photography, no text"
-- LANDSCAPE → "professional landscape photography, [scene], golden hour, cinematic, high resolution, no text"
-- GENERAL → "professional high quality image, [description], perfect composition, detailed, no text, no watermark"
-
-Step 3 - Always end with: "no text, no letters, no numbers, no watermark, ultra high quality"
-
-Return ONLY the final English prompt. Nothing else.` }]
+Return ONLY the English prompt.` }]
             })
           });
-          const translateData = await translateRes.json();
-          if (translateData.content?.[0]?.text) {
-            prompt = translateData.content[0].text.trim();
-            if (!prompt.toLowerCase().includes('no text')) {
-              prompt += ', no text, no letters, no words, no watermark';
-            }
-          }
+          const enhanceData = await enhanceRes.json();
+          if (enhanceData.content?.[0]?.text) enhancedPrompt = enhanceData.content[0].text.trim();
         }
-      } catch(e) { console.log('Translation failed, using original prompt'); }
+
+        const dalleRes = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt: enhancedPrompt,
+            n: 1,
+            size: width === height ? '1024x1024' : width > height ? '1792x1024' : '1024x1792',
+            quality: 'standard',
+            response_format: 'url'
+          })
+        });
+        const dalleData = await dalleRes.json();
+        if (dalleData.data?.[0]?.url) {
+          return res.json({ success: true, image_url: dalleData.data[0].url, model: 'dall-e-3' });
+        }
+        console.log('DALL-E 3 failed:', JSON.stringify(dalleData));
+      } catch(e) { console.log('DALL-E 3 error:', e.message); }
+    }
+
+    // ========== Fallback: Replicate Flux ==========
+    if (!REPLICATE_TOKEN) return res.status(500).json({ message: 'لا يوجد OPENAI_API_KEY أو REPLICATE_API_TOKEN' });
+
+    // ترجمة للإنجليزي إذا عربي
+    const hasArabic = /[\u0600-\u06FF]/.test(prompt);
+    if (hasArabic && ANTHROPIC_KEY) {
+      try {
+        const trRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001', max_tokens: 200,
+            messages: [{ role: 'user', content: `Translate to English for image generator, detect type and add quality keywords. Return prompt only: ${prompt}` }]
+          })
+        });
+        const trData = await trRes.json();
+        if (trData.content?.[0]?.text) prompt = trData.content[0].text.trim() + ', no text, no watermark';
+      } catch(e) {}
     }
 
     const https = require('https');
     const body = JSON.stringify({
-      input: { prompt, width: parseInt(width), height: parseInt(height), num_outputs: 1, num_inference_steps: 28, output_format: 'jpg', output_quality: 90 }
+      input: { prompt, width: parseInt(width), height: parseInt(height), num_outputs: 1, num_inference_steps: 4, output_format: 'jpg', output_quality: 90 }
     });
-
     const makeRequest = (url, options, postData) => new Promise((resolve, reject) => {
       const req = https.request(url, options, (r) => {
-        let data = '';
-        r.on('data', chunk => data += chunk);
+        let data = ''; r.on('data', c => data += c);
         r.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
       });
       req.on('error', reject);
       if (postData) req.write(postData);
       req.end();
     });
-
-    // Create prediction
     let prediction = await makeRequest(
-      'https://api.replicate.com/v1/models/black-forest-labs/flux-dev/predictions',
+      'https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions',
       { method: 'POST', headers: { 'Authorization': `Bearer ${REPLICATE_TOKEN}`, 'Content-Type': 'application/json', 'Prefer': 'wait' } },
       body
     );
-
-    // Poll if not done
     let attempts = 0;
     while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < 30) {
       await new Promise(r => setTimeout(r, 1500));
@@ -1769,12 +1786,10 @@ Return ONLY the final English prompt. Nothing else.` }]
       });
       attempts++;
     }
-
     if (prediction.status === 'succeeded' && prediction.output?.[0]) {
-      res.json({ success: true, image_url: prediction.output[0] });
-    } else {
-      res.status(500).json({ success: false, message: prediction.error || 'فشل التوليد' });
+      return res.json({ success: true, image_url: prediction.output[0], model: 'flux' });
     }
+    res.status(500).json({ success: false, message: prediction.error || 'فشل التوليد' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
