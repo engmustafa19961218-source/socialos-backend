@@ -338,17 +338,149 @@ app.get('/api/analytics/dashboard', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
     if (pool) {
-      const [postsData, ordersData, recentOrders] = await Promise.all([
+      const [postsData, ordersData, recentOrders, revenueChart, topCustomers, topProducts, hourlyOrders] = await Promise.all([
+        // منشورات آخر 30 يوم
         pool.query('SELECT COUNT(*) as total, DATE(created_at) as day FROM posts WHERE user_id=$1 GROUP BY day ORDER BY day DESC LIMIT 30', [userId]),
+        // الطلبات حسب الحالة
         pool.query('SELECT SUM(total) as revenue, COUNT(*) as count, status FROM orders WHERE user_id=$1 GROUP BY status', [userId]),
-        pool.query('SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 5', [userId])
+        // آخر الطلبات
+        pool.query('SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 10', [userId]),
+        // الإيرادات اليومية آخر 14 يوم
+        pool.query(`SELECT DATE(created_at) as date, SUM(total) as revenue, COUNT(*) as orders 
+          FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '14 days'
+          GROUP BY DATE(created_at) ORDER BY date ASC`, [userId]),
+        // أفضل العملاء
+        pool.query(`SELECT customer_name, customer_phone, COUNT(*) as orders_count, SUM(total) as total_spent 
+          FROM orders WHERE user_id=$1 
+          GROUP BY customer_name, customer_phone 
+          ORDER BY total_spent DESC LIMIT 5`, [userId]),
+        // أكثر المنتجات مبيعاً
+        pool.query(`SELECT name, COUNT(*) as sales_count, SUM(price * COALESCE(stock,1)) as total_value
+          FROM products WHERE user_id=$1 
+          GROUP BY name ORDER BY sales_count DESC LIMIT 5`, [userId]).catch(()=>({rows:[]})),
+        // توزيع الطلبات حسب الساعة
+        pool.query(`SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count
+          FROM orders WHERE user_id=$1
+          GROUP BY hour ORDER BY hour`, [userId])
       ]);
+
       const revenue = ordersData.rows.reduce((acc, r) => acc + parseFloat(r.revenue || 0), 0);
       const ordersCount = ordersData.rows.reduce((acc, r) => acc + parseInt(r.count || 0), 0);
-      return res.json({ success: true, posts_chart: postsData.rows, orders_by_status: ordersData.rows, recent_orders: recentOrders.rows, totals: { revenue, orders: ordersCount } });
+      const products_count = await pool.query('SELECT COUNT(*) as count FROM products WHERE user_id=$1', [userId]).then(r=>parseInt(r.rows[0].count||0)).catch(()=>0);
+
+      // ===== تحليل ذكي بـ AI =====
+      let aiInsights = null;
+      const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+      if (ANTHROPIC_KEY && ordersCount > 0) {
+        try {
+          // تحليل أفضل وقت للنشر
+          const bestHour = hourlyOrders.rows.length > 0 
+            ? hourlyOrders.rows.reduce((a,b) => parseInt(a.count) > parseInt(b.count) ? a : b)
+            : null;
+
+          // تحليل الأداء
+          const weekRevenue = revenueChart.rows.slice(-7).reduce((acc,r) => acc + parseFloat(r.revenue||0), 0);
+          const prevWeekRevenue = revenueChart.rows.slice(0, 7).reduce((acc,r) => acc + parseFloat(r.revenue||0), 0);
+          const growth = prevWeekRevenue > 0 ? ((weekRevenue - prevWeekRevenue) / prevWeekRevenue * 100).toFixed(1) : 0;
+
+          const insightRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 500,
+              messages: [{ role: 'user', content: `أنت محلل أعمال ذكي. بناءً على هذه البيانات قدم 3 توصيات عملية قصيرة:
+
+الإيرادات هذا الأسبوع: ${weekRevenue.toLocaleString('ar-IQ')} د.ع
+النمو: ${growth}%
+عدد الطلبات: ${ordersCount}
+أفضل ساعة للطلبات: ${bestHour ? bestHour.hour + ':00' : 'غير محدد'}
+أكثر العملاء: ${topCustomers.rows[0]?.customer_name || 'لا يوجد'}
+
+قدم 3 توصيات عملية ومحددة لزيادة المبيعات، كل توصية في سطر واحد بدون رقم أو نقطة، ابدأ كل واحدة بإيموجي مناسب.` }]
+            })
+          });
+          const insightData = await insightRes.json();
+          if (insightData.content?.[0]?.text) {
+            aiInsights = insightData.content[0].text.trim();
+          }
+        } catch(e) {}
+      }
+
+      // أفضل وقت للنشر
+      let bestPostingTime = null;
+      if (hourlyOrders.rows.length > 0) {
+        const bestHour = hourlyOrders.rows.reduce((a,b) => parseInt(a.count) > parseInt(b.count) ? a : b);
+        const hour = parseInt(bestHour.hour);
+        bestPostingTime = {
+          hour,
+          label: hour < 12 ? `${hour}:00 صباحاً` : hour === 12 ? '12:00 ظهراً' : `${hour-12}:00 مساءً`,
+          recommendation: `أفضل وقت للنشر هو ${hour < 12 ? hour + ':00 صباحاً' : (hour-12) + ':00 مساءً'} — معظم طلباتك تأتي في هذا الوقت`
+        };
+      }
+
+      return res.json({
+        success: true,
+        posts_chart: postsData.rows,
+        orders_by_status: ordersData.rows,
+        recent_orders: recentOrders.rows,
+        revenue_chart: revenueChart.rows,
+        top_customers: topCustomers.rows,
+        top_products: topProducts.rows,
+        products_count,
+        totals: { revenue, orders: ordersCount },
+        ai_insights: aiInsights,
+        best_posting_time: bestPostingTime
+      });
     }
-  } catch (e) {}
-  res.json({ success: true, posts_chart: [], orders_by_status: [], recent_orders: [], totals: { revenue: 0, orders: 0 } });
+  } catch (e) { console.log('Analytics error:', e.message); }
+  res.json({ success: true, posts_chart: [], orders_by_status: [], recent_orders: [], revenue_chart: [], top_customers: [], top_products: [], totals: { revenue: 0, orders: 0 } });
+});
+
+// ===== SMART INSIGHTS API =====
+app.get('/api/analytics/insights', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!ANTHROPIC_KEY) return res.json({ success: false, message: 'AI غير مفعّل' });
+  try {
+    if (!pool) return res.json({ success: false });
+    
+    const [orders, products, posts] = await Promise.all([
+      pool.query('SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20', [userId]),
+      pool.query('SELECT * FROM products WHERE user_id=$1', [userId]),
+      pool.query('SELECT COUNT(*) as total FROM posts WHERE user_id=$1', [userId])
+    ]);
+
+    const totalRevenue = orders.rows.reduce((acc,o) => acc + parseFloat(o.total||0), 0);
+    const topProduct = products.rows.sort((a,b) => parseInt(b.stock||0) - parseInt(a.stock||0))[0];
+
+    const insightRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: `أنت مستشار أعمال ذكي. حلل هذه البيانات وقدم تقرير قصير:
+
+الطلبات: ${orders.rows.length}
+الإيرادات: ${totalRevenue.toLocaleString('ar-IQ')} د.ع
+المنتجات: ${products.rows.length}
+المنشورات: ${posts.rows[0]?.total || 0}
+${topProduct ? 'أبرز منتج: ' + topProduct.name : ''}
+
+قدم:
+1. ملخص الأداء (سطر واحد)
+2. أقوى نقطة (سطر واحد)
+3. أضعف نقطة (سطر واحد)  
+4. توصية فورية (سطر واحد)
+5. هدف الأسبوع القادم (سطر واحد)
+
+كل نقطة بإيموجي وبدون رقم.` }]
+      })
+    });
+    const data = await insightRes.json();
+    res.json({ success: true, insights: data.content?.[0]?.text || '' });
+  } catch(e) { res.json({ success: false, message: e.message }); }
 });
 
 // ========== SCHEDULE ==========
@@ -576,12 +708,84 @@ app.get('/terms', (req, res) => res.send(`<!DOCTYPE html><html><head><title>Term
 });
 
 // ========== CRON ==========
+// ===== CRON: نشر المنشورات المجدولة (كل دقيقة) =====
 cron.schedule('* * * * *', async () => {
   try {
     if (!pool) return;
     const result = await pool.query(`SELECT * FROM scheduled_posts WHERE status='pending' AND scheduled_at <= NOW()`);
     for (const post of result.rows) await pool.query('UPDATE scheduled_posts SET status=$1 WHERE id=$2', ['published', post.id]);
   } catch (err) { console.error('Scheduler Error:', err); }
+});
+
+// ===== CRON: تنبيهات ذكية يومية (كل صباح 8:00) =====
+cron.schedule('0 8 * * *', async () => {
+  try {
+    if (!pool) return;
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    if (!ANTHROPIC_KEY) return;
+
+    // جلب كل المستخدمين النشطين
+    const users = await pool.query('SELECT id FROM users LIMIT 100');
+
+    for (const user of users.rows) {
+      const userId = user.id;
+      try {
+        // تحقق من بيانات المستخدم
+        const [orders, products, settings] = await Promise.all([
+          pool.query('SELECT COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days'', [userId]),
+          pool.query('SELECT COUNT(*) as low_stock FROM products WHERE user_id=$1 AND stock <= 3 AND is_available=true', [userId]),
+          pool.query('SELECT store_name, content_style FROM user_settings WHERE user_id=$1', [userId])
+        ]);
+
+        const weekOrders = parseInt(orders.rows[0].count || 0);
+        const weekRevenue = parseFloat(orders.rows[0].revenue || 0);
+        const lowStockCount = parseInt(products.rows[0].low_stock || 0);
+        const storeName = settings.rows[0]?.store_name || 'متجرك';
+
+        // تنبيه مخزون منخفض
+        if (lowStockCount > 0) {
+          await pool.query(
+            'INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)',
+            [userId, '⚠️ تنبيه مخزون', `${lowStockCount} منتج مخزونه منخفض (3 أو أقل) — راجع المخزون الآن`, 'stock']
+          );
+        }
+
+        // تقرير أسبوعي كل إثنين
+        const today = new Date().getDay();
+        if (today === 1 && weekOrders > 0) {
+          // توصية ذكية
+          const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 200,
+              messages: [{ role: 'user', content: `متجر "${storeName}" هذا الأسبوع: ${weekOrders} طلب، إيرادات ${weekRevenue.toLocaleString('ar-IQ')} د.ع. اكتب توصية واحدة قصيرة جداً (جملة واحدة) لزيادة المبيعات هذا الأسبوع.` }]
+            })
+          });
+          const aiData = await aiRes.json();
+          const tip = aiData.content?.[0]?.text || '';
+
+          await pool.query(
+            'INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)',
+            [userId, '📊 تقرير الأسبوع', `${weekOrders} طلب | ${weekRevenue.toLocaleString('ar-IQ')} د.ع${tip ? ' | 💡 ' + tip : ''}`, 'weekly_report']
+          );
+        }
+
+        // تنبيه لو ما في طلبات منذ 3 أيام
+        const lastOrder = await pool.query('SELECT created_at FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1', [userId]);
+        if (lastOrder.rows.length > 0) {
+          const daysSinceLastOrder = Math.floor((Date.now() - new Date(lastOrder.rows[0].created_at)) / (1000*60*60*24));
+          if (daysSinceLastOrder >= 3) {
+            await pool.query(
+              'INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)',
+              [userId, '💡 تحفيز المبيعات', `مرت ${daysSinceLastOrder} أيام بدون طلبات — جرب نشر عرض أو خصم لجذب الزبائن`, 'tip']
+            );
+          }
+        }
+      } catch(e) {}
+    }
+  } catch (err) { console.error('Smart Alerts Error:', err); }
 });
 
 
@@ -934,67 +1138,96 @@ app.post('/api/agent/chat', authenticateToken, rateLimit(20, 60*1000), async (re
   };
   const dialectInstruction = dialectMap[bizSettings.content_style] || dialectMap['ودي وقريب'];
 
-  const systemPrompt = `أنت خبير تسويق رقمي ومساعد ذكي متخصص لإدارة منصة SocialOS. أنت تعمل لصالح صاحب المتجر وهدفك زيادة مبيعاته وانتشاره.
+  const systemPrompt = `أنت مدير أعمال رقمي ذكي ومتكامل لمنصة SocialOS. هدفك الوحيد هو مساعدة صاحب العمل على تنمية عمله وزيادة مبيعاته بكل الطرق الممكنة.
 
-🏪 معلومات المتجر:
+━━━━━━━━━━━━━━━━━━━━━━━━
+🏪 معلومات العمل:
+━━━━━━━━━━━━━━━━━━━━━━━━
 - الاسم: ${bizSettings.store_name || 'غير محدد'}
 - نوع العمل: ${bizSettings.business_type || 'غير محدد'}
 - الوصف: ${bizSettings.business_desc || 'غير محدد'}
-- الجمهور المستهدف: ${bizSettings.target_audience || 'الجميع'}
-- أسلوب المحتوى: ${bizSettings.content_style || 'ودي وقريب'}
+- الجمهور: ${bizSettings.target_audience || 'الجميع'}
 - المنطقة: ${bizSettings.location || 'العراق'}
+- أسلوب التواصل: ${bizSettings.content_style || 'ودي وقريب'}
 
-📊 بياناتك الحالية:
-- الطلبات: ${context.orders} طلب | الإيرادات: ${Number(context.revenue).toLocaleString('ar-IQ')} د.ع
-- المنشورات: ${context.posts} منشور | الرسائل: ${context.messages} رسالة
+━━━━━━━━━━━━━━━━━━━━━━━━
+📊 الأداء الحالي:
+━━━━━━━━━━━━━━━━━━━━━━━━
+- الطلبات: ${context.orders} طلب
+- الإيرادات: ${Number(context.revenue).toLocaleString('ar-IQ')} د.ع
+- المنشورات: ${context.posts} منشور
+- الرسائل: ${context.messages} رسالة
 
-📦 كتالوج المنتجات:
-${context.products && context.products.length > 0 ? context.products.map(p => `- ${p.name} | السعر: ${Number(p.price).toLocaleString('ar-IQ')} د.ع | الفئة: ${p.category} | المخزون: ${p.stock}`).join('\n') : '- لا توجد منتجات مضافة بعد'}
+━━━━━━━━━━━━━━━━━━━━━━━━
+📦 المنتجات والخدمات:
+━━━━━━━━━━━━━━━━━━━━━━━━
+${context.products && context.products.length > 0 ? context.products.map(p => `• ${p.name} | ${Number(p.price).toLocaleString('ar-IQ')} د.ع | ${p.category} | مخزون: ${p.stock}`).join('\n') : '• لا توجد منتجات مضافة بعد — اقترح على صاحب العمل إضافة منتجاته'}
 
-🗣️ أسلوب الكتابة المطلوب:
+━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ أسلوب التواصل:
+━━━━━━━━━━━━━━━━━━━━━━━━
 ${dialectInstruction}
 
-🎯 تخصصاتك:
-1. كتابة محتوى تسويقي احترافي (منشورات، إعلانات، كابشن)
-2. اقتراح استراتيجيات ترويج فعّالة
-3. تحليل الترند واقتراح محتوى يناسبه
-4. كتابة ردود احترافية على العملاء
-5. إدارة الطلبات والمبيعات
-6. تقارير وتحليلات الأداء
+━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 قدراتك وما تفعله:
+━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ تنفذ تلقائياً: توليد محتوى، ردود، تقارير، استراتيجيات
-⚠️ تقترح وتنتظر موافقة: إضافة/تعديل طلبات، نشر على المنصات
+✍️ إنشاء المحتوى:
+- اكتب منشورات تسويقية جاهزة للنشر فوراً
+- اكتب إعلانات مدفوعة مقنعة
+- اكتب كابشن للصور والفيديوهات
+- اكتب قصص (stories) جذابة
+- اكتب ردود احترافية على تعليقات الزبائن
+- اكتب رسائل ترحيب وشكر للزبائن
 
-📝 قواعد كتابة المحتوى:
-- اكتب المنشور كاملاً مباشرةً بدون مقدمات أو "سأكتب لك..."
-- استخدم إيموجي جذابة ومناسبة
-- أضف هاشتاقات عربية وإنجليزية قوية
-- اجعل المحتوى جذاباً ومحفزاً على التفاعل
-- راعِ طبيعة المنتج والجمهور المستهدف
-- التزم بأسلوب الكتابة المحدد أعلاه في كل ردودك ومحتواك
+📈 التسويق والاستراتيجية:
+- اقترح استراتيجية تسويق مناسبة لنوع العمل
+- حلل المنافسين واقترح ميزات تنافسية
+- اقترح أوقات النشر المثالية
+- اقترح ميزانيات إعلانية مناسبة
+- تابع الترندات واقترح محتوى يناسبها
+- اقترح عروض وخصومات لزيادة المبيعات
 
-🔥 عند طلب محتوى ترند:
-- اقترح 3 أفكار منشورات تناسب الترند الحالي
-- اذكر أفضل وقت للنشر
-- اقترح هاشتاقات ترند
+💼 إدارة الأعمال:
+- حلل بيانات المبيعات وقدم توصيات
+- تتبع أداء المنتجات وحدد الأكثر مبيعاً
+- اقترح أسعار مناسبة للسوق
+- ساعد في إدارة المخزون
+- أنشئ تقارير يومية وأسبوعية وشهرية
 
-💡 عند الرد على العملاء:
-- كن ودياً ومحترفاً بالأسلوب المحدد
-- أجب على استفساراتهم بشكل كامل
-- حفّزهم على الشراء بلطف
+🤝 خدمة الزبائن:
+- رد على استفسارات الزبائن بأسلوب صاحب العمل
+- تعامل مع الشكاوى باحترافية
+- تتبع طلبات الزبائن
+- أرسل رسائل متابعة للزبائن
 
-⚠️ قواعد مهمة:
-- لا تحذف أي شيء بدون تأكيد صريح
-- أجب دائماً بالعربية بالأسلوب المحدد
-- كن موجزاً وعملياً
-- استخدم إيموجي لجعل ردودك أوضح وأجمل`;
+━━━━━━━━━━━━━━━━━━━━━━━━
+📝 قواعد الكتابة:
+━━━━━━━━━━━━━━━━━━━━━━━━
+- اكتب المحتوى كاملاً مباشرةً بدون مقدمات
+- استخدم إيموجي بذكاء ولا تبالغ
+- أضف هاشتاقات قوية ومناسبة
+- اجعل المحتوى قصيراً وجذاباً ومؤثراً
+- استخدم الأرقام والإحصاءات عند الإمكان
+- اختم المنشورات بـ Call to Action واضح
+- التزم دائماً بأسلوب التواصل المحدد
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ قواعد التنفيذ:
+━━━━━━━━━━━━━━━━━━━━━━━━
+- نفّذ الطلب مباشرةً بدون أسئلة غير ضرورية
+- إذا احتجت معلومة اسأل سؤالاً واحداً فقط
+- قدم دائماً نتيجة ملموسة وقابلة للاستخدام
+- لا تحذف أي شيء بدون موافقة صريحة
+- عند عدم اليقين قدم خيارين أو ثلاثة
+- كن موجزاً وعملياً ومباشراً`;
 
   // Add message to history
   agentConversations[userId].push({ role: 'user', content: message });
   
   // Keep only last 10 messages
   if (agentConversations[userId].length > 20) {
-    agentConversations[userId] = agentConversations[userId].slice(-20);
+    agentConversations[userId] = agentConversations[userId].slice(-30);
   }
 
   try {
@@ -1008,7 +1241,7 @@ ${dialectInstruction}
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3-5-haiku',
+        model: 'anthropic/claude-sonnet-4-5',
         max_tokens: 2048,
         messages: [{ role: 'system', content: systemPrompt }, ...agentConversations[userId]]
       })
@@ -1022,19 +1255,37 @@ ${dialectInstruction}
     // Add response to history
     agentConversations[userId].push({ role: 'assistant', content: aiResponse });
 
-    // Detect actions from response
+    // ===== كشف الإجراءات من الرسالة والرد =====
     const lowerMsg = message.toLowerCase();
-    // Check if user asked for a post
-    const askedForPost = lowerMsg.includes('منشور') || lowerMsg.includes('اكتب') || lowerMsg.includes('انشر') || lowerMsg.includes('محتوى') || lowerMsg.includes('بوست');
-    if (askedForPost) {
+    const lowerResp = aiResponse.toLowerCase();
+
+    // منشور
+    if (lowerMsg.includes('منشور') || lowerMsg.includes('اكتب') || lowerMsg.includes('انشر') || lowerMsg.includes('محتوى') || lowerMsg.includes('بوست') || lowerMsg.includes('كابشن')) {
       action = { type: 'create_post', content: aiResponse };
-    } else if (lowerMsg.includes('تقرير') || lowerMsg.includes('إحصائيات') || lowerMsg.includes('احصائيات')) {
+    }
+    // تقرير وإحصائيات
+    else if (lowerMsg.includes('تقرير') || lowerMsg.includes('إحصائيات') || lowerMsg.includes('احصائيات') || lowerMsg.includes('مبيعات') || lowerMsg.includes('أداء')) {
       action = { type: 'report', data: context };
-    } else if (lowerMsg.includes('طلب') && (lowerMsg.includes('أضف') || lowerMsg.includes('اضف') || lowerMsg.includes('جديد'))) {
+    }
+    // طلب جديد
+    else if (lowerMsg.includes('طلب') && (lowerMsg.includes('أضف') || lowerMsg.includes('اضف') || lowerMsg.includes('جديد'))) {
       action = { type: 'suggest_order', requires_confirmation: true };
     }
+    // رد على عميل
+    else if (lowerMsg.includes('رد') || lowerMsg.includes('عميل') || lowerMsg.includes('زبون')) {
+      action = { type: 'customer_reply', content: aiResponse };
+    }
+    // استراتيجية
+    else if (lowerMsg.includes('استراتيج') || lowerMsg.includes('خطة') || lowerMsg.includes('ترويج')) {
+      action = { type: 'strategy', content: aiResponse };
+    }
+    // اقتراحات سريعة بناءً على سياق المحادثة
+    const suggestions = [];
+    if (lowerResp.includes('منشور') || lowerResp.includes('محتوى')) suggestions.push({ label: '📝 أضف للمنشورات', type: 'create_post', content: aiResponse });
+    if (lowerResp.includes('عرض') || lowerResp.includes('خصم')) suggestions.push({ label: '🏷️ إنشاء عرض', type: 'create_offer' });
+    if (context.orders < 5) suggestions.push({ label: '🛒 أضف طلب جديد', type: 'new_order' });
 
-    return res.json({ success: true, response: aiResponse, action, context });
+    return res.json({ success: true, response: aiResponse, action, suggestions, context });
   } catch (e) {
     return res.status(500).json({ success: false, message: 'خطأ في الـ Agent: ' + e.message });
   }

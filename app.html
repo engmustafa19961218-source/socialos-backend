@@ -1124,6 +1124,19 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
         </div>
       </div>
 
+      <!-- AI Insights -->
+      <div class="card" style="margin-top:16px;background:linear-gradient(135deg,rgba(79,142,247,.08),rgba(124,58,237,.08));border-color:rgba(79,142,247,.2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">🧠 توصيات الذكاء الاصطناعي</h3>
+          <button class="btn btn-outline btn-sm" onclick="loadAIInsights()" id="insights-btn">تحديث</button>
+        </div>
+        <div id="ai-insights-content" style="color:var(--text2);font-size:.85rem;line-height:2">
+          جاري تحليل بياناتك...
+        </div>
+        <div id="best-posting-time" style="margin-top:12px;padding:10px 14px;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:10px;font-size:.85rem;display:none">
+        </div>
+      </div>
+
       <style>@media(max-width:768px){#page-analytics .page-toolbar-actions{flex-wrap:wrap}#page-analytics>div:nth-child(3),#page-analytics>div:nth-child(4){grid-template-columns:1fr!important}}</style>
     </div>
 
@@ -2764,18 +2777,50 @@ async function sendAgentMsg(text){
         document.getElementById('ag-messages').textContent=data.context.messages||0;
       }
       
+      // تحديث الإحصائيات بشكل احترافي
+      if(data.context){
+        const rev = fmtCurrency(data.context.revenue||0);
+        document.getElementById('ag-orders').textContent = data.context.orders||0;
+        document.getElementById('ag-revenue').textContent = rev;
+        document.getElementById('ag-posts').textContent = data.context.posts||0;
+        document.getElementById('ag-messages').textContent = data.context.messages||0;
+      }
+
       // Handle actions
       if(data.action){
         pendingAgentAction=data.action;
+        const actionContent = document.getElementById('agent-action-content');
+        const actionsDiv = document.getElementById('agent-actions');
+        
         if(data.action.type==='create_post'){
-          document.getElementById('agent-action-content').innerHTML=`
-            <p style="color:var(--text2);font-size:.85rem;margin-bottom:8px">هل تريد نشر هذا المحتوى؟</p>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.9rem">${data.action.content}</div>`;
-          document.getElementById('agent-actions').style.display='block';
+          actionContent.innerHTML=`
+            <p style="color:var(--text2);font-size:.85rem;margin-bottom:8px">📝 محتوى جاهز للنشر:</p>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.88rem;line-height:1.6;white-space:pre-wrap">${data.action.content}</div>`;
+          actionsDiv.style.display='block';
+        } else if(data.action.type==='customer_reply'){
+          actionContent.innerHTML=`
+            <p style="color:var(--text2);font-size:.85rem;margin-bottom:8px">💬 رد جاهز للعميل:</p>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.88rem;line-height:1.6">${data.action.content}</div>`;
+          actionsDiv.style.display='block';
         } else if(data.action.type==='suggest_order'){
-          document.getElementById('agent-action-content').innerHTML=`<p style="color:var(--text2);font-size:.85rem">هل تريد فتح نموذج إضافة طلب جديد؟</p>`;
-          document.getElementById('agent-actions').style.display='block';
+          actionContent.innerHTML=`<p style="color:var(--text2);font-size:.85rem">🛒 هل تريد فتح نموذج إضافة طلب جديد؟</p>`;
+          actionsDiv.style.display='block';
+        } else if(data.action.type==='strategy'){
+          actionContent.innerHTML=`
+            <p style="color:var(--text2);font-size:.85rem;margin-bottom:8px">🎯 استراتيجية مقترحة:</p>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.88rem;line-height:1.6;white-space:pre-wrap">${data.action.content}</div>`;
+          actionsDiv.style.display='block';
         }
+      }
+
+      // اقتراحات سريعة
+      if(data.suggestions && data.suggestions.length > 0){
+        const suggestHtml = data.suggestions.map(s=>
+          `<button onclick="handleAgentSuggestion('${s.type}')" 
+            style="padding:6px 12px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);border-radius:20px;color:var(--accent);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;white-space:nowrap">
+            ${s.label}
+          </button>`).join('');
+        addAgentMsg(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${suggestHtml}</div>`, 'ai-action');
       }
     } else {
       addAgentMsg('❌ عذراً، حدث خطأ: '+(data.message||''), 'ai');
@@ -2786,6 +2831,13 @@ async function sendAgentMsg(text){
     addAgentMsg('❌ تعذر الاتصال بالـ Agent', 'ai');
   }
   btn.disabled=false;
+}
+
+function handleAgentSuggestion(type){
+  if(type==='create_post') showPage('create',document.querySelector('[onclick*=create]'));
+  else if(type==='new_order') openOrderModal();
+  else if(type==='create_offer') sendAgentMsg('اقترح عرض خصم مناسب لمنتجاتي');
+  else if(type==='report') sendAgentMsg('أعطني تقرير مبيعات اليوم');
 }
 
 function addAgentMsg(text, type){
@@ -3319,8 +3371,32 @@ async function loadMessages(){
   }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
 
+// ─── AI INSIGHTS ───
+async function loadAIInsights(){
+  const btn = document.getElementById('insights-btn');
+  const el = document.getElementById('ai-insights-content');
+  const timeEl = document.getElementById('best-posting-time');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ جاري التحليل...'; }
+  try{
+    const res = await fetch(`${API}/api/analytics/insights`,{headers:authH()});
+    const data = await res.json();
+    if(data.success && data.insights){
+      el.innerHTML = data.insights.split('\n').filter(l=>l.trim()).map(line=>
+        `<div style="padding:6px 0;border-bottom:1px solid var(--border)">${line}</div>`
+      ).join('');
+    } else {
+      el.innerHTML = '<span style="color:var(--text2)">أضف منتجات وطلبات لتفعيل التحليل الذكي</span>';
+    }
+  }catch(e){
+    el.innerHTML = '<span style="color:var(--text2)">تعذر التحليل</span>';
+  }
+  if(btn){ btn.disabled=false; btn.textContent='تحديث'; }
+}
+
 // ─── ANALYTICS ───
 async function loadAnalytics(period='month'){
+  // تحميل AI insights تلقائياً مرة واحدة
+  if(!window._insightsLoaded){ window._insightsLoaded=true; setTimeout(loadAIInsights, 2000); }
   try{
     const res=await fetch(`${API}/api/analytics/dashboard`,{headers:authH()});
     const data=await res.json();
@@ -3438,6 +3514,24 @@ async function loadAnalytics(period='month'){
           </div>`).join(''):
         '<div style="text-align:center;padding:20px;color:var(--text2);font-size:.82rem">لا توجد طلبات</div>';
     }
+
+    // AI Insights
+    const insightsEl = document.getElementById('ai-insights-content');
+    if(insightsEl && data.ai_insights){
+      insightsEl.innerHTML = data.ai_insights.split('\n').filter(l=>l.trim()).map(line=>
+        `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">${line}</div>`
+      ).join('');
+    } else if(insightsEl){
+      insightsEl.innerHTML = '<span style="color:var(--text2);font-size:.82rem">أضف طلبات لتفعيل التحليل الذكي 🧠</span>';
+    }
+
+    // أفضل وقت للنشر
+    const timeEl = document.getElementById('best-posting-time');
+    if(timeEl && data.best_posting_time){
+      timeEl.style.display='block';
+      timeEl.innerHTML = `⏰ <strong>${data.best_posting_time.recommendation}</strong>`;
+    }
+
   }catch(e){ console.log('Analytics error:', e); }
 }
 
