@@ -732,7 +732,7 @@ cron.schedule('0 8 * * *', async () => {
       try {
         // تحقق من بيانات المستخدم
         const [orders, products, settings] = await Promise.all([
-          pool.query('SELECT COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days'', [userId]),
+          pool.query(`SELECT COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days'`, [userId]),
           pool.query('SELECT COUNT(*) as low_stock FROM products WHERE user_id=$1 AND stock <= 3 AND is_available=true', [userId]),
           pool.query('SELECT store_name, content_style FROM user_settings WHERE user_id=$1', [userId])
         ]);
