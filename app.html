@@ -724,77 +724,90 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
           <p>توليد صور احترافية بالذكاء الاصطناعي</p>
         </div>
       </div>
-      
-      <div class="card">
-        <h3>🖼️ نوع التصميم</h3>
-        <div class="ai-type-row">
-          <button class="ai-type-btn active" onclick="setDesignType('product',this)">📦 منتج</button>
-          <button class="ai-type-btn" onclick="setDesignType('poster',this)">📢 بوستر إعلاني</button>
-          <button class="ai-type-btn" onclick="setDesignType('social',this)">📱 سوشيال ميديا</button>
-          <button class="ai-type-btn" onclick="setDesignType('logo',this)">✨ شعار</button>
-          <button class="ai-type-btn" onclick="setDesignType('custom',this)">🎯 مخصص</button>
-        </div>
-        
-        <div class="form-group-item" style="margin-top:16px">
-          <label class="form-label">وصف الصورة المطلوبة</label>
-          <textarea class="form-textarea" id="design-prompt" placeholder="مثال: منتج عطر فاخر على خلفية ذهبية مع إضاءة احترافية..." style="min-height:80px"></textarea>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <!-- Left: Controls -->
+        <div>
+          <!-- نوع التصميم -->
+          <div class="card" style="margin-bottom:12px">
+            <h3>🖼️ نوع الصورة</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:0">
+              <button class="ai-type-btn active" onclick="setDesignType('product',this)" style="padding:10px 8px;text-align:center;border-radius:10px">📦<div style="font-size:.72rem;margin-top:4px">منتج</div></button>
+              <button class="ai-type-btn" onclick="setDesignType('poster',this)" style="padding:10px 8px;text-align:center;border-radius:10px">📢<div style="font-size:.72rem;margin-top:4px">بوستر</div></button>
+              <button class="ai-type-btn" onclick="setDesignType('social',this)" style="padding:10px 8px;text-align:center;border-radius:10px">📱<div style="font-size:.72rem;margin-top:4px">سوشيال</div></button>
+              <button class="ai-type-btn" onclick="setDesignType('logo',this)" style="padding:10px 8px;text-align:center;border-radius:10px">✨<div style="font-size:.72rem;margin-top:4px">شعار</div></button>
+              <button class="ai-type-btn" onclick="setDesignType('custom',this)" style="padding:10px 8px;text-align:center;border-radius:10px">🎯<div style="font-size:.72rem;margin-top:4px">مخصص</div></button>
+            </div>
+          </div>
+
+          <!-- الوصف -->
+          <div class="card" style="margin-bottom:12px">
+            <h3>✏️ وصف الصورة</h3>
+            <textarea class="form-textarea" id="design-prompt" placeholder="اكتب بالعربي أو بالإنجليزي... مثال: شعار متجر ملابس فاخر ذهبي وأسود" style="min-height:100px;margin-bottom:12px"></textarea>
+            <div class="grid-2" style="gap:8px">
+              <div>
+                <label class="form-label">الأسلوب</label>
+                <select class="form-select" id="design-style">
+                  <option value="realistic">📸 واقعي احترافي</option>
+                  <option value="artistic">🎨 فني إبداعي</option>
+                  <option value="minimal">⬜ بسيط وأنيق</option>
+                  <option value="3d">🧊 ثلاثي الأبعاد</option>
+                  <option value="luxury">💎 فاخر</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">الحجم</label>
+                <select class="form-select" id="design-size">
+                  <option value="1024x1024">⬛ مربع 1:1</option>
+                  <option value="1024x576">▬ أفقي 16:9</option>
+                  <option value="576x1024">▮ عمودي 9:16</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-accent" id="design-btn" onclick="generateImage()" style="width:100%;margin-top:12px;padding:14px;font-size:1rem">🎨 توليد الصورة</button>
+          </div>
+
+          <!-- أفكار سريعة -->
+          <div class="card">
+            <h3>⚡ أفكار سريعة</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button onclick="quickDesign('منتج ملابس عصرية')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.8rem;transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">👗 ملابس</button>
+              <button onclick="quickDesign('منتجات تجميل فاخرة')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.8rem;transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">💄 تجميل</button>
+              <button onclick="quickDesign('عطر فاخر ذهبي')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.8rem;transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">🌸 عطور</button>
+              <button onclick="quickDesign('إعلان خصم 50%')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.8rem;transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">🏷️ خصومات</button>
+              <button onclick="quickDesign('طعام شهي احترافي')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.8rem;transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">🍽️ مطعم</button>
+              <button onclick="quickDesign('شعار متجر أنيق')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.8rem;transition:all .2s;display:flex;align-items:center;gap:6px" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">✨ شعار</button>
+            </div>
+          </div>
         </div>
 
-        <div class="grid-2">
-          <div class="form-group-item">
-            <label class="form-label">الأسلوب</label>
-            <select class="form-select" id="design-style">
-              <option value="realistic">واقعي احترافي</option>
-              <option value="artistic">فني إبداعي</option>
-              <option value="minimal">بسيط وأنيق</option>
-              <option value="3d">ثلاثي الأبعاد</option>
-              <option value="cartoon">كرتوني</option>
-              <option value="luxury">فاخر</option>
-            </select>
-          </div>
-          <div class="form-group-item">
-            <label class="form-label">الحجم</label>
-            <select class="form-select" id="design-size">
-              <option value="1024x1024">مربع 1:1 (انستغرام)</option>
-              <option value="1024x576">أفقي 16:9 (فيسبوك)</option>
-              <option value="576x1024">عمودي 9:16 (ستوري)</option>
-            </select>
+        <!-- Right: Result -->
+        <div>
+          <div class="card" id="design-result" style="min-height:400px;display:flex;flex-direction:column">
+            <h3>✨ الصورة المُولَّدة</h3>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:300px">
+              <div id="design-loading" style="display:flex;flex-direction:column;align-items:center;gap:16px">
+                <div style="width:60px;height:60px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+                <div style="color:var(--text2);font-size:.9rem">🎨 جاري التوليد...</div>
+                <div style="color:var(--text2);font-size:.75rem;opacity:.6">5-15 ثانية</div>
+              </div>
+              <div id="design-empty" style="text-align:center;color:var(--text2)">
+                <div style="font-size:4rem;margin-bottom:12px;opacity:.3">🎨</div>
+                <div style="font-size:.9rem">اكتب وصفاً واضغط توليد</div>
+              </div>
+              <img id="generated-image" src="" alt="صورة مُولَّدة" style="max-width:100%;max-height:400px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none;object-fit:contain">
+            </div>
+            <div id="design-actions" style="display:none;margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+              <a id="download-image" href="" download="socialos-design.jpg" class="btn btn-accent" style="flex:1;text-align:center">⬇️ تحميل</a>
+              <button class="btn btn-outline" onclick="generateImage()" style="flex:1">🔄 جديد</button>
+              <button class="btn btn-outline" onclick="sendImageToPost()" style="flex:1">📤 نشر</button>
+            </div>
           </div>
         </div>
-
-        <button class="btn btn-accent" id="design-btn" onclick="generateImage()" style="margin-top:8px">🎨 توليد الصورة</button>
       </div>
 
-      <!-- Result -->
-      <div class="card" id="design-result" style="display:none">
-        <h3>✨ الصورة المُولَّدة</h3>
-        <div style="text-align:center">
-          <div id="design-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:16px">
-            <div style="width:56px;height:56px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite"></div>
-            <div style="color:var(--text2);font-size:.9rem">🎨 FLUX AI يولد صورتك...</div>
-            <div style="color:var(--text2);font-size:.75rem;opacity:.6">قد يستغرق 5-15 ثانية</div>
-          </div>
-          <img id="generated-image" src="" alt="صورة مُولَّدة" style="max-width:100%;border-radius:12px;margin-bottom:16px;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none">
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <a id="download-image" href="" download="socialos-design.jpg" class="btn btn-accent">⬇️ تحميل الصورة</a>
-            <button class="btn btn-outline" onclick="generateImage()">🔄 توليد جديد</button>
-            <button class="btn btn-outline" onclick="sendImageToPost()">📤 إرسال للنشر</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Gallery -->
-      <div class="card">
-        <h3>🖼️ أفكار سريعة</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
-          <div onclick="quickDesign('منتج ملابس عصرية على خلفية بيضاء نظيفة')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">👗<div style="font-size:.75rem;margin-top:6px;color:var(--text2)">ملابس</div></div>
-          <div onclick="quickDesign('منتجات تجميل وعناية فاخرة مرتبة بأناقة')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">💄<div style="font-size:.75rem;margin-top:6px;color:var(--text2)">تجميل</div></div>
-          <div onclick="quickDesign('عطر فاخر على خلفية ذهبية مع إضاءة احترافية')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">🌸<div style="font-size:.75rem;margin-top:6px;color:var(--text2)">عطور</div></div>
-          <div onclick="quickDesign('إعلان خصم 50% بتصميم احترافي جذاب')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">🏷️<div style="font-size:.75rem;margin-top:6px;color:var(--text2)">خصومات</div></div>
-          <div onclick="quickDesign('طعام شهي مصور بشكل احترافي مع ديكور جميل')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">🍽️<div style="font-size:.75rem;margin-top:6px;color:var(--text2)">مطعم</div></div>
-          <div onclick="quickDesign('شعار متجر أنيق وعصري بألوان جذابة')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">✨<div style="font-size:.75rem;margin-top:6px;color:var(--text2)">شعار</div></div>
-        </div>
-      </div>
+      <!-- Mobile: single column -->
+      <style>@media(max-width:768px){#page-design>div:first-of-type{grid-template-columns:1fr!important;}}</style>
     </div>
 
     <!-- AI -->
@@ -895,39 +908,66 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- VOICE -->
     <div class="page" id="page-voice">
-      <div class="page-header"><h1>🎤 التحكم الصوتي</h1><p>تحدث والتطبيق ينفذ أوامرك</p></div>
-      <div class="card" style="text-align:center">
-        <button class="voice-btn idle" id="voice-btn" onclick="toggleVoice()">🎤</button>
-        <div class="voice-status" id="voice-status">اضغط للتحدث</div>
-        <div class="voice-transcript" id="voice-transcript" style="display:none"></div>
-        <div class="voice-response" id="voice-response"></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🎤 التحكم الصوتي</h1>
+          <p>تحدث والتطبيق ينفذ أوامرك فوراً</p>
+        </div>
       </div>
+
+      <!-- زر الميكروفون الرئيسي -->
+      <div class="card" style="text-align:center;padding:40px 24px">
+        <div style="position:relative;display:inline-block;margin-bottom:20px">
+          <button class="voice-btn idle" id="voice-btn" onclick="toggleVoice()" style="width:100px;height:100px;font-size:2.5rem">🎤</button>
+        </div>
+        <div class="voice-status" id="voice-status" style="font-size:1rem;font-weight:700;margin-bottom:12px">اضغط للتحدث</div>
+        <div class="voice-transcript" id="voice-transcript" style="display:none;margin-bottom:12px"></div>
+        <div class="voice-response" id="voice-response" style="display:none;text-align:right"></div>
+        <p style="color:var(--text2);font-size:.8rem;margin-top:12px">💡 الميكروفون في الشريط العلوي يعمل من أي صفحة</p>
+      </div>
+
+      <!-- الأوامر المتاحة -->
       <div class="card">
         <h3>💡 أوامر يمكنك قولها</h3>
-        <div class="voice-commands">
-          <div class="voice-command-item"><span>"صمم لي صورة..."</span> — يولد صورة بالذكاء الاصطناعي</div>
-          <div class="voice-command-item"><span>"اكتب منشور عن..."</span> — ينشئ منشور</div>
-          <div class="voice-command-item"><span>"أضف طلب جديد"</span> — يفتح نموذج الطلب</div>
-          <div class="voice-command-item"><span>"أضف منتج جديد"</span> — يفتح نموذج المنتج</div>
-          <div class="voice-command-item"><span>"افتح الطلبات"</span> — يفتح صفحة الطلبات</div>
-          <div class="voice-command-item"><span>"افتح التحليلات"</span> — يفتح الإحصائيات</div>
-          <div class="voice-command-item"><span>"افتح العملاء"</span> — يفتح صفحة العملاء</div>
-          <div class="voice-command-item"><span>"افتح المنتجات"</span> — يفتح المتجر</div>
-          <div class="voice-command-item"><span>"افتح الإعدادات"</span> — يفتح الإعدادات</div>
-          <div class="voice-command-item"><span>"افتح الجدولة"</span> — يفتح جدولة المنشورات</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="font-size:.75rem;font-weight:800;color:var(--accent);margin-bottom:6px">🎨 تصميم</div>
+            <div style="font-size:.8rem;color:var(--text2)">"صمم شعار لمتجر ملابس"</div>
+            <div style="font-size:.8rem;color:var(--text2);margin-top:4px">"صمم بوستر خصم 50%"</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="font-size:.75rem;font-weight:800;color:var(--accent2);margin-bottom:6px">✍️ محتوى</div>
+            <div style="font-size:.8rem;color:var(--text2)">"اكتب منشور عن خصم"</div>
+            <div style="font-size:.8rem;color:var(--text2);margin-top:4px">"أفكار ترند الأسبوع"</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="font-size:.75rem;font-weight:800;color:var(--accent3);margin-bottom:6px">🛒 مبيعات</div>
+            <div style="font-size:.8rem;color:var(--text2)">"أضف طلب جديد"</div>
+            <div style="font-size:.8rem;color:var(--text2);margin-top:4px">"افتح الطلبات"</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="font-size:.75rem;font-weight:800;color:var(--accent4);margin-bottom:6px">📊 تحليلات</div>
+            <div style="font-size:.8rem;color:var(--text2)">"كم مبيعاتي اليوم"</div>
+            <div style="font-size:.8rem;color:var(--text2);margin-top:4px">"افتح التحليلات"</div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- SCHEDULE -->
     <div class="page" id="page-schedule">
-      <div class="page-header"><h1>📅 الجدولة</h1><p>جدولة منشوراتك مسبقاً</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>📅 الجدولة</h1>
+          <p>جدولة منشوراتك مسبقاً على المنصات</p>
+        </div>
+      </div>
       <div class="card">
         <h3>➕ جدولة منشور جديد</h3>
-        <div class="form-group-item"><label class="form-label">المحتوى</label><textarea class="form-textarea" id="sched-content" placeholder="اكتب المحتوى..." style="min-height:80px"></textarea></div>
+        <div class="form-group-item"><label class="form-label">المحتوى</label><textarea class="form-textarea" id="sched-content" placeholder="اكتب المحتوى أو اسحب من المنشورات..." style="min-height:100px"></textarea></div>
         <div class="grid-2">
-          <div class="form-group-item"><label class="form-label">التاريخ والوقت</label><input type="datetime-local" class="form-input" id="sched-time"></div>
-          <div class="form-group-item"><label class="form-label">المنصة</label>
+          <div class="form-group-item"><label class="form-label">📅 التاريخ والوقت</label><input type="datetime-local" class="form-input" id="sched-time"></div>
+          <div class="form-group-item"><label class="form-label">📱 المنصة</label>
             <select class="form-select" id="sched-platform">
               <option value="facebook">📘 فيسبوك</option>
               <option value="instagram">📸 انستغرام</option>
@@ -935,9 +975,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
             </select>
           </div>
         </div>
-        <button class="btn btn-accent" onclick="schedulePost()">📅 جدولة</button>
+        <button class="btn btn-accent" onclick="schedulePost()" style="width:100%">📅 جدولة المنشور</button>
       </div>
-      <div class="card"><h3>📋 المجدولة</h3><div id="schedule-list"><div class="empty-state"><div class="emoji">📅</div><p>لا توجد منشورات مجدولة</p></div></div></div>
+      <div class="card">
+        <h3>📋 المنشورات المجدولة</h3>
+        <div id="schedule-list"><div class="empty-state"><div class="emoji">📅</div><p>لا توجد منشورات مجدولة</p></div></div>
+      </div>
     </div>
 
     <!-- POSTS -->
@@ -1143,7 +1186,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- PROFILE -->
     <div class="page" id="page-profile">
-      <div class="page-header"><h1>👤 البروفايل</h1><p>إدارة معلوماتك الشخصية</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>👤 البروفايل</h1>
+          <p>إدارة معلوماتك الشخصية</p>
+        </div>
+      </div>
       <div class="card">
         <div class="profile-avatar-large" id="profile-avatar-display">U</div>
         <div class="profile-stats">
@@ -1175,10 +1223,13 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- NOTIFICATIONS -->
     <div class="page" id="page-notifications">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>🔔 الإشعارات</h1><p>آخر التنبيهات والأحداث</p></div>
-          <button class="btn btn-outline btn-sm" onclick="markAllRead()">تعليم الكل كمقروء</button>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🔔 الإشعارات</h1>
+          <p>آخر التنبيهات والأحداث</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <button class="btn btn-outline btn-sm" onclick="markAllRead()">✅ تعليم الكل كمقروء</button>
         </div>
       </div>
       <div id="notifications-list"><div class="empty-state"><div class="emoji">🔔</div><p>لا توجد إشعارات</p></div></div>
@@ -1186,7 +1237,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- SECURITY -->
     <div class="page" id="page-security">
-      <div class="page-header"><h1>🔐 الأمان</h1><p>حالة الحماية والأمان</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🔐 الأمان</h1>
+          <p>حالة الحماية والأمان</p>
+        </div>
+      </div>
 
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-icon">🛡️</div><div class="stat-value" style="color:var(--accent)">✅</div><div class="stat-label">كلمات المرور مشفرة</div></div>
@@ -1224,22 +1280,28 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- CRM -->
     <div class="page" id="page-crm">
-      <div class="page-header"><h1>📇 CRM</h1><p>سجل كامل لكل عميل</p></div>
-      <div class="card">
-        <h3>🔍 بحث عن عميل</h3>
-        <div style="display:flex;gap:10px">
-          <input class="form-input" id="crm-search" placeholder="رقم هاتف العميل..." dir="ltr" style="flex:1">
-          <button class="btn btn-accent" onclick="searchCRM()">بحث</button>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>📇 CRM</h1>
+          <p>سجل كامل لكل عميل — تاريخ الطلبات والملاحظات</p>
         </div>
+      </div>
+      <div class="search-bar">
+        <span style="color:var(--text2)">🔍</span>
+        <input id="crm-search" placeholder="ادخل رقم هاتف العميل للبحث..." dir="ltr" onkeydown="if(event.key==='Enter')searchCRM()">
+        <button class="btn btn-accent btn-sm" onclick="searchCRM()">بحث</button>
       </div>
       <div id="crm-result"></div>
     </div>
 
     <!-- TEAM -->
     <div class="page" id="page-team">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>👨‍💼 الفريق</h1><p>إدارة أعضاء الفريق وصلاحياتهم</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>👨‍💼 الفريق</h1>
+          <p>إدارة أعضاء الفريق وصلاحياتهم</p>
+        </div>
+        <div class="page-toolbar-actions">
           <button class="btn btn-accent" onclick="openTeamModal()">➕ عضو جديد</button>
         </div>
       </div>
@@ -1269,7 +1331,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- INVENTORY -->
     <div class="page" id="page-inventory">
-      <div class="page-header"><h1>📉 المخزون</h1><p>تتبع مستويات المخزون والتنبيهات</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>📉 المخزون</h1>
+          <p>تتبع مستويات المخزون والتنبيهات</p>
+        </div>
+      </div>
       
       <!-- Alerts -->
       <div id="inventory-alerts"></div>
@@ -1290,6 +1357,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>⚙️ الإعدادات</h1>
+          <p>إعدادات متجرك والذكاء الاصطناعي</p>
+        </div>
+      </div>
       <div class="page-header"><h1>⚙️ الإعدادات</h1><p>إعدادات متجرك وطرق الدفع</p></div>
       
       <div class="card">
@@ -1399,10 +1472,13 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- MARKETPLACE -->
     <div class="page" id="page-marketplace">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>🛒 متجري العام</h1><p>صفحة متجرك للعملاء</p></div>
-          <button class="btn btn-accent" onclick="copyStoreLink()">🔗 نسخ رابط المتجر</button>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🏪 متجري العام</h1>
+          <p>صفحة متجرك للعملاء — شارك الرابط واستقبل الطلبات</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <button class="btn btn-accent" onclick="copyStoreLink()">🔗 نسخ الرابط</button>
         </div>
       </div>
       
@@ -1423,7 +1499,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- SUBSCRIPTION -->
     <div class="page" id="page-subscription">
-      <div class="page-header"><h1>⭐ الاشتراك</h1><p>اختر الخطة المناسبة</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>⭐ الاشتراك</h1>
+          <p>اختر الخطة المناسبة لعملك</p>
+        </div>
+      </div>
       <div class="card" id="current-plan-info"></div>
       <div style="display:flex;justify-content:center;gap:10px;margin-bottom:20px">
         <button class="btn btn-accent btn-sm" onclick="setPeriod('monthly',this)">شهري</button>
@@ -2043,9 +2124,13 @@ async function generateImage(){
   // Show loading UI
   const resultDiv = document.getElementById('design-result');
   const generatedImg = document.getElementById('generated-image');
+  const emptyDiv = document.getElementById('design-empty');
+  const actionsDiv = document.getElementById('design-actions');
   generatedImg.src = '';
-  resultDiv.style.display = 'block';
+  resultDiv.style.display = 'flex';
   generatedImg.style.display = 'none';
+  if(emptyDiv) emptyDiv.style.display = 'none';
+  if(actionsDiv) actionsDiv.style.display = 'none';
   document.getElementById('design-loading').style.display = 'flex';
   resultDiv.scrollIntoView({ behavior: 'smooth' });
   
@@ -2070,6 +2155,8 @@ async function generateImage(){
         generatedImg.style.display = 'block';
         document.getElementById('download-image').href = imageUrl;
         currentImageUrl = imageUrl;
+        const actDiv = document.getElementById('design-actions');
+        if(actDiv) actDiv.style.display = 'flex';
         showToast('✅ تم توليد الصورة بنجاح!');
         btn.disabled = false;
         btn.innerHTML = '🎨 توليد الصورة';
