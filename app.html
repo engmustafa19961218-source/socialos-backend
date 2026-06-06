@@ -157,17 +157,29 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 .page{display:none;animation:fadeIn .3s ease;}
 .page.active{display:block;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.page-header{margin-bottom:28px;}
-.page-header h1{font-size:1.9rem;font-weight:900;letter-spacing:-0.5px;}
-.page-header p{color:var(--text2);margin-top:6px;}
+.page-header{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.page-header h1{font-size:1.5rem;font-weight:900;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px;}
+.page-header p{color:var(--text2);margin-top:4px;font-size:.85rem;}
+.page-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap;}
+.page-toolbar-title h1{font-size:1.4rem;font-weight:900;letter-spacing:-.5px;}
+.page-toolbar-title p{color:var(--text2);font-size:.82rem;margin-top:2px;}
+.page-toolbar-actions{display:flex;gap:8px;align-items:center;}
+.filter-bar{display:flex;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 10px;margin-bottom:16px;flex-wrap:wrap;}
+.filter-btn{padding:5px 12px;border-radius:6px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-family:'Tajawal',sans-serif;font-size:.8rem;font-weight:700;transition:all .15s;}
+.filter-btn.active{background:var(--accent);color:#000;}
+.filter-btn:hover:not(.active){background:var(--surface2);color:var(--text);}
+.search-bar{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:16px;}
+.search-bar input{border:none;background:transparent;color:var(--text);font-family:'Tajawal',sans-serif;font-size:.9rem;flex:1;outline:none;}
+.search-bar input::placeholder{color:var(--text2);}
 
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px;}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;position:relative;overflow:hidden;transition:all .3s;}
-.stat-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 8px 32px rgba(79,142,247,.2);}
-.stat-icon{font-size:1.8rem;margin-bottom:12px;}
-.stat-value{font-size:2rem;font-weight:900;font-family:'IBM Plex Mono',monospace;background:linear-gradient(135deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.stat-label{color:var(--text2);font-size:.85rem;margin-top:4px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;transition:all .25s;cursor:default;}
+.stat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(79,142,247,.03),transparent);pointer-events:none;}
+.stat-card:hover{transform:translateY(-2px);border-color:rgba(79,142,247,.4);box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.stat-icon{font-size:1.5rem;margin-bottom:10px;opacity:.9;}
+.stat-value{font-size:1.8rem;font-weight:900;font-family:'IBM Plex Mono',monospace;background:linear-gradient(135deg,var(--text),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}
+.stat-label{color:var(--text2);font-size:.78rem;margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
 .status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);border-radius:20px;padding:4px 12px;font-size:.75rem;color:var(--accent);font-weight:600;}
 .status-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -422,6 +434,57 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 @media(min-width:769px){
   .mobile-bottom-nav{display:none !important;}
 }
+/* ===== ORDER CARDS IMPROVED ===== */
+.order-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:16px;margin-bottom:10px;
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.order-card::before{
+  content:'';position:absolute;top:0;right:0;width:3px;height:100%;
+  background:var(--accent);border-radius:0 14px 14px 0;opacity:0;transition:opacity .2s;
+}
+.order-card:hover{border-color:rgba(79,142,247,.3);transform:translateX(-2px);}
+.order-card:hover::before{opacity:1;}
+.order-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.order-id{font-size:.8rem;color:var(--text2);font-family:'IBM Plex Mono',monospace;}
+.order-customer{font-weight:800;font-size:.95rem;margin-top:2px;}
+.order-details{font-size:.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5;}
+.order-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.order-total{font-weight:900;font-size:1.05rem;font-family:'IBM Plex Mono',monospace;color:var(--accent);}
+.order-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.order-status{padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:800;}
+.status-new{background:rgba(79,142,247,.15);color:#7eb3ff;}
+.status-confirmed{background:rgba(0,212,170,.15);color:#00d4aa;}
+.status-processing{background:rgba(245,158,11,.15);color:#f59e0b;}
+.status-delivered{background:rgba(0,255,136,.15);color:#00cc88;}
+.status-cancelled{background:rgba(255,68,102,.15);color:#ff4466;}
+
+/* ===== PRODUCT CARDS IMPROVED ===== */
+.product-card-pro{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;transition:all .25s;
+}
+.product-card-pro:hover{border-color:rgba(79,142,247,.3);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.product-card-pro .product-img{width:100%;height:140px;object-fit:cover;background:var(--surface2);}
+.product-card-pro .product-img-placeholder{height:140px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:2.5rem;}
+.product-card-pro .product-body{padding:14px;}
+.product-card-pro .product-name{font-weight:800;font-size:.92rem;margin-bottom:4px;}
+.product-card-pro .product-desc{font-size:.78rem;color:var(--text2);margin-bottom:8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.product-card-pro .product-price{font-weight:900;font-size:1rem;color:var(--accent);font-family:'IBM Plex Mono',monospace;}
+.product-card-pro .product-stock{font-size:.75rem;color:var(--text2);margin-top:2px;}
+.product-card-pro .product-actions{display:flex;gap:6px;margin-top:10px;}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+@media(max-width:768px){.product-grid{grid-template-columns:repeat(2,1fr);gap:10px;}.product-card-pro .product-img,.product-card-pro .product-img-placeholder{height:110px;}}
+
+/* ===== CUSTOMER CARDS ===== */
+.customer-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;transition:all .2s;}
+.customer-card:hover{border-color:rgba(79,142,247,.3);}
+.customer-info h4{font-weight:800;font-size:.92rem;}
+.customer-info p{font-size:.8rem;color:var(--text2);margin-top:2px;}
+.customer-stats{text-align:center;font-size:.75rem;color:var(--text2);}
+.customer-stats strong{display:block;font-size:1rem;font-weight:900;color:var(--accent);font-family:'IBM Plex Mono',monospace;}
+
 </style>
 </head>
 <body>
@@ -631,7 +694,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- CREATE -->
     <div class="page" id="page-create">
-      <div class="page-header"><h1>✨ إنشاء محتوى</h1><p>انشر على منصات التواصل الاجتماعي</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>✨ إنشاء محتوى</h1>
+          <p>انشر على منصات التواصل الاجتماعي</p>
+        </div>
+      </div>
       <div class="card">
         <h3>📝 المحتوى</h3>
         <textarea class="form-textarea" id="post-content" placeholder="اكتب محتواك هنا..."></textarea>
@@ -650,7 +718,12 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- DESIGN -->
     <div class="page" id="page-design">
-      <div class="page-header"><h1>🎨 تصميم الصور</h1><p>توليد صور احترافية بالذكاء الاصطناعي</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🎨 تصميم الصور</h1>
+          <p>توليد صور احترافية بالذكاء الاصطناعي</p>
+        </div>
+      </div>
       
       <div class="card">
         <h3>🖼️ نوع التصميم</h3>
@@ -749,56 +822,71 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- AGENT -->
     <div class="page" id="page-agent">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>🧠 AI Agent</h1><p>مساعدك الذكي — قل له ما تريد وهو ينفذ</p></div>
-          <button class="btn btn-outline btn-sm" onclick="clearAgent()">🗑 مسح المحادثة</button>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🧠 AI Agent</h1>
+          <p>مساعدك الذكي — قل له ما تريد وهو ينفذ</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <button class="btn btn-outline btn-sm" onclick="clearAgent()">🗑 مسح</button>
         </div>
       </div>
 
-      <!-- Stats Bar -->
-      <div class="stats-grid" id="agent-stats" style="margin-bottom:20px">
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">🛒</div><div class="stat-value" style="font-size:1.3rem" id="ag-orders">-</div><div class="stat-label">الطلبات</div></div>
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">💰</div><div class="stat-value" style="font-size:1.3rem" id="ag-revenue">-</div><div class="stat-label">الإيرادات</div></div>
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">📝</div><div class="stat-value" style="font-size:1.3rem" id="ag-posts">-</div><div class="stat-label">المنشورات</div></div>
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">💬</div><div class="stat-value" style="font-size:1.3rem" id="ag-messages">-</div><div class="stat-label">الرسائل</div></div>
+      <!-- Stats -->
+      <div class="stats-grid" id="agent-stats" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value" id="ag-orders">-</div><div class="stat-label">الطلبات</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="ag-revenue">-</div><div class="stat-label">الإيرادات</div></div>
+        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value" id="ag-posts">-</div><div class="stat-label">المنشورات</div></div>
+        <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-value" id="ag-messages">-</div><div class="stat-label">الرسائل</div></div>
       </div>
 
-      <!-- Chat -->
-      <div class="card" style="padding:0;overflow:hidden">
-        <div id="agent-chat" style="height:400px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <!-- Chat Container -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column" id="agent-container">
+
+        <!-- Chat Messages -->
+        <div id="agent-chat" style="height:420px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth">
           <div class="agent-msg agent-msg-ai">
-            <div class="agent-avatar">🧠</div>
-            <div class="agent-bubble">مرحباً! أنا مساعدك الذكي. يمكنني مساعدتك في إدارة متجرك. قل لي ماذا تريد! 😊<br><br>
-            <small style="color:var(--text2)">مثال: "اكتب منشور عن عرض خصم" أو "كم عدد الطلبات اليوم" أو "أعطني تقرير المبيعات"</small></div>
+            <div class="agent-avatar" style="background:linear-gradient(135deg,var(--accent2),#a855f7)">🧠</div>
+            <div class="agent-bubble">
+              مرحباً! أنا مساعدك الذكي ⚡<br>
+              يمكنني مساعدتك في كل شيء — المحتوى، المبيعات، التحليلات.<br>
+              <span style="color:var(--text2);font-size:.82rem">قل لي ماذا تريد أو اختر من الاقتراحات 👇</span>
+            </div>
           </div>
         </div>
-        
-        <!-- Quick Commands -->
-        <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('اكتب منشور ترويجي جذاب لمتجري مع هاشتاقات وإيموجي')">✍️ منشور ترويجي</button>
-          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('اقترح 3 أفكار محتوى ترند لهذا الأسبوع')">🔥 أفكار ترند</button>
-          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('اكتب إعلان مقنع يحفز على الشراء')">📢 إعلان مقنع</button>
-          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('اكتب رد احترافي على عميل يسأل عن السعر')">💬 رد على عميل</button>
-          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('أعطني تقرير المبيعات الأسبوعي')">📊 تقرير مبيعات</button>
-          <button class="btn btn-outline btn-sm" onclick="sendAgentMsg('اقترح استراتيجية ترويج لزيادة المبيعات')">🎯 استراتيجية ترويج</button>
+
+        <!-- Quick Suggestions -->
+        <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+          <button onclick="sendAgentMsg('اكتب منشور ترويجي جذاب لمتجري')" style="white-space:nowrap;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">✍️ منشور ترويجي</button>
+          <button onclick="sendAgentMsg('اقترح 3 أفكار محتوى ترند لهذا الأسبوع')" style="white-space:nowrap;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">🔥 أفكار ترند</button>
+          <button onclick="sendAgentMsg('اكتب إعلان مقنع يحفز على الشراء')" style="white-space:nowrap;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">📢 إعلان مقنع</button>
+          <button onclick="sendAgentMsg('اكتب رد احترافي على عميل يسأل عن السعر')" style="white-space:nowrap;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">💬 رد على عميل</button>
+          <button onclick="sendAgentMsg('أعطني تقرير المبيعات الأسبوعي')" style="white-space:nowrap;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">📊 تقرير مبيعات</button>
+          <button onclick="sendAgentMsg('اقترح استراتيجية ترويج لزيادة المبيعات')" style="white-space:nowrap;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">🎯 استراتيجية</button>
         </div>
 
-        <!-- Input -->
-        <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center">
-          <button id="agent-voice-btn" onclick="toggleAgentVoice()" style="width:42px;height:42px;border-radius:50%;border:none;background:var(--surface2);cursor:pointer;font-size:1.2rem;flex-shrink:0;transition:all .2s">🎤</button>
-          <input class="form-input" id="agent-input" placeholder="اكتب أمرك هنا أو اضغط الميكروفون..." onkeydown="if(event.key==='Enter')sendAgentMsg()" style="flex:1">
-          <button class="btn btn-accent" onclick="sendAgentMsg()" id="agent-send-btn">إرسال</button>
+        <!-- Input Bar -->
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;background:var(--surface2)">
+          <button id="agent-voice-btn" onclick="toggleAgentVoice()"
+            style="width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:1rem;flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center">🎤</button>
+          <input class="form-input" id="agent-input"
+            placeholder="اكتب أمرك هنا..."
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendAgentMsg()"
+            style="flex:1;background:var(--surface);border-color:var(--border);padding:10px 14px">
+          <button class="btn btn-accent" onclick="sendAgentMsg()" id="agent-send-btn"
+            style="padding:10px 18px;border-radius:10px">
+            <span id="agent-send-text">إرسال ↵</span>
+          </button>
         </div>
       </div>
 
-      <!-- Action Buttons (shown after AI response) -->
+      <!-- Action Card -->
       <div id="agent-actions" style="display:none;margin-top:16px">
-        <div class="card">
-          <h3>⚡ إجراء مقترح</h3>
-          <div id="agent-action-content"></div>
-          <div style="display:flex;gap:10px;margin-top:12px">
-            <button class="btn btn-accent" id="agent-confirm-btn" onclick="confirmAgentAction()">✅ تأكيد</button>
+        <div class="card" style="border-color:rgba(79,142,247,.3)">
+          <h3 style="color:var(--accent)">⚡ إجراء مقترح</h3>
+          <div id="agent-action-content" style="margin-bottom:12px"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-accent" id="agent-confirm-btn" onclick="confirmAgentAction()">✅ تأكيد التنفيذ</button>
             <button class="btn btn-outline" onclick="dismissAgentAction()">إلغاء</button>
           </div>
         </div>
@@ -860,31 +948,49 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- ORDERS -->
     <div class="page" id="page-orders">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>🛒 الطلبات</h1><p>إدارة طلبات العملاء</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🛒 الطلبات</h1>
+          <p>إدارة وتتبع طلبات العملاء</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <button class="btn btn-outline btn-sm" onclick="exportOrders()">📊 تصدير</button>
           <button class="btn btn-accent" onclick="openOrderModal()">➕ طلب جديد</button>
         </div>
       </div>
-      <div class="card" style="padding:12px 20px">
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <input class="form-input" id="orders-search" placeholder="🔍 بحث باسم العميل أو الهاتف..." oninput="searchOrders(this.value)" style="flex:1">
-          <button class="btn btn-outline btn-sm" onclick="exportOrders()" style="white-space:nowrap">📊 تصدير Excel</button>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="loadOrders('')">الكل</button>
-          <button class="btn btn-outline btn-sm" onclick="loadOrders('new')">جديد</button>
-          <button class="btn btn-outline btn-sm" onclick="loadOrders('confirmed')">مؤكد</button>
-          <button class="btn btn-outline btn-sm" onclick="loadOrders('delivered')">تم التوصيل</button>
-          <button class="btn btn-outline btn-sm" onclick="loadOrders('cancelled')">ملغي</button>
-        </div>
+
+      <!-- Search -->
+      <div class="search-bar">
+        <span style="color:var(--text2);font-size:1rem">🔍</span>
+        <input id="orders-search" placeholder="بحث باسم العميل أو الهاتف أو تفاصيل الطلب..." oninput="searchOrders(this.value)">
       </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <span style="color:var(--text2);font-size:.75rem;font-weight:700;padding-left:4px">الحالة:</span>
+        <button class="filter-btn active" onclick="loadOrders('');setFilter(this)">الكل</button>
+        <button class="filter-btn" onclick="loadOrders('new');setFilter(this)">🆕 جديد</button>
+        <button class="filter-btn" onclick="loadOrders('confirmed');setFilter(this)">✅ مؤكد</button>
+        <button class="filter-btn" onclick="loadOrders('processing');setFilter(this)">⚙️ قيد التجهيز</button>
+        <button class="filter-btn" onclick="loadOrders('delivered');setFilter(this)">🚚 تم التوصيل</button>
+        <button class="filter-btn" onclick="loadOrders('cancelled');setFilter(this)">❌ ملغي</button>
+      </div>
+
       <div id="orders-list"><div class="empty-state"><div class="emoji">🛒</div><p>جاري التحميل...</p></div></div>
     </div>
 
     <!-- MESSAGES -->
     <div class="page" id="page-messages">
-      <div class="page-header"><h1>💬 الرسائل</h1><p>رسائل العملاء من جميع المنصات</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>💬 الرسائل</h1>
+          <p>رسائل العملاء من جميع المنصات</p>
+        </div>
+      </div>
+      <div class="search-bar">
+        <span style="color:var(--text2)">🔍</span>
+        <input placeholder="بحث في الرسائل..." oninput="">
+      </div>
       <div id="messages-list"><div class="empty-state"><div class="emoji">💬</div><p>جاري التحميل...</p></div></div>
     </div>
 
@@ -920,42 +1026,50 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- PRODUCTS -->
     <div class="page" id="page-products">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>📦 المنتجات</h1><p>كتالوج منتجاتك وأسعارها</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>📦 المنتجات</h1>
+          <p>كتالوج منتجاتك وأسعارها</p>
+        </div>
+        <div class="page-toolbar-actions">
           <button class="btn btn-accent" onclick="openProductModal()">➕ منتج جديد</button>
         </div>
       </div>
 
-      <!-- Search & Filter -->
-      <div class="card" style="padding:12px 20px">
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <input class="form-input" id="products-search" placeholder="🔍 بحث باسم المنتج..." oninput="searchProducts(this.value)" style="flex:1">
-        </div>
-        <div id="categories-filter" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      <!-- Stats -->
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-value" id="prod-total">0</div><div class="stat-label">إجمالي</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="prod-available">0</div><div class="stat-label">متاح</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="prod-min">0</div><div class="stat-label">أقل سعر</div></div>
+        <div class="stat-card"><div class="stat-icon">💎</div><div class="stat-value" id="prod-max">0</div><div class="stat-label">أعلى سعر</div></div>
       </div>
 
-      <!-- Stats -->
-      <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">📦</div><div class="stat-value" style="font-size:1.3rem" id="prod-total">0</div><div class="stat-label">إجمالي المنتجات</div></div>
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">✅</div><div class="stat-value" style="font-size:1.3rem" id="prod-available">0</div><div class="stat-label">متاح</div></div>
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">💰</div><div class="stat-value" style="font-size:1.3rem" id="prod-min">0</div><div class="stat-label">أقل سعر</div></div>
-        <div class="stat-card" style="padding:16px"><div class="stat-icon" style="font-size:1.2rem">💎</div><div class="stat-value" style="font-size:1.3rem" id="prod-max">0</div><div class="stat-label">أعلى سعر</div></div>
+      <!-- Search -->
+      <div class="search-bar">
+        <span style="color:var(--text2)">🔍</span>
+        <input id="products-search" placeholder="بحث باسم المنتج أو الوصف..." oninput="searchProducts(this.value)">
       </div>
+
+      <!-- Categories -->
+      <div class="filter-bar" id="categories-filter" style="margin-bottom:16px"></div>
 
       <div id="products-list"><div class="empty-state"><div class="emoji">📦</div><p>جاري التحميل...</p></div></div>
     </div>
 
     <!-- CUSTOMERS -->
     <div class="page" id="page-customers">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>👥 العملاء</h1><p>قاعدة بيانات عملائك</p></div>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>👥 العملاء</h1>
+          <p>قاعدة بيانات عملائك ومشترياتهم</p>
+        </div>
+        <div class="page-toolbar-actions">
           <button class="btn btn-accent" onclick="openCustomerModal()">➕ عميل جديد</button>
         </div>
       </div>
-      <div class="card" style="padding:12px 20px">
-        <input class="form-input" id="customers-search" placeholder="🔍 بحث باسم أو هاتف..." oninput="searchCustomers(this.value)">
+      <div class="search-bar">
+        <span style="color:var(--text2)">🔍</span>
+        <input id="customers-search" placeholder="بحث باسم أو هاتف العميل..." oninput="searchCustomers(this.value)">
       </div>
       <div id="customers-list"><div class="empty-state"><div class="emoji">👥</div><p>جاري التحميل...</p></div></div>
     </div>
@@ -2277,10 +2391,39 @@ async function saveOrder(){
 function renderOrders(orders, container) {
   const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
   container.innerHTML=orders.map(o=>{
-      let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
-      const itemsText=items.map(i=>i.description||'').filter(Boolean).join(', ')||'لا تفاصيل';
-      return`<div class="order-card"><div class="order-header"><div><div class="order-id">#${o.id} · ${new Date(o.created_at).toLocaleDateString('ar')}</div><div class="order-customer">${o.customer_name} — ${o.customer_phone}</div></div><span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span></div><div class="order-details">${itemsText}${o.delivery_company?' · 🚚 '+o.delivery_company:''}</div><div class="order-footer"><div class="order-total">${fmtCurrency(o.total)}</div><div class="order-actions"><select class="form-select" style="padding:6px 10px;font-size:.8rem;width:auto" onchange="updateOrderStatus(${o.id},this.value)"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="confirmed" ${o.status==='confirmed'?'selected':''}>مؤكد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="delivered" ${o.status==='delivered'?'selected':''}>تم التوصيل</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>ملغي</option></select>${o.delivery_link?`<a href="${o.delivery_link}" target="_blank" class="btn btn-outline btn-sm">🔗</a>`:''}<button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})">🧾</button>${o.delivery_company&&o.delivery_link?`<button class="btn btn-outline btn-sm" onclick="trackDelivery(${o.id},'${o.delivery_company}','${o.delivery_link}')" style="background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.3);color:var(--accent2)">🚚</button>`:''}<button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="background:rgba(37,211,102,.1);border-color:rgba(37,211,102,.3);color:#25d366">📱</button><button class="btn btn-outline btn-sm" onclick="openPaymentModal(${o.id},${o.total},'${o.customer_name}','${o.customer_phone}')" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--accent3)">💳</button><button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})">🗑</button></div></div></div>`;
-    }).join('');
+    let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
+    const itemsText=items.map(i=>i.description||'').filter(Boolean).join(' · ')||'لا تفاصيل';
+    const date=new Date(o.created_at).toLocaleDateString('ar-IQ',{day:'numeric',month:'short'});
+    return`
+    <div class="order-card">
+      <div class="order-header">
+        <div>
+          <div class="order-id">#${o.id} · ${date}</div>
+          <div class="order-customer">${o.customer_name}</div>
+          <div style="font-size:.8rem;color:var(--text2);direction:ltr;text-align:right">${o.customer_phone}</div>
+        </div>
+        <span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span>
+      </div>
+      <div class="order-details">${itemsText}${o.delivery_company?'<br>🚚 '+o.delivery_company:''}</div>
+      <div class="order-footer">
+        <div class="order-total">${fmtCurrency(o.total)}${o.deposit>0?`<span style="font-size:.72rem;color:var(--text2);margin-right:6px">عربون: ${fmtCurrency(o.deposit)}</span>`:''}</div>
+        <div class="order-actions">
+          <select class="form-select" style="padding:5px 8px;font-size:.78rem;width:auto;border-radius:8px" onchange="updateOrderStatus(${o.id},this.value)">
+            <option value="new" ${o.status==='new'?'selected':''}>🆕 جديد</option>
+            <option value="confirmed" ${o.status==='confirmed'?'selected':''}>✅ مؤكد</option>
+            <option value="processing" ${o.status==='processing'?'selected':''}>⚙️ تجهيز</option>
+            <option value="delivered" ${o.status==='delivered'?'selected':''}>🚚 توصيل</option>
+            <option value="cancelled" ${o.status==='cancelled'?'selected':''}>❌ ملغي</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})" title="فاتورة">🧾</button>
+          <button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="color:#25d366;border-color:rgba(37,211,102,.3)" title="واتساب">📱</button>
+          <button class="btn btn-outline btn-sm" onclick="openPaymentModal(${o.id},${o.total},'${o.customer_name}','${o.customer_phone}')" style="color:var(--accent3);border-color:rgba(245,158,11,.3)" title="دفع">💳</button>
+          ${o.delivery_link?`<button class="btn btn-outline btn-sm" onclick="trackDelivery(${o.id},'${o.delivery_company}','${o.delivery_link}')" style="color:var(--accent2);border-color:rgba(124,58,237,.3)" title="تتبع">🚚</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})" title="حذف">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function loadOrders(status){
@@ -3201,33 +3344,35 @@ function renderProducts(products){
     return;
   }
 
-  container.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">`+
+  container.innerHTML='<div class="product-grid">'+
     products.map(p=>`
-    <div style="background:var(--surface);border:1px solid ${p.is_available?'var(--border)':'rgba(255,68,102,.2)'};border-radius:12px;overflow:hidden;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='${p.is_available?'var(--border)':'rgba(255,68,102,.2)'}'">
-      ${p.image_url?`<div style="height:160px;overflow:hidden"><img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display='none'"></div>`:`<div style="height:100px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:3rem">📦</div>`}
-      <div style="padding:16px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <div>
-            <div style="font-weight:700;font-size:.95rem">${p.name}</div>
-            <div style="font-size:.75rem;color:var(--text2);margin-top:2px">${p.category}</div>
-          </div>
-          <span style="background:${p.is_available?'rgba(0,255,136,.15)':'rgba(255,68,102,.15)'};color:${p.is_available?'var(--accent)':'var(--danger)'};padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:700">${p.is_available?'متاح':'نفذ'}</span>
+    <div class="product-card-pro" style="${!p.is_available?'opacity:.7;':''}">
+      ${p.image_url
+        ? `<img class="product-img" src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.querySelector('.product-img-placeholder').style.display='flex';this.style.display='none'">`
+        : ''}
+      <div class="product-img-placeholder" style="${p.image_url?'display:none':'display:flex'}">📦</div>
+      <div class="product-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <span style="background:${p.is_available?'rgba(0,255,136,.12)':'rgba(255,68,102,.12)'};color:${p.is_available?'var(--accent)':'var(--danger)'};padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:800">${p.is_available?'✅ متاح':'❌ نفذ'}</span>
+          <span style="font-size:.72rem;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:20px">${p.category}</span>
         </div>
-        ${p.description?`<div style="color:var(--text2);font-size:.82rem;margin-bottom:10px;line-height:1.4">${p.description.substring(0,80)}${p.description.length>80?'...':''}</div>`:''}
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent)">${parseFloat(p.price).toFixed(0)} <span style="font-size:.75rem;color:var(--text2)">${userSettings.currency||'IQD'}</span></div>
-          <div style="font-size:.8rem;color:var(--text2)">مخزون: ${p.stock}</div>
+        <div class="product-name">${p.name}</div>
+        ${p.description?`<div class="product-desc">${p.description}</div>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div class="product-price">${fmtCurrency(p.price)}</div>
+          <div class="product-stock">📦 ${p.stock}</div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-outline btn-sm" style="flex:1" onclick="openProductModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️ تعديل</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑</button>
-          <button class="btn btn-outline btn-sm" onclick="useProductInOrder('${p.name}',${p.price})">🛒</button>
+        <div class="product-actions">
+          <button class="btn btn-outline btn-sm" style="flex:1;font-size:.78rem" onclick="openProductModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️ تعديل</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.78rem;color:var(--accent3);border-color:rgba(245,158,11,.3)" onclick="useProductInOrder('${p.name}',${p.price})">🛒</button>
+          <button class="btn btn-danger btn-sm" style="font-size:.78rem" onclick="deleteProduct(${p.id})">🗑</button>
         </div>
       </div>
     </div>`).join('')+'</div>';
 }
 
-function filterByCategory(cat){
+function filterByCategory(cat, btn){
+  if(btn) setFilter(btn);
   if(!cat) renderProducts(allProducts);
   else renderProducts(allProducts.filter(p=>p.category===cat));
 }
@@ -3564,6 +3709,13 @@ function sendLocalNotification(title, body) {
 }
 
 // ─── TOAST ───
+// ─── FILTER HELPER ───
+function setFilter(btn){
+  const bar = btn.closest('.filter-bar');
+  if(bar) bar.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
 // ─── MOBILE NAVIGATION ───
 function isMobile(){ return window.innerWidth <= 768; }
 
