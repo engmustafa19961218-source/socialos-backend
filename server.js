@@ -1694,24 +1694,34 @@ app.post('/api/generate-image', authenticateToken, async (req, res) => {
           body: JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 400,
-            messages: [{ role: 'user', content: `You are an expert DALL-E 3 image generation prompt engineer.
+            messages: [{ role: 'user', content: `You are an expert DALL-E 3 image generation prompt engineer. Your task is to convert any Arabic or English request into a perfect DALL-E 3 prompt.
 
-User request (may be in Arabic or English): "${prompt}"
+User request: "${prompt}"
 
-Your job:
-1. Understand what type of image they want
-2. Detect type from keywords:
-   - شعار/لوغو/logo → LOGO: "minimalist flat logo design, [subject], clean iconic symbol, white background, no text, no letters, no words"
-   - منتج/product → PRODUCT: "professional product photography, [subject], studio lighting, white background, commercial quality"
-   - بوستر/إعلان/poster → POSTER: "professional advertising poster, [subject], bold modern design, vibrant colors, no text"
-   - طعام/food → FOOD: "[food], professional food photography, beautiful styling, appetizing, no text"
-   - غرفة/ديكور/interior → INTERIOR: "professional interior design photo, [room], modern elegant style, natural lighting, no text"
-   - ملابس/fashion → FASHION: "professional fashion photography, [clothing], editorial style, no text"
-   - طبيعة/landscape → LANDSCAPE: "professional landscape photography, [scene], golden hour, cinematic, no text"
-   - other → GENERAL: "professional high quality image, [subject], perfect composition, detailed"
-3. Always end with: "ultra high quality, professional photography"
+Step 1 - Identify the exact subject and type:
+- كنبة/أريكة/sofa → luxury sofa/couch
+- طقم كنب → sofa set, living room furniture
+- غرفة/ديكور → interior room
+- شعار/لوغو → logo design
+- منتج → product photography
+- بوستر/إعلان → advertising poster
+- طعام/أكل → food photography
+- ملابس → fashion/clothing
 
-Return ONLY the English prompt. Nothing else.` }]
+Step 2 - Build a detailed English prompt:
+- For furniture/sofa: "Professional interior photography of [exact item], elegant luxury design, [color], [style], showroom quality, soft professional lighting, no people, photorealistic"
+- For logo: "Minimalist flat vector logo, [subject], clean design, white background, no text, no words"
+- For product: "Professional commercial product photography, [item], studio lighting, clean background"
+- For poster: "Professional advertising poster design, [subject], bold layout, no Arabic text"
+- For food: "Professional food photography, [dish], beautiful plating, soft lighting"
+- For interior: "Professional interior design photography, [room type], [style], natural lighting"
+
+Step 3 - CRITICAL RULES:
+- NEVER add any text, letters, Arabic writing, or numbers to the image description
+- Always add at the end: "no text, no letters, no Arabic, no watermark, high quality, 8k"
+- Be very specific about colors, materials, and style
+
+Return ONLY the final English prompt. No explanation.` }]
           })
         });
         const enhData = await enhRes.json();
