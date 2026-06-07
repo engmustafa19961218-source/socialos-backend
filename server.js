@@ -2256,9 +2256,11 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
 2. نفذ الأمر فوراً بناءً على فهمك
 3. أرجع JSON فقط
 
+CRITICAL: إذا كان الأمر يحتوي على كلمة "صمم" أو "تصميم" أو "شعار" أو "صورة" → action يجب أن يكون "design" دائماً بدون استثناء.
+
 الأوامر:
-- design: تصميم صورة. prompt = وصف بالإنجليزي (ترجم أنت)
-- create_post: إنشاء منشور. content = نص المنشور
+- design: تصميم صورة. prompt = وصف بالإنجليزي (ترجم أنت) — يُستخدم عند: صمم، تصميم، شعار، صورة
+- create_post: إنشاء منشور. content = نص المنشور — يُستخدم عند: اكتب، منشور، بوست، كابشن
 - new_order: طلب جديد
 - new_product: منتج جديد  
 - navigate: انتقال. page = orders/analytics/messages/profile/products/customers/schedule/settings/design/ai/report/create
@@ -2266,11 +2268,11 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
 - answer: رد نصي. text = الرد
 
 أمثلة:
-"صمم لي صورة كنبات فاخرة" → {"action":"design","prompt":"luxury sofa set, elegant living room furniture, professional photography, dark background","message":"🎨 جاري تصميم الكنب الفاخر..."}
-"صمم شعار لمتجر عطور" → {"action":"design","prompt":"luxury perfume store logo, elegant, gold and black, minimal design","message":"🎨 جاري تصميم الشعار..."}
-"افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
-"كم عدد طلباتي" → {"action":"navigate","page":"analytics","message":"✅ جاري فتح التحليلات"}
+"صمم شعار لمتجر ملابس" → {"action":"design","prompt":"clothing store logo, elegant, modern, minimal design, no text","message":"🎨 جاري تصميم الشعار..."}
+"صمم لي صورة كنبة فاخرة" → {"action":"design","prompt":"luxury sofa set, elegant living room, professional photography","message":"🎨 جاري التصميم..."}
+"صمم بوستر خصم 50%" → {"action":"design","prompt":"sale discount 50% poster, bold design, vibrant colors","message":"🎨 جاري تصميم البوستر..."}
 "اكتب منشور عن خصم 50%" → {"action":"create_post","content":"🎉 خصم 50% على جميع المنتجات! لا تفوت الفرصة","message":"✅ تم كتابة المنشور"}
+"افتح الطلبات" → {"action":"navigate","page":"orders","message":"✅ تم فتح الطلبات"}
 "أضف طلب جديد" → {"action":"new_order","message":"✅ فتح نموذج الطلب"}
 
 أرجع JSON فقط بدون أي نص إضافي.`;

@@ -1526,20 +1526,19 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
         
         <div class="form-group-item">
           <label class="form-label">نوع العمل / المتجر</label>
-          <select class="form-select" id="set-business-type">
-            <option value="">-- اختر نوع عملك --</option>
-            <option value="ملابس وأزياء">👗 ملابس وأزياء</option>
-            <option value="عطور ومستحضرات">🌸 عطور ومستحضرات</option>
-            <option value="إلكترونيات وتقنية">📱 إلكترونيات وتقنية</option>
-            <option value="مطعم وكافيه">🍽️ مطعم وكافيه</option>
-            <option value="مجوهرات واكسسوارات">💍 مجوهرات واكسسوارات</option>
-            <option value="صحة ولياقة">💪 صحة ولياقة</option>
-            <option value="أثاث وديكور">🛋️ أثاث وديكور</option>
-            <option value="كتب وتعليم">📚 كتب وتعليم</option>
-            <option value="سيارات وقطع غيار">🚗 سيارات وقطع غيار</option>
-            <option value="خدمات مهنية">💼 خدمات مهنية</option>
-            <option value="أخرى">🎯 أخرى</option>
-          </select>
+          <input class="form-input" id="set-business-type" placeholder="مثال: ملابس، مطعم، عطور..." list="business-type-list">
+          <datalist id="business-type-list">
+            <option value="ملابس وأزياء">
+            <option value="عطور ومستحضرات">
+            <option value="إلكترونيات وتقنية">
+            <option value="مطعم وكافيه">
+            <option value="مجوهرات واكسسوارات">
+            <option value="صحة ولياقة">
+            <option value="أثاث وديكور">
+            <option value="كتب وتعليم">
+            <option value="سيارات وقطع غيار">
+            <option value="خدمات مهنية">
+          </datalist>
         </div>
 
         <div class="form-group-item">
@@ -2120,7 +2119,17 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
     <button onclick="showPageMobile('settings',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">⚙️</span>إعدادات</button>
     <button onclick="showPageMobile('notifications',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🔔</span>إشعارات</button>
     <button onclick="showPageMobile('report',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">📈</span>تقارير</button>
+    <button onclick="showPageMobile('coupons',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🎟️</span>كوبونات</button>
+    <button onclick="showPageMobile('loyalty',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">💎</span>الولاء</button>
+    <button onclick="showPageMobile('bulk-wa',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">📢</span>حملات</button>
+    <button onclick="showPageMobile('marketplace',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🏪</span>متجري</button>
+    <button onclick="showPageMobile('inventory',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">📉</span>المخزون</button>
     <button onclick="showPageMobile('profile',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">👤</span>بروفايل</button>
+    <button onclick="showPageMobile('security',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🔐</span>الأمان</button>
+    <button onclick="showPageMobile('team',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">👨‍💼</span>الفريق</button>
+    <button onclick="showPageMobile('schedule',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">📅</span>الجدولة</button>
+    <button onclick="showPageMobile('templates',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">💬</span>القوالب</button>
+    <button onclick="showPageMobile('crm',null);closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text2);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">📇</span>CRM</button>
     <button onclick="logout()" style="background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.2);border-radius:10px;padding:12px 8px;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--danger);font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.4rem">🚪</span>خروج</button>
   </div>
 </div>
@@ -2545,7 +2554,10 @@ async function generateImage(){
   
   const typePrompt = designTypePrompts[currentDesignType] || '';
   const stylePrompt = designStyles[style] || '';
-  const fullPrompt = `${userPrompt}, ${typePrompt}, ${stylePrompt}`.trim();
+  // بناء الـ prompt — وصف المستخدم هو الأساس
+  const fullPrompt = currentDesignType === 'custom' || currentDesignType === 'logo'
+    ? `${userPrompt}, ${stylePrompt}, no text, no letters, high quality`.trim()
+    : `${userPrompt}, ${typePrompt}, ${stylePrompt}, no text, no arabic letters, high quality`.trim();
   
   const btn = document.getElementById('design-btn');
   btn.disabled = true;
@@ -3096,12 +3108,18 @@ async function sendAgentMsg(text){
 
       // اقتراحات سريعة
       if(data.suggestions && data.suggestions.length > 0){
-        const suggestHtml = data.suggestions.map(s=>
-          `<button onclick="handleAgentSuggestion('${s.type}')" 
-            style="padding:6px 12px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);border-radius:20px;color:var(--accent);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;white-space:nowrap">
-            ${s.label}
-          </button>`).join('');
-        addAgentMsg(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${suggestHtml}</div>`, 'ai-action');
+        const chat = document.getElementById('agent-chat');
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;padding:0 46px';
+        data.suggestions.forEach(s => {
+          const btn = document.createElement('button');
+          btn.textContent = s.label;
+          btn.style.cssText = 'padding:6px 12px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);border-radius:20px;color:var(--accent);cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;white-space:nowrap';
+          btn.onclick = () => handleAgentSuggestion(s.type);
+          wrapper.appendChild(btn);
+        });
+        chat.appendChild(wrapper);
+        chat.scrollTop = chat.scrollHeight;
       }
     } else {
       addAgentMsg('❌ عذراً، حدث خطأ: '+(data.message||''), 'ai');
@@ -3871,7 +3889,7 @@ async function loadSettings(){
       document.getElementById('set-master-rafidain').value=userSettings.master_rafidain_number||'';
       document.getElementById('set-card').value=userSettings.card_number||'';
       if(userSettings.currency)document.getElementById('set-currency').value=userSettings.currency;
-      if(userSettings.business_type){document.getElementById('set-business-type').value=userSettings.business_type;applyBusinessTheme(userSettings.business_type);}
+      if(userSettings.business_type) document.getElementById('set-business-type').value=userSettings.business_type;
       document.getElementById('set-business-desc').value=userSettings.business_desc||'';
       if(userSettings.target_audience)document.getElementById('set-target-audience').value=userSettings.target_audience;
       if(userSettings.content_style)document.getElementById('set-content-style').value=userSettings.content_style;
