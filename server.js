@@ -2749,7 +2749,7 @@ if (pool) {
     created_at TIMESTAMP DEFAULT NOW()
   )`).catch(e => console.log('notifications table:', e.message));
 }
--e 
+
 // ========== COUPONS ==========
 if (pool) {
   pool.query(`CREATE TABLE IF NOT EXISTS coupons (
