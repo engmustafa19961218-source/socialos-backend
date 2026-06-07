@@ -947,7 +947,6 @@ render();
     }
   } catch (e) { res.status(500).send('<h1>خطأ في السيرفر</h1>'); }
 });
-});
 
 // ========== STATIC & ROOT ==========
 app.use(express.static(__dirname));
