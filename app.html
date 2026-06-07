@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://accounts.google.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:;">
 <meta name="theme-color" content="#00ff88">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -603,6 +604,9 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
         <button class="topbar-item" onclick="showPage('team',this)"><span class="icon">👨‍💼</span><span>الفريق</span></button>
         <button class="topbar-item" onclick="showPage('security',this)"><span class="icon">🔐</span><span>الأمان</span></button>
         <button class="topbar-item" onclick="showPage('subscription',this)"><span class="icon">⭐</span><span>الاشتراك</span></button>
+        <button class="topbar-item" onclick="showPage('coupons',this)"><span class="icon">🎟️</span><span>الكوبونات</span></button>
+        <button class="topbar-item" onclick="showPage('loyalty',this)"><span class="icon">💎</span><span>الولاء</span></button>
+        <button class="topbar-item" onclick="showPage('bulk-wa',this)"><span class="icon">📢</span><span>حملات</span></button>
       </div>
     </nav>
 
@@ -1204,12 +1208,31 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 
     <!-- WEEKLY REPORT -->
     <div class="page" id="page-report">
-      <div class="page-header">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><h1>📋 التقرير الأسبوعي</h1><p>ملخص آخر 7 أيام</p></div>
-          <button class="btn btn-outline btn-sm" onclick="loadReport()">🔄 تحديث</button>
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>📋 التقارير</h1>
+          <p>تحليل مقارن للأداء مع تصدير شامل</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <!-- Period selector -->
+          <div class="filter-bar" style="margin:0;padding:4px 8px">
+            <button class="filter-btn active" id="rpt-week" onclick="setReportPeriod('week',this)">أسبوع</button>
+            <button class="filter-btn" id="rpt-month" onclick="setReportPeriod('month',this)">شهر</button>
+            <button class="filter-btn" id="rpt-year" onclick="setReportPeriod('year',this)">سنة</button>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="downloadPDFReport()" style="color:#ef4444;border-color:rgba(239,68,68,.3)">📄 HTML</button>
+          <button class="btn btn-outline btn-sm" onclick="showExportMenu()" style="color:#10b981;border-color:rgba(16,185,129,.3)">📊 تصدير ▾</button>
         </div>
       </div>
+
+      <!-- Export dropdown -->
+      <div id="export-menu" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px;margin-bottom:16px;display:none;flex-wrap:wrap;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="exportOrders()">📋 طلبات CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportOrdersPeriod()">📋 طلبات الفترة CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportProducts()">📦 منتجات CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCustomers()">👥 عملاء CSV</button>
+      </div>
+
       <div id="report-content"><div class="empty-state"><div class="emoji">📋</div><p>جاري التحميل...</p></div></div>
     </div>
 
@@ -1312,8 +1335,8 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
     <div class="page" id="page-security">
       <div class="page-toolbar">
         <div class="page-toolbar-title">
-          <h1>🔐 الأمان</h1>
-          <p>حالة الحماية والأمان</p>
+          <h1>🔐 الأمان والبنية</h1>
+          <p>الحماية والخدمات والإشعارات</p>
         </div>
       </div>
 
@@ -1331,11 +1354,57 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
         <div class="metric-row"><span class="metric-label">⚡ Rate Limiting</span><span style="color:var(--accent)">10 محاولات / 15 دقيقة ✅</span></div>
         <div class="metric-row"><span class="metric-label">🚫 حجب IPs المشبوهة</span><span style="color:var(--accent)">تلقائي بعد 10 محاولات ✅</span></div>
         <div class="metric-row"><span class="metric-label">🛡️ Security Headers</span><span style="color:var(--accent)">XSS, Clickjacking ✅</span></div>
-        <div class="metric-row"><span class="metric-label">🔍 Input Sanitization</span><span style="color:var(--accent)">XSS Protection ✅</span></div>
         <div class="metric-row"><span class="metric-label">🌐 HTTPS</span><span style="color:var(--accent)">Railway SSL ✅</span></div>
         <div class="metric-row"><span class="metric-label">👤 عزل البيانات</span><span style="color:var(--accent)">كل مستخدم يرى بياناته فقط ✅</span></div>
       </div>
 
+      <!-- CLOUDINARY -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">🖼️ تخزين الصور — Cloudinary</h3>
+          <button class="btn btn-outline btn-sm" onclick="checkCloudinaryStatus()">🔄 فحص</button>
+        </div>
+        <div id="cloudinary-status" style="background:var(--surface2);border-radius:10px;padding:12px;font-size:.85rem;color:var(--text2)">
+          جاري الفحص...
+        </div>
+        <div style="margin-top:12px;background:rgba(79,142,247,.06);border:1px solid rgba(79,142,247,.2);border-radius:10px;padding:14px;font-size:.82rem;color:var(--text2);line-height:2">
+          <strong style="color:var(--text)">لتفعيل Cloudinary أضف في Railway:</strong><br>
+          <code style="background:var(--surface2);padding:2px 8px;border-radius:4px;color:var(--accent)">CLOUDINARY_CLOUD_NAME</code> ·
+          <code style="background:var(--surface2);padding:2px 8px;border-radius:4px;color:var(--accent)">CLOUDINARY_API_KEY</code> ·
+          <code style="background:var(--surface2);padding:2px 8px;border-radius:4px;color:var(--accent)">CLOUDINARY_API_SECRET</code><br>
+          <span style="font-size:.78rem">بدون Cloudinary الصور تُحفظ كـ Base64 في قاعدة البيانات (أثقل)</span>
+        </div>
+      </div>
+
+      <!-- PUSH NOTIFICATIONS -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">🔔 إشعارات Push</h3>
+          <span id="push-status-badge" style="font-size:.78rem;padding:3px 10px;border-radius:20px;background:var(--surface2);color:var(--text2)">غير مفعّل</span>
+        </div>
+        <p style="color:var(--text2);font-size:.85rem;margin-bottom:14px">استقبل إشعارات فورية على هاتفك عند وصول طلبات جديدة حتى وأنت خارج التطبيق.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-accent" id="push-enable-btn" onclick="enablePushNotifications()">🔔 تفعيل الإشعارات</button>
+          <button class="btn btn-outline" id="push-test-btn" onclick="testPushNotification()" style="display:none">🧪 إشعار تجريبي</button>
+          <button class="btn btn-outline" id="push-disable-btn" onclick="disablePushNotifications()" style="display:none;color:var(--danger);border-color:rgba(255,68,102,.3)">إلغاء التفعيل</button>
+        </div>
+        <div id="push-vapid-info" style="display:none;margin-top:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px;font-size:.82rem;color:var(--accent3)">
+          ⚠️ لتفعيل الإشعارات على السيرفر أضف في Railway:<br>
+          <code style="background:var(--surface2);padding:2px 8px;border-radius:4px">VAPID_PUBLIC_KEY</code> ·
+          <code style="background:var(--surface2);padding:2px 8px;border-radius:4px">VAPID_PRIVATE_KEY</code> ·
+          <code style="background:var(--surface2);padding:2px 8px;border-radius:4px">VAPID_EMAIL</code>
+        </div>
+      </div>
+
+      <!-- DELIVERY COMPANIES -->
+      <div class="card">
+        <h3 style="margin-bottom:12px">🚚 شركات التوصيل المدعومة</h3>
+        <div id="delivery-companies-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+          <div style="text-align:center;padding:20px;color:var(--text2)">جاري التحميل...</div>
+        </div>
+      </div>
+
+      <!-- PASSWORD CHANGE -->
       <div class="card">
         <h3>🔑 تغيير كلمة المرور</h3>
         <div class="form-group-item"><label class="form-label">كلمة المرور الحالية</label><input class="form-input" type="password" id="sec-current-pass" placeholder="••••••••"></div>
@@ -1567,6 +1636,190 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
       <div class="card">
         <h3>👁️ معاينة المتجر</h3>
         <div id="marketplace-preview"><div class="empty-state"><div class="emoji">⏳</div><p>جاري التحميل...</p></div></div>
+      </div>
+    </div>
+
+    <!-- COUPONS -->
+    <div class="page" id="page-coupons">
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>🎟️ الكوبونات والخصومات</h1>
+          <p>أنشئ كودات خصم لعملائك</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <button class="btn btn-accent" onclick="openCouponModal()">➕ كوبون جديد</button>
+        </div>
+      </div>
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">🎟️</div><div class="stat-value" id="coup-total">0</div><div class="stat-label">إجمالي الكوبونات</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="coup-active">0</div><div class="stat-label">نشط</div></div>
+        <div class="stat-card"><div class="stat-icon">🔢</div><div class="stat-value" id="coup-used">0</div><div class="stat-label">مرات الاستخدام</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value" id="coup-savings">0</div><div class="stat-label">إجمالي الخصومات</div></div>
+      </div>
+      <div id="coupons-list"><div class="empty-state"><div class="emoji">🎟️</div><p>جاري التحميل...</p></div></div>
+    </div>
+
+    <!-- LOYALTY -->
+    <div class="page" id="page-loyalty">
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>⭐ نقاط الولاء</h1>
+          <p>كافئ عملاءك المخلصين بنقاط قابلة للاستبدال</p>
+        </div>
+        <div class="page-toolbar-actions">
+          <button class="btn btn-outline" onclick="showPage('loyalty-settings',null)">⚙️ الإعدادات</button>
+        </div>
+      </div>
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="loy-customers">0</div><div class="stat-label">العملاء</div></div>
+        <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-value" id="loy-points">0</div><div class="stat-label">إجمالي النقاط</div></div>
+        <div class="stat-card"><div class="stat-icon">🎁</div><div class="stat-value" id="loy-redeemed">0</div><div class="stat-label">نقاط مستردة</div></div>
+        <div class="stat-card"><div class="stat-icon">💎</div><div class="stat-value" id="loy-top">-</div><div class="stat-label">الأكثر نقاطاً</div></div>
+      </div>
+
+      <!-- Redeem section -->
+      <div class="card" style="margin-bottom:16px">
+        <h3>🔄 استرداد نقاط عميل</h3>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <label class="form-label">رقم هاتف العميل</label>
+            <input class="form-input" id="loy-phone" placeholder="07xxxxxxxxx" dir="ltr" oninput="loadCustomerLoyalty(this.value)">
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label class="form-label">النقاط المتاحة</label>
+            <div class="form-input" id="loy-available" style="background:var(--surface);color:var(--accent);font-weight:700;font-family:'IBM Plex Mono',monospace">—</div>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label class="form-label">نقاط للاسترداد</label>
+            <input class="form-input" id="loy-redeem-amount" type="number" placeholder="100" dir="ltr">
+          </div>
+          <button class="btn btn-accent" onclick="redeemPoints()" style="margin-bottom:0;padding:12px 20px">استرداد</button>
+        </div>
+        <div id="loy-redeem-preview" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:10px;font-size:.85rem"></div>
+      </div>
+
+      <div class="card">
+        <h3>🏆 قائمة العملاء والنقاط</h3>
+        <div id="loyalty-customers-list"><div class="empty-state"><div class="emoji">⭐</div><p>جاري التحميل...</p></div></div>
+      </div>
+    </div>
+
+    <!-- LOYALTY SETTINGS -->
+    <div class="page" id="page-loyalty-settings">
+      <div class="page-toolbar">
+        <div class="page-toolbar-title"><h1>⚙️ إعدادات نقاط الولاء</h1></div>
+        <div class="page-toolbar-actions">
+          <button class="btn btn-outline btn-sm" onclick="showPage('loyalty',null)">← رجوع</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>⭐ كيف يعمل النظام</h3>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;font-size:.85rem;color:var(--text2);line-height:2;margin-bottom:16px">
+          العميل يكسب نقاطاً مع كل طلب ← يجمع نقاطاً كافية ← يستردها كخصم على طلبه القادم
+        </div>
+        <div class="grid-2">
+          <div class="form-group-item">
+            <label class="form-label">نقاط لكل 1 وحدة عملة</label>
+            <input class="form-input" id="loy-set-rate" type="number" step="0.1" placeholder="1" dir="ltr">
+            <small style="color:var(--text2);font-size:.75rem">مثال: 1 = كل دينار يعطي نقطة واحدة</small>
+          </div>
+          <div class="form-group-item">
+            <label class="form-label">نقاط مطلوبة لكل 1 وحدة خصم</label>
+            <input class="form-input" id="loy-set-redeem" type="number" placeholder="100" dir="ltr">
+            <small style="color:var(--text2);font-size:.75rem">مثال: 100 نقطة = خصم 1 دينار</small>
+          </div>
+          <div class="form-group-item">
+            <label class="form-label">حد أدنى للاسترداد (نقطة)</label>
+            <input class="form-input" id="loy-set-min" type="number" placeholder="100" dir="ltr">
+          </div>
+          <div class="form-group-item" style="display:flex;align-items:center;gap:10px;padding-top:24px">
+            <input type="checkbox" id="loy-set-active" checked style="width:18px;height:18px;accent-color:var(--accent)">
+            <label for="loy-set-active" style="cursor:pointer">تفعيل نظام النقاط</label>
+          </div>
+        </div>
+        <button class="btn btn-accent" onclick="saveLoyaltySettings()" style="width:100%">💾 حفظ الإعدادات</button>
+      </div>
+    </div>
+
+    <!-- BULK WHATSAPP -->
+    <div class="page" id="page-bulk-wa">
+      <div class="page-toolbar">
+        <div class="page-toolbar-title">
+          <h1>📢 حملات واتساب</h1>
+          <p>أرسل رسائل جماعية لعملائك</p>
+        </div>
+      </div>
+
+      <!-- Counts -->
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card" style="cursor:pointer" onclick="selectBulkTarget('all_customers',this)">
+          <div class="stat-icon">👥</div><div class="stat-value" id="bulk-count-all">0</div><div class="stat-label">كل العملاء</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer" onclick="selectBulkTarget('recent',this)">
+          <div class="stat-icon">🕐</div><div class="stat-value" id="bulk-count-recent">0</div><div class="stat-label">آخر 30 يوم</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer" onclick="selectBulkTarget('loyalty',this)">
+          <div class="stat-icon">⭐</div><div class="stat-value" id="bulk-count-loyalty">0</div><div class="stat-label">أصحاب النقاط</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer" onclick="selectBulkTarget('custom',this)">
+          <div class="stat-icon">✍️</div><div class="stat-value">مخصص</div><div class="stat-label">أرقام يدوية</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>✉️ إنشاء الرسالة</h3>
+
+        <div class="form-group-item">
+          <label class="form-label">الجمهور المستهدف</label>
+          <select class="form-select" id="bulk-target">
+            <option value="all_customers">👥 كل العملاء</option>
+            <option value="recent">🕐 عملاء آخر 30 يوم</option>
+            <option value="loyalty">⭐ أصحاب نقاط الولاء</option>
+            <option value="custom">✍️ أرقام مخصصة</option>
+          </select>
+        </div>
+
+        <div id="custom-phones-input" style="display:none" class="form-group-item">
+          <label class="form-label">الأرقام (كل رقم في سطر)</label>
+          <textarea class="form-textarea" id="bulk-custom-phones" placeholder="07701234567&#10;07709876543" style="min-height:80px;direction:ltr"></textarea>
+        </div>
+
+        <div class="form-group-item">
+          <label class="form-label">نص الرسالة</label>
+          <textarea class="form-textarea" id="bulk-message" placeholder="مرحباً {اسم}، لدينا عرض خاص لك اليوم!..." style="min-height:120px" oninput="updateBulkPreview()"></textarea>
+          <small style="color:var(--text2);font-size:.75rem">استخدم {اسم} لإدراج اسم العميل تلقائياً</small>
+        </div>
+
+        <!-- Quick templates -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-outline btn-sm" onclick="setBulkTemplate('offer')">🔥 عرض خاص</button>
+          <button class="btn btn-outline btn-sm" onclick="setBulkTemplate('discount')">🏷️ خصم</button>
+          <button class="btn btn-outline btn-sm" onclick="setBulkTemplate('loyalty')">⭐ نقاط</button>
+          <button class="btn btn-outline btn-sm" onclick="setBulkTemplate('new')">🆕 منتج جديد</button>
+        </div>
+
+        <!-- Preview -->
+        <div id="bulk-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;font-size:.85rem;line-height:1.7;white-space:pre-wrap;min-height:60px;color:var(--text2)">معاينة الرسالة...</div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:.85rem;color:var(--text2)" id="bulk-char-count">0 / 1000 حرف</span>
+          <span style="font-size:.85rem;color:var(--accent3)">⚠️ يُرسل أول 50 رقم فقط دفعة واحدة</span>
+        </div>
+
+        <button class="btn btn-accent" id="bulk-send-btn" onclick="sendBulkWhatsApp()" style="width:100%;padding:14px;font-size:1rem">
+          📱 إنشاء روابط واتساب وإرسال
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div id="bulk-results" style="display:none" class="card">
+        <h3>✅ روابط الإرسال</h3>
+        <p style="color:var(--text2);font-size:.85rem;margin-bottom:12px">اضغط على كل رابط لفتح المحادثة وإرسال الرسالة</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-accent btn-sm" onclick="openAllBulkLinks()">📤 فتح الكل تلقائياً</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('bulk-results').style.display='none'">إغلاق</button>
+        </div>
+        <div id="bulk-links-list" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -1879,6 +2132,8 @@ body::before{content:'';position:fixed;top:0;left:0;right:0;height:300px;backgro
 const API = 'https://socialos-production-4aa6.up.railway.app';
 let currentUser = null, token = null;
 
+// ─── HTML ESCAPE (global) ───
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // ─── تنسيق العملة ───
 function fmtCurrency(amount) {
   const num = parseFloat(amount) || 0;
@@ -1894,6 +2149,17 @@ let isListening = false;
 let recognition = null;
 
 function authH(){return{'Content-Type':'application/json','Authorization':`Bearer ${token}`};}
+
+// apiFetch: wrapper that auto-logouts on 401
+async function apiFetch(url, options={}) {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    showToast('⚠️ انتهت الجلسة. يرجى تسجيل الدخول مجدداً');
+    setTimeout(() => logout(), 1500);
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
 
 // ─── INIT ───
 // Hide loading screen
@@ -1927,12 +2193,13 @@ async function sendOTP(){
     });
     const data = await res.json();
     if(data.success){
-      // Open WhatsApp
-      window.open(data.wa_url, '_blank');
+      // Validate wa_url before opening - must be wa.me domain
+      if(data.wa_url && data.wa_url.startsWith('https://wa.me/')){
+        window.open(data.wa_url, '_blank');
+      }
       // Show OTP step
       document.getElementById('phone-step1').style.display = 'none';
       document.getElementById('phone-step2').style.display = 'block';
-      if(data.dev_otp) showError('رمز التطوير: ' + data.dev_otp);
     } else showError(data.message || 'فشل الإرسال');
   } catch(e) { showError('تعذر الاتصال'); }
   btn.disabled = false;
@@ -2099,7 +2366,7 @@ function showPage(name,el){
   document.querySelectorAll('.topbar-item').forEach(btn=>{
     if(btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'"+name+"'")) btn.classList.add('active');
   });
-  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport,settings:loadSettings,agent:loadAgent,design:loadDesign,products:loadProducts,security:loadSecurity,team:loadTeam,inventory:loadInventory,crm:loadCRM,marketplace:loadMarketplace,voice:()=>{}};
+  const loaders={messages:loadMessages,posts:loadPosts,home:loadStats,orders:()=>loadOrders(''),analytics:loadAnalytics,schedule:loadSchedule,subscription:loadSubscriptionPage,accounts:loadAccounts,profile:loadProfile,notifications:loadNotifications,customers:loadCustomers,templates:loadTemplates,report:loadReport,settings:loadSettings,agent:loadAgent,design:loadDesign,products:loadProducts,security:loadSecurity,team:loadTeam,inventory:loadInventory,crm:loadCRM,marketplace:loadMarketplace,voice:()=>{},coupons:loadCoupons,loyalty:loadLoyalty,'loyalty-settings':loadLoyaltySettings,'bulk-wa':loadBulkWA};
   if(loaders[name])loaders[name]();
 }
 
@@ -2623,9 +2890,18 @@ async function saveOrder(){
     if(data.success){
       showToast('✅ تم حفظ الطلب!');
       sendLocalNotification('🛒 طلب جديد!','تم إضافة طلب جديد من '+name);
+      // Push notification via service worker
+      if(Notification.permission === 'granted' && pushSubscription){
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification('🛒 طلب جديد!', { body: `من ${name}`, icon: '/icon-192.png', dir: 'rtl' });
+        }).catch(()=>{});
+      }
       closeOrderModal();
       loadOrders('');
       loadStats();
+      // إضافة نقاط ولاء تلقائياً
+      const orderTotal = parseFloat(document.getElementById('ord-total').value)||0;
+      if(orderTotal > 0 && data.order?.id) addLoyaltyPoints(phone, name, data.order.id, orderTotal);
       ['ord-name','ord-phone','ord-address','ord-items','ord-total','ord-deposit','ord-delivery','ord-delivery-link','ord-notes'].forEach(id=>document.getElementById(id).value='');
       // إشعار واتساب للمدير لو رجع رابط
       if(data.wa_notify_url){
@@ -2640,21 +2916,26 @@ async function saveOrder(){
 
 function renderOrders(orders, container) {
   const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
   container.innerHTML=orders.map(o=>{
     let items=[];try{items=JSON.parse(o.items||'[]');}catch(e){}
-    const itemsText=items.map(i=>i.description||'').filter(Boolean).join(' · ')||'لا تفاصيل';
+    const itemsText=items.map(i=>esc(i.description||'')).filter(Boolean).join(' · ')||'لا تفاصيل';
     const date=new Date(o.created_at).toLocaleDateString('ar-IQ',{day:'numeric',month:'short'});
+    const escapedName=esc(o.customer_name);
+    const escapedPhone=esc(o.customer_phone);
+    const delivLink=o.delivery_link?esc(o.delivery_link):'';
+    const delivCo=o.delivery_company?esc(o.delivery_company):'';
     return`
     <div class="order-card">
       <div class="order-header">
         <div>
           <div class="order-id">#${o.id} · ${date}</div>
-          <div class="order-customer">${o.customer_name}</div>
-          <div style="font-size:.8rem;color:var(--text2);direction:ltr;text-align:right">${o.customer_phone}</div>
+          <div class="order-customer">${escapedName}</div>
+          <div style="font-size:.8rem;color:var(--text2);direction:ltr;text-align:right">${escapedPhone}</div>
         </div>
-        <span class="order-status status-${o.status||'new'}">${statusLabels[o.status]||o.status}</span>
+        <span class="order-status status-${esc(o.status||'new')}">${statusLabels[o.status]||esc(o.status)}</span>
       </div>
-      <div class="order-details">${itemsText}${o.delivery_company?'<br>🚚 '+o.delivery_company:''}</div>
+      <div class="order-details">${itemsText}${delivCo?'<br>🚚 '+delivCo:''}</div>
       <div class="order-footer">
         <div class="order-total">${fmtCurrency(o.total)}${o.deposit>0?`<span style="font-size:.72rem;color:var(--text2);margin-right:6px">عربون: ${fmtCurrency(o.deposit)}</span>`:''}</div>
         <div class="order-actions">
@@ -2667,8 +2948,8 @@ function renderOrders(orders, container) {
           </select>
           <button class="btn btn-outline btn-sm" onclick="openInvoice(${o.id})" title="فاتورة">🧾</button>
           <button class="btn btn-outline btn-sm" onclick="sendWhatsApp(${o.id})" style="color:#25d366;border-color:rgba(37,211,102,.3)" title="واتساب">📱</button>
-          <button class="btn btn-outline btn-sm" onclick="openPaymentModal(${o.id},${o.total},'${o.customer_name}','${o.customer_phone}')" style="color:var(--accent3);border-color:rgba(245,158,11,.3)" title="دفع">💳</button>
-          ${o.delivery_link?`<button class="btn btn-outline btn-sm" onclick="trackDelivery(${o.id},'${o.delivery_company}','${o.delivery_link}')" style="color:var(--accent2);border-color:rgba(124,58,237,.3)" title="تتبع">🚚</button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="openPaymentModal(${o.id},${parseFloat(o.total)||0},'${escapedName}','${escapedPhone}')" style="color:var(--accent3);border-color:rgba(245,158,11,.3)" title="دفع">💳</button>
+          ${delivLink?`<button class="btn btn-outline btn-sm" onclick="trackDelivery(${o.id},'${delivCo}','${delivLink}')" style="color:var(--accent2);border-color:rgba(124,58,237,.3)" title="تتبع">🚚</button>`:''}
           <button class="btn btn-danger btn-sm" onclick="deleteOrder(${o.id})" title="حذف">🗑</button>
         </div>
       </div>
@@ -2845,8 +3126,20 @@ function addAgentMsg(text, type){
   const div=document.createElement('div');
   div.className=`agent-msg agent-msg-${type}`;
   const avatar=type==='user'?'👤':'🧠';
-  div.innerHTML='<div class="agent-avatar">'+avatar+'</div><div class="agent-bubble">'+text.replace(/\n/g,'<br>')+'</div>';
-
+  const avatarDiv=document.createElement('div');
+  avatarDiv.className='agent-avatar';
+  avatarDiv.textContent=avatar;
+  const bubbleDiv=document.createElement('div');
+  bubbleDiv.className='agent-bubble';
+  if(type==='user'){
+    // User messages: use textContent for XSS safety
+    bubbleDiv.textContent=text;
+  } else {
+    // AI/action messages: allow HTML (controlled server content)
+    bubbleDiv.innerHTML=text.replace(/\n/g,'<br>');
+  }
+  div.appendChild(avatarDiv);
+  div.appendChild(bubbleDiv);
   chat.appendChild(div);
   chat.scrollTop=chat.scrollHeight;
 }
@@ -3021,21 +3314,224 @@ async function addCRMNote(phone){
 function loadCRM(){ document.getElementById('crm-result').innerHTML=''; }
 
 // ─── PDF REPORT ───
+let currentReportPeriod = 'week';
+
+function setReportPeriod(period, btn) {
+  currentReportPeriod = period;
+  document.querySelectorAll('[id^="rpt-"]').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  loadReport();
+}
+
 async function downloadPDFReport(){
-  const period = document.getElementById('period-month')?.classList.contains('btn-accent') ? 'month' :
-                 document.getElementById('period-year')?.classList.contains('btn-accent') ? 'year' : 'week';
   try{
     showToast('⏳ جاري إنشاء التقرير...');
-    const res=await fetch(`${API}/api/reports/pdf?period=${period}`,{headers:authH()});
+    const res=await fetch(`${API}/api/reports/pdf?period=${currentReportPeriod}`,{headers:authH()});
     const blob=await res.blob();
     const url=window.URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download=`report-${period}.html`;
-    document.body.appendChild(a);a.click();
+    a.href=url; a.download=`socialos-report-${currentReportPeriod}-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
     showToast('✅ تم تحميل التقرير!');
   }catch(e){showToast('❌ تعذر إنشاء التقرير');}
+}
+
+function showExportMenu(){
+  const menu = document.getElementById('export-menu');
+  menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+}
+
+async function exportOrdersPeriod(){
+  try{
+    showToast('⏳ جاري التصدير...');
+    const res=await fetch(`${API}/api/orders/export?period=${currentReportPeriod}`,{headers:authH()});
+    const blob=await res.blob();
+    const url=window.URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`orders-${currentReportPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.URL.revokeObjectURL(url); showToast('✅ تم التصدير!');
+  }catch(e){showToast('❌ تعذر التصدير');}
+}
+
+async function exportProducts(){
+  try{
+    showToast('⏳ جاري تصدير المنتجات...');
+    const res=await fetch(`${API}/api/products/export`,{headers:authH()});
+    const blob=await res.blob();
+    const url=window.URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`products-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.URL.revokeObjectURL(url); showToast('✅ تم تصدير المنتجات!');
+  }catch(e){showToast('❌ تعذر التصدير');}
+}
+
+async function exportCustomers(){
+  try{
+    showToast('⏳ جاري تصدير العملاء...');
+    const res=await fetch(`${API}/api/customers/export`,{headers:authH()});
+    const blob=await res.blob();
+    const url=window.URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`customers-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    window.URL.revokeObjectURL(url); showToast('✅ تم تصدير العملاء!');
+  }catch(e){showToast('❌ تعذر التصدير');}
+}
+
+// ─── WEEKLY REPORT ───
+async function loadReport(){
+  const container=document.getElementById('report-content');
+  if(!container) return;
+  container.innerHTML='<div class="empty-state"><div class="emoji">⏳</div><p>جاري التحميل...</p></div>';
+  try{
+    const res=await fetch(`${API}/api/reports/weekly?period=${currentReportPeriod}`,{headers:authH()});
+    const data=await res.json();
+    if(!data.success){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';return;}
+
+    const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
+    const statusColors={new:'rgba(79,142,247,.15)',confirmed:'rgba(0,212,170,.15)',processing:'rgba(245,158,11,.15)',delivered:'rgba(139,92,246,.15)',cancelled:'rgba(255,68,102,.15)'};
+    const statusText={new:'#7eb3ff',confirmed:'#00d4aa',processing:'#f59e0b',delivered:'#a78bfa',cancelled:'#ff4466'};
+
+    // Growth badges
+    const growthBadge = (val) => {
+      if(val === null || val === undefined) return '';
+      const n = parseFloat(val);
+      const color = n >= 0 ? '#00d4aa' : '#ff4466';
+      const arrow = n >= 0 ? '↑' : '↓';
+      return `<span style="color:${color};font-size:.78rem;font-weight:700">${arrow} ${Math.abs(n)}% مقارنةً بالسابق</span>`;
+    };
+
+    // Mini sparkline bars
+    const maxRev = Math.max(...(data.daily_revenue||[]).map(d=>parseFloat(d.revenue||0)),1);
+    const sparkline = (data.daily_revenue||[]).map(d=>{
+      const h = Math.max(4, Math.round((parseFloat(d.revenue||0)/maxRev)*48));
+      const date = new Date(d.date).toLocaleDateString('ar',{day:'numeric',month:'short'});
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;cursor:default" title="${date}: ${fmtCurrency(d.revenue)}">
+        <div style="width:100%;max-width:28px;height:${h}px;background:linear-gradient(to top,var(--accent),rgba(79,142,247,.4));border-radius:3px 3px 0 0"></div>
+        <div style="font-size:.6rem;color:var(--text2);writing-mode:vertical-rl;transform:rotate(180deg);max-height:36px;overflow:hidden">${date}</div>
+      </div>`;
+    }).join('');
+
+    container.innerHTML=`
+      <!-- STATS WITH COMPARISON -->
+      <div class="stats-grid" style="margin-bottom:16px">
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value">${fmtCurrency(data.orders?.revenue||0)}</div>
+          <div class="stat-label">الإيرادات</div>
+          <div style="margin-top:6px">${growthBadge(data.comparison?.revenue_growth)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🛒</div>
+          <div class="stat-value">${data.orders?.total||0}</div>
+          <div class="stat-label">الطلبات</div>
+          <div style="margin-top:6px">${growthBadge(data.comparison?.orders_growth)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💵</div>
+          <div class="stat-value">${fmtCurrency(data.orders?.avg||0)}</div>
+          <div class="stat-label">متوسط الطلب</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📝</div>
+          <div class="stat-value">${data.posts||0}</div>
+          <div class="stat-label">المنشورات</div>
+        </div>
+      </div>
+
+      <!-- COMPARISON BOX -->
+      ${data.comparison?.prev_revenue !== undefined ? `
+      <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(79,142,247,.06),rgba(124,58,237,.06));border-color:rgba(79,142,247,.2)">
+        <h3 style="margin-bottom:12px">📊 مقارنة بالفترة السابقة</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:14px">
+            <div style="font-size:.78rem;color:var(--text2);margin-bottom:4px">الفترة الحالية</div>
+            <div style="font-weight:900;color:var(--accent)">${fmtCurrency(data.orders?.revenue||0)}</div>
+            <div style="font-size:.75rem;color:var(--text2)">${data.orders?.total||0} طلب</div>
+          </div>
+          <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:14px">
+            <div style="font-size:.78rem;color:var(--text2);margin-bottom:4px">الفترة السابقة</div>
+            <div style="font-weight:900;color:var(--text2)">${fmtCurrency(data.comparison?.prev_revenue||0)}</div>
+            <div style="font-size:.75rem;color:var(--text2)">${data.comparison?.prev_orders||0} طلب</div>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <!-- DAILY CHART -->
+      ${sparkline ? `
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-bottom:14px">📈 الإيرادات اليومية</h3>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:80px;padding-bottom:4px">
+          ${sparkline}
+        </div>
+      </div>` : ''}
+
+      <!-- STATUS BREAKDOWN -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div class="card" style="padding:16px">
+          <h3 style="margin-bottom:12px">🥧 حسب الحالة</h3>
+          ${(data.status_breakdown||[]).length ?
+            data.status_breakdown.map(s=>{
+              const pct = (data.orders?.total||0) > 0 ? Math.round((parseInt(s.count)/(data.orders?.total||1))*100) : 0;
+              return `<div style="margin-bottom:8px">
+                <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px">
+                  <span style="color:${statusText[s.status]||'var(--text2)'};font-weight:700">${statusLabels[s.status]||s.status}</span>
+                  <span style="color:var(--text2)">${s.count} · ${pct}%</span>
+                </div>
+                <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${pct}%;background:${statusText[s.status]||'var(--accent)'};border-radius:3px;transition:width .5s"></div>
+                </div>
+              </div>`;
+            }).join('') :
+            '<p style="color:var(--text2);font-size:.85rem">لا توجد بيانات</p>'
+          }
+        </div>
+
+        <!-- DEPOSITS -->
+        <div class="card" style="padding:16px">
+          <h3 style="margin-bottom:12px">💵 الإيداعات</h3>
+          <div class="metric-row">
+            <span class="metric-label">إجمالي الإيرادات</span>
+            <span class="metric-value" style="color:var(--accent)">${fmtCurrency(data.orders?.revenue||0)}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">عربونات محصّلة</span>
+            <span class="metric-value" style="color:#00d4aa">${fmtCurrency(data.orders?.deposits||0)}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">متبقي للتحصيل</span>
+            <span class="metric-value" style="color:var(--accent3)">${fmtCurrency((data.orders?.revenue||0)-(data.orders?.deposits||0))}</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">متوسط قيمة الطلب</span>
+            <span class="metric-value">${fmtCurrency(data.orders?.avg||0)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP ORDERS -->
+      <div class="card" style="margin-bottom:16px">
+        <h3 style="margin-bottom:12px">🏆 أكبر الطلبات</h3>
+        ${(data.top_orders||[]).length ?
+          data.top_orders.map((o,i)=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:22px;height:22px;border-radius:50%;background:${i<3?'var(--accent)':'var(--surface2)'};display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;color:${i<3?'#000':'var(--text2)'}">${i+1}</div>
+              <div>
+                <div style="font-weight:700;font-size:.85rem">${esc(o.customer_name)}</div>
+                <div style="font-size:.72rem;color:var(--text2)">${new Date(o.created_at).toLocaleDateString('ar-IQ')}</div>
+              </div>
+            </div>
+            <div style="text-align:left">
+              <div style="font-weight:900;color:var(--accent);font-size:.9rem">${fmtCurrency(o.total)}</div>
+              <div style="font-size:.7rem;font-weight:700;color:${statusText[o.status]||'var(--text2)'}">${statusLabels[o.status]||o.status}</div>
+            </div>
+          </div>`).join('') :
+          '<p style="color:var(--text2);font-size:.85rem;text-align:center;padding:16px">لا توجد طلبات في هذه الفترة</p>'
+        }
+      </div>`;
+  }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
 
 // ─── DELIVERY TRACKING ───
@@ -3122,7 +3618,7 @@ async function loadInventory(){
     if(alerts.length>0){
       alertsContainer.innerHTML=`<div style="background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);border-radius:12px;padding:16px;margin-bottom:20px">
         <div style="font-weight:700;color:var(--danger);margin-bottom:8px">🚨 تنبيهات المخزون (${alerts.length})</div>
-        ${alerts.map(p=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,68,102,.1)"><span>${p.name}</span><span style="color:${p.stock===0?'var(--danger)':'var(--accent3)'};font-weight:700">${p.stock===0?'نفذ':p.stock+' متبقي'}</span></div>`).join('')}
+        ${alerts.map(p=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,68,102,.1)"><span>${esc(p.name)}</span><span style="color:${p.stock===0?'var(--danger)':'var(--accent3)'};font-weight:700">${p.stock===0?'نفذ':p.stock+' متبقي'}</span></div>`).join('')}
       </div>`;
     } else alertsContainer.innerHTML='';
 
@@ -3163,7 +3659,177 @@ async function setStock(id){
 }
 
 // ─── SECURITY ───
-function loadSecurity(){ /* Static page - nothing to load */ }
+async function loadSecurity(){
+  checkCloudinaryStatus();
+  checkPushStatus();
+  loadDeliveryCompanies();
+}
+
+// ─── CLOUDINARY ───
+async function checkCloudinaryStatus(){
+  const el = document.getElementById('cloudinary-status');
+  if(!el) return;
+  try {
+    const res = await fetch(`${API}/api/upload/status`, {headers: authH()});
+    const data = await res.json();
+    const color = data.configured ? 'var(--accent)' : 'var(--accent3)';
+    el.innerHTML = `<span style="color:${color};font-weight:700">${data.message}</span>`;
+  } catch(e) {
+    if(el) el.innerHTML = '<span style="color:var(--text2)">تعذر الفحص</span>';
+  }
+}
+
+// ─── CLOUDINARY UPLOAD HELPER (يُستخدم من كل مكان) ───
+async function uploadImage(base64DataUrl, folder = 'socialos') {
+  if (!base64DataUrl || !base64DataUrl.startsWith('data:image/')) return base64DataUrl;
+  try {
+    const res = await fetch(`${API}/api/upload/image`, {
+      method: 'POST',
+      headers: authH(),
+      body: JSON.stringify({ image: base64DataUrl, folder })
+    });
+    const data = await res.json();
+    if (data.success && data.url) return data.url;
+  } catch(e) {}
+  return base64DataUrl; // fallback
+}
+
+// ─── PUSH NOTIFICATIONS ───
+let pushSubscription = null;
+
+async function checkPushStatus(){
+  const badge = document.getElementById('push-status-badge');
+  const enableBtn = document.getElementById('push-enable-btn');
+  const testBtn = document.getElementById('push-test-btn');
+  const disableBtn = document.getElementById('push-disable-btn');
+  if(!badge) return;
+
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    badge.textContent = '❌ غير مدعوم في هذا المتصفح';
+    badge.style.color = 'var(--danger)';
+    if(enableBtn) enableBtn.style.display = 'none';
+    return;
+  }
+
+  const perm = Notification.permission;
+  if(perm === 'granted'){
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      pushSubscription = await reg.pushManager.getSubscription();
+      if(pushSubscription){
+        badge.textContent = '✅ مفعّل';
+        badge.style.background = 'rgba(0,212,170,.15)';
+        badge.style.color = 'var(--green)';
+        if(enableBtn) enableBtn.style.display = 'none';
+        if(testBtn) testBtn.style.display = 'inline-flex';
+        if(disableBtn) disableBtn.style.display = 'inline-flex';
+        return;
+      }
+    } catch(e) {}
+  }
+
+  badge.textContent = perm === 'denied' ? '🚫 محظور' : '⭕ غير مفعّل';
+  badge.style.color = perm === 'denied' ? 'var(--danger)' : 'var(--text2)';
+  if(enableBtn) enableBtn.style.display = perm === 'denied' ? 'none' : 'inline-flex';
+  if(testBtn) testBtn.style.display = 'none';
+  if(disableBtn) disableBtn.style.display = 'none';
+}
+
+async function enablePushNotifications(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    return showToast('❌ المتصفح لا يدعم الإشعارات');
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ showToast('❌ لم تُمنح صلاحية الإشعارات'); return; }
+
+    // Get VAPID public key
+    const vapidRes = await fetch(`${API}/api/push/vapid-public`, {headers: authH()});
+    const vapidData = await vapidRes.json();
+
+    const reg = await navigator.serviceWorker.ready;
+
+    if(!vapidData.success){
+      // VAPID not configured — show info but still register permission
+      document.getElementById('push-vapid-info').style.display = 'block';
+      showToast('⚠️ الإشعارات تحتاج إعداد VAPID في Railway');
+      checkPushStatus();
+      return;
+    }
+
+    // Subscribe
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidData.key)
+    });
+    pushSubscription = sub;
+
+    // Send subscription to server
+    const subData = sub.toJSON();
+    await fetch(`${API}/api/push/subscribe`, {
+      method: 'POST',
+      headers: authH(),
+      body: JSON.stringify({ endpoint: subData.endpoint, keys: subData.keys })
+    });
+
+    showToast('✅ تم تفعيل الإشعارات!');
+    checkPushStatus();
+  } catch(e){
+    showToast('❌ فشل تفعيل الإشعارات: ' + e.message);
+  }
+}
+
+async function testPushNotification(){
+  try {
+    const res = await fetch(`${API}/api/push/test`, {method: 'POST', headers: authH()});
+    const data = await res.json();
+    if(data.success) showToast('✅ تم إرسال إشعار تجريبي!');
+    else showToast('❌ ' + (data.message || 'فشل'));
+  } catch(e){ showToast('❌ تعذر الإرسال'); }
+}
+
+async function disablePushNotifications(){
+  try {
+    if(pushSubscription){
+      await fetch(`${API}/api/push/unsubscribe`, {
+        method: 'DELETE',
+        headers: authH(),
+        body: JSON.stringify({ endpoint: pushSubscription.endpoint })
+      });
+      await pushSubscription.unsubscribe();
+      pushSubscription = null;
+    }
+    showToast('✅ تم إلغاء الإشعارات');
+    checkPushStatus();
+  } catch(e){ showToast('❌ فشل الإلغاء'); }
+}
+
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// ─── DELIVERY COMPANIES ───
+async function loadDeliveryCompanies(){
+  const el = document.getElementById('delivery-companies-list');
+  if(!el) return;
+  try {
+    const res = await fetch(`${API}/api/delivery/companies`, {headers: authH()});
+    const data = await res.json();
+    if(data.success){
+      el.innerHTML = data.companies.map(c => `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:1.1rem">${c.flag}</span>
+          <div>
+            <div style="font-weight:700;font-size:.82rem">${esc(c.name)}</div>
+            <div style="font-size:.72rem;color:var(--text2)">${esc(c.region)}</div>
+          </div>
+        </div>`).join('');
+    }
+  } catch(e) {}
+}
 
 async function changePassword(){
   const current=document.getElementById('sec-current-pass').value;
@@ -3367,7 +4033,7 @@ async function loadMessages(){
     const res=await fetch(`${API}/api/messages`,{headers:authH()});
     const data=await res.json();
     if(!data.messages||data.messages.length===0){container.innerHTML='<div class="empty-state"><div class="emoji">💬</div><p>لا توجد رسائل بعد<br><small>ستظهر بعد ربط المنصات</small></p></div>';return;}
-    container.innerHTML=data.messages.map(m=>`<div class="msg-item"><div class="msg-avatar">👤</div><div class="msg-body"><div class="msg-sender">${m.sender||'مجهول'}</div><div class="msg-text">${m.content}</div><div class="msg-platform">${m.platform||''} · ${new Date(m.created_at).toLocaleDateString('ar')}</div></div></div>`).join('');
+    container.innerHTML=data.messages.map(m=>`<div class="msg-item"><div class="msg-avatar">👤</div><div class="msg-body"><div class="msg-sender">${esc(m.sender||'مجهول')}</div><div class="msg-text">${esc(m.content)}</div><div class="msg-platform">${esc(m.platform||'')} · ${new Date(m.created_at).toLocaleDateString('ar')}</div></div></div>`).join('');
   }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
 
@@ -3606,7 +4272,17 @@ async function loadProfile(){
 async function saveProfile(){
   const name=document.getElementById('profile-name').value.trim();
   const bio=document.getElementById('profile-bio').value.trim();
-  const avatar_url = window._uploadedImageData || document.getElementById('profile-avatar-url').value.trim();
+  const btn = document.querySelector('#page-profile .btn-accent');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ جاري الحفظ...'; }
+
+  // Upload avatar via Cloudinary if base64
+  let avatar_url = document.getElementById('profile-avatar-url').value.trim();
+  if(window._uploadedImageData && window._uploadedImageData.startsWith('data:image/')){
+    showToast('⏳ جاري رفع الصورة...');
+    avatar_url = await uploadImage(window._uploadedImageData, 'socialos/avatars');
+    window._uploadedImageData = null;
+  }
+
   try{
     const res=await fetch(`${API}/api/profile`,{method:'PUT',headers:authH(),body:JSON.stringify({name,bio,avatar_url})});
     const data=await res.json();
@@ -3623,6 +4299,7 @@ async function saveProfile(){
       loadProfile();
     }else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
+  if(btn){ btn.disabled=false; btn.textContent='💾 حفظ التغييرات'; }
 }
 
 // ─── SUBSCRIPTION ───
@@ -3710,12 +4387,23 @@ async function saveProduct(){
   const price=document.getElementById('prod-price').value;
   if(!name||!price)return showToast('⚠️ الاسم والسعر مطلوبان');
   const editId=document.getElementById('product-edit-id').value;
+  const btn = document.querySelector('#product-modal .btn-accent');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ جاري الحفظ...'; }
+
+  // Upload image via Cloudinary if base64
+  let imageUrl = document.getElementById('prod-image').value.trim();
+  const base64 = document.getElementById('prod-image-base64').value;
+  if(base64 && base64.startsWith('data:image/')){
+    showToast('⏳ جاري رفع الصورة...');
+    imageUrl = await uploadImage(base64, 'socialos/products');
+  }
+
   const productData={
     name, price:parseFloat(price),
     description:document.getElementById('prod-desc').value.trim(),
     category:document.getElementById('prod-category').value.trim()||'عام',
     stock:parseInt(document.getElementById('prod-stock').value)||0,
-    image_url:document.getElementById('prod-image-base64').value || document.getElementById('prod-image').value.trim(),
+    image_url: imageUrl,
     is_available:document.getElementById('prod-available').checked
   };
   try{
@@ -3729,6 +4417,7 @@ async function saveProduct(){
       loadProducts();
     } else showToast('❌ '+(data.message||'فشل'));
   }catch(e){showToast('❌ تعذر الاتصال');}
+  if(btn){ btn.disabled=false; btn.textContent='💾 حفظ'; }
 }
 
 async function loadProducts(){
@@ -3768,30 +4457,35 @@ function renderProducts(products){
   }
 
   container.innerHTML='<div class="product-grid">'+
-    products.map(p=>`
+    products.map(p=>{
+      const pName=esc(p.name);
+      const pDesc=p.description?esc(p.description):'';
+      const pCat=esc(p.category||'');
+      const pImg=(p.image_url||'').startsWith('https://')?esc(p.image_url):'';
+      const safeP=JSON.stringify(p).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/"/g,'&quot;');
+      return `
     <div class="product-card-pro" style="${!p.is_available?'opacity:.7;':''}">
-      ${p.image_url
-        ? `<img class="product-img" src="${p.image_url}" alt="${p.name}" onerror="this.parentElement.querySelector('.product-img-placeholder').style.display='flex';this.style.display='none'">`
-        : ''}
-      <div class="product-img-placeholder" style="${p.image_url?'display:none':'display:flex'}">📦</div>
+      ${pImg?`<img class="product-img" src="${pImg}" alt="${pName}" onerror="this.parentElement.querySelector('.product-img-placeholder').style.display='flex';this.style.display='none'">`:''} 
+      <div class="product-img-placeholder" style="${pImg?'display:none':'display:flex'}">📦</div>
       <div class="product-body">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
           <span style="background:${p.is_available?'rgba(0,255,136,.12)':'rgba(255,68,102,.12)'};color:${p.is_available?'var(--accent)':'var(--danger)'};padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:800">${p.is_available?'✅ متاح':'❌ نفذ'}</span>
-          <span style="font-size:.72rem;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:20px">${p.category}</span>
+          <span style="font-size:.72rem;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:20px">${pCat}</span>
         </div>
-        <div class="product-name">${p.name}</div>
-        ${p.description?`<div class="product-desc">${p.description}</div>`:''}
+        <div class="product-name">${pName}</div>
+        ${pDesc?`<div class="product-desc">${pDesc}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
           <div class="product-price">${fmtCurrency(p.price)}</div>
           <div class="product-stock">📦 ${p.stock}</div>
         </div>
         <div class="product-actions">
-          <button class="btn btn-outline btn-sm" style="flex:1;font-size:.78rem" onclick="openProductModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️ تعديل</button>
-          <button class="btn btn-outline btn-sm" style="font-size:.78rem;color:var(--accent3);border-color:rgba(245,158,11,.3)" onclick="useProductInOrder('${p.name}',${p.price})">🛒</button>
+          <button class="btn btn-outline btn-sm" style="flex:1;font-size:.78rem" onclick="openProductModal(${safeP})">✏️ تعديل</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.78rem;color:var(--accent3);border-color:rgba(245,158,11,.3)" onclick="useProductInOrder(${JSON.stringify(pName)},${parseFloat(p.price)||0})">🛒</button>
           <button class="btn btn-danger btn-sm" style="font-size:.78rem" onclick="deleteProduct(${p.id})">🗑</button>
         </div>
       </div>
-    </div>`).join('')+'</div>';
+    </div>`;
+    }).join('')+'</div>';
 }
 
 function filterByCategory(cat, btn){
@@ -3853,15 +4547,15 @@ async function loadCustomers(){
       <div class="order-card">
         <div class="order-header">
           <div>
-            <div class="order-customer">${c.name}</div>
-            <div style="color:var(--text2);font-size:.85rem">${c.phone}</div>
-            ${c.address?`<div style="color:var(--text2);font-size:.8rem">📍 ${c.address}</div>`:''}
+            <div class="order-customer">${esc(c.name)}</div>
+            <div style="color:var(--text2);font-size:.85rem">${esc(c.phone)}</div>
+            ${c.address?`<div style="color:var(--text2);font-size:.8rem">📍 ${esc(c.address)}</div>`:''}
           </div>
           <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id})">🗑</button>
         </div>
-        ${c.notes?`<div style="color:var(--text2);font-size:.85rem;margin-top:8px">📝 ${c.notes}</div>`:''}
+        ${c.notes?`<div style="color:var(--text2);font-size:.85rem;margin-top:8px">📝 ${esc(c.notes)}</div>`:''}
         <div style="margin-top:10px">
-          <button class="btn btn-outline btn-sm" onclick="useCustomerInOrder('${c.name}','${c.phone}','${c.address||''}')">➕ إضافة طلب</button>
+          <button class="btn btn-outline btn-sm" onclick="useCustomerInOrder(${JSON.stringify(esc(c.name))},${JSON.stringify(esc(c.phone))},${JSON.stringify(esc(c.address||''))})">➕ إضافة طلب</button>
         </div>
       </div>`).join('');
   }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
@@ -3876,7 +4570,7 @@ function searchCustomers(q){
       const res=await fetch(`${API}/api/customers?q=${encodeURIComponent(q)}`,{headers:authH()});
       const data=await res.json();
       if(!data.customers||data.customers.length===0){container.innerHTML='<div class="empty-state"><div class="emoji">🔍</div><p>لا توجد نتائج</p></div>';return;}
-      container.innerHTML=data.customers.map(c=>`<div class="order-card"><div class="order-header"><div><div class="order-customer">${c.name}</div><div style="color:var(--text2);font-size:.85rem">${c.phone}</div></div><button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id})">🗑</button></div></div>`).join('');
+      container.innerHTML=data.customers.map(c=>`<div class="order-card"><div class="order-header"><div><div class="order-customer">${esc(c.name)}</div><div style="color:var(--text2);font-size:.85rem">${esc(c.phone)}</div></div><button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id})">🗑</button></div></div>`).join('');
     }catch(e){}
   },400);
 }
@@ -3917,15 +4611,24 @@ async function loadTemplates(){
     container.innerHTML=data.templates.map(t=>`
       <div class="order-card">
         <div class="order-header">
-          <div class="order-customer">${t.title}</div>
+          <div class="order-customer">${esc(t.title)}</div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-outline btn-sm" onclick="copyTemplate('${t.content.replace(/'/g,"\'")}')">📋 نسخ</button>
+            <button class="btn btn-outline btn-sm" data-tmpl-id="${t.id}" onclick="copyTemplateById(this)">📋 نسخ</button>
             <button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})">🗑</button>
           </div>
         </div>
-        <div style="color:var(--text2);font-size:.85rem;margin-top:8px">${t.content}</div>
+        <div style="color:var(--text2);font-size:.85rem;margin-top:8px">${esc(t.content)}</div>
       </div>`).join('');
+    // Store templates data for safe copy
+    window._templatesCache = {};
+    data.templates.forEach(t => { window._templatesCache[t.id] = t.content; });
   }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
+}
+
+function copyTemplateById(btn){
+  const id = btn.getAttribute('data-tmpl-id');
+  const content = window._templatesCache && window._templatesCache[id];
+  if(content) navigator.clipboard.writeText(content).then(()=>showToast('📋 تم النسخ!'));
 }
 
 function copyTemplate(content){navigator.clipboard.writeText(content);showToast('📋 تم النسخ!');}
@@ -3933,33 +4636,6 @@ function copyTemplate(content){navigator.clipboard.writeText(content);showToast(
 async function deleteTemplate(id){
   if(!confirm('حذف القالب؟'))return;
   try{await fetch(`${API}/api/templates/${id}`,{method:'DELETE',headers:authH()});showToast('🗑 تم الحذف');loadTemplates();}catch(e){}
-}
-
-// ─── WEEKLY REPORT ───
-async function loadReport(){
-  const container=document.getElementById('report-content');
-  container.innerHTML='<div class="empty-state"><div class="emoji">⏳</div><p>جاري التحميل...</p></div>';
-  try{
-    const res=await fetch(`${API}/api/reports/weekly`,{headers:authH()});
-    const data=await res.json();
-    if(!data.success){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';return;}
-    const statusLabels={new:'جديد',confirmed:'مؤكد',processing:'قيد التجهيز',delivered:'تم التوصيل',cancelled:'ملغي'};
-    container.innerHTML=`
-      <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">${data.orders.revenue.toFixed(0)}</div><div class="stat-label">الإيرادات (ر.س)</div></div>
-        <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value">${data.orders.total}</div><div class="stat-label">الطلبات</div></div>
-        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${data.posts}</div><div class="stat-label">المنشورات</div></div>
-        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">${data.orders.total>0?(data.orders.revenue/data.orders.total).toFixed(0):0}</div><div class="stat-label">متوسط الطلب</div></div>
-      </div>
-      <div class="card">
-        <h3>📊 الطلبات حسب الحالة</h3>
-        ${data.orders.by_status.length?data.orders.by_status.map(s=>`<div class="metric-row"><span class="metric-label">${statusLabels[s.status]||s.status}</span><span class="metric-value">${s.count} طلب · ${parseFloat(s.revenue||0).toFixed(0)} ر.س</span></div>`).join(''):'<p style="color:var(--text2)">لا توجد طلبات هذا الأسبوع</p>'}
-      </div>
-      <div class="card">
-        <h3>🏆 أكبر الطلبات هذا الأسبوع</h3>
-        ${data.top_orders.length?data.top_orders.map(o=>`<div class="metric-row"><span class="metric-label">${o.customer_name}</span><span class="metric-value">${fmtCurrency(o.total)}</span></div>`).join(''):'<p style="color:var(--text2)">لا توجد طلبات</p>'}
-      </div>`;
-  }catch(e){container.innerHTML='<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>';}
 }
 
 // ─── FORGOT PASSWORD ───
@@ -3980,7 +4656,6 @@ async function sendResetCode(){
     if(data.success){
       document.getElementById('forgot-step1').style.display='none';
       document.getElementById('forgot-step2').style.display='block';
-      if(data.dev_code)showToast('رمز التحقق: '+data.dev_code+' (للتطوير فقط)');
     }else showForgotError(data.message||'فشل الإرسال');
   }catch(e){showForgotError('تعذر الاتصال');}
 }
@@ -4190,6 +4865,337 @@ function initMobileNav(){
   window.addEventListener('resize',()=>{
     if(nav) nav.style.display=isMobile()?'flex':'none';
   });
+}
+
+
+// ─── COUPONS ───
+let couponModal = null;
+
+function openCouponModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay show';
+  overlay.id = 'coupon-modal';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>🎟️ إنشاء كوبون خصم</h2>
+      <div class="grid-2">
+        <div class="form-group-item">
+          <label class="form-label">كود الخصم *</label>
+          <input class="form-input" id="coup-code" placeholder="SAVE20" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="form-group-item">
+          <label class="form-label">نوع الخصم</label>
+          <select class="form-select" id="coup-type" onchange="updateCouponLabel()">
+            <option value="percent">% نسبة مئوية</option>
+            <option value="fixed">💰 مبلغ ثابت</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group-item">
+          <label class="form-label" id="coup-value-label">قيمة الخصم (%)</label>
+          <input class="form-input" id="coup-value" type="number" placeholder="20" dir="ltr">
+        </div>
+        <div class="form-group-item">
+          <label class="form-label">الحد الأدنى للطلب</label>
+          <input class="form-input" id="coup-min" type="number" placeholder="0" dir="ltr">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group-item">
+          <label class="form-label">عدد مرات الاستخدام</label>
+          <input class="form-input" id="coup-uses" type="number" placeholder="100" dir="ltr">
+        </div>
+        <div class="form-group-item">
+          <label class="form-label">تاريخ الانتهاء (اختياري)</label>
+          <input class="form-input" id="coup-expires" type="date">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="document.getElementById('coupon-modal').remove()">إلغاء</button>
+        <button class="btn btn-accent" onclick="saveCoupon()">💾 إنشاء الكوبون</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function updateCouponLabel() {
+  const type = document.getElementById('coup-type').value;
+  document.getElementById('coup-value-label').textContent = type === 'percent' ? 'قيمة الخصم (%)' : 'مبلغ الخصم';
+}
+
+async function saveCoupon() {
+  const code = document.getElementById('coup-code').value.trim();
+  const type = document.getElementById('coup-type').value;
+  const value = document.getElementById('coup-value').value;
+  const min_order = document.getElementById('coup-min').value || 0;
+  const max_uses = document.getElementById('coup-uses').value || 100;
+  const expires_at = document.getElementById('coup-expires').value || null;
+  if (!code || !value) return showToast('⚠️ الكود والقيمة مطلوبان');
+  try {
+    const res = await fetch(`${API}/api/coupons`, { method: 'POST', headers: authH(), body: JSON.stringify({ code, type, value: parseFloat(value), min_order, max_uses, expires_at }) });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ تم إنشاء الكوبون!');
+      document.getElementById('coupon-modal')?.remove();
+      loadCoupons();
+    } else showToast('❌ ' + (data.message || 'فشل'));
+  } catch (e) { showToast('❌ تعذر الاتصال'); }
+}
+
+async function loadCoupons() {
+  const container = document.getElementById('coupons-list');
+  if (!container) return;
+  try {
+    const res = await fetch(`${API}/api/coupons`, { headers: authH() });
+    const data = await res.json();
+    const coupons = data.coupons || [];
+    // Update stats
+    document.getElementById('coup-total').textContent = coupons.length;
+    document.getElementById('coup-active').textContent = coupons.filter(c => c.is_active).length;
+    document.getElementById('coup-used').textContent = coupons.reduce((s, c) => s + parseInt(c.used_count || 0), 0);
+    if (!coupons.length) { container.innerHTML = '<div class="empty-state"><div class="emoji">🎟️</div><p>لا توجد كوبونات بعد</p></div>'; return; }
+    container.innerHTML = coupons.map(c => {
+      const expired = c.expires_at && new Date(c.expires_at) < new Date();
+      return `<div class="order-card" style="${!c.is_active||expired?'opacity:.6':''}">
+        <div class="order-header">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:900;color:var(--accent);letter-spacing:2px">${esc(c.code)}</div>
+            <div style="font-size:.82rem;color:var(--text2);margin-top:2px">
+              ${c.type==='percent'?c.value+'% خصم':'خصم '+c.value+' '+( userSettings?.currency||'IQD')}
+              ${c.min_order>0?' · حد أدنى '+c.min_order:''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            <span class="order-status ${c.is_active&&!expired?'status-confirmed':'status-cancelled'}">${expired?'منتهي':c.is_active?'نشط':'متوقف'}</span>
+            <div style="font-size:.75rem;color:var(--text2)">${c.used_count}/${c.max_uses} استخدام</div>
+          </div>
+        </div>
+        ${c.expires_at?`<div style="font-size:.78rem;color:var(--text2);margin-top:4px">📅 ينتهي: ${new Date(c.expires_at).toLocaleDateString('ar-IQ')}</div>`:''}
+        <div class="order-footer" style="margin-top:10px">
+          <button class="btn btn-outline btn-sm" onclick="copyCouponCode('${esc(c.code)}')">📋 نسخ</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleCoupon(${c.id})">${c.is_active?'⏸️ إيقاف':'▶️ تفعيل'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCoupon(${c.id})">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) { container.innerHTML = '<div class="empty-state"><div class="emoji">❌</div><p>تعذر التحميل</p></div>'; }
+}
+
+function copyCouponCode(code) { navigator.clipboard.writeText(code); showToast('📋 تم نسخ الكود: ' + code); }
+
+async function toggleCoupon(id) {
+  try { await fetch(`${API}/api/coupons/${id}/toggle`, { method: 'PUT', headers: authH() }); loadCoupons(); } catch (e) {}
+}
+
+async function deleteCoupon(id) {
+  if (!confirm('حذف الكوبون؟')) return;
+  try { await fetch(`${API}/api/coupons/${id}`, { method: 'DELETE', headers: authH() }); showToast('🗑 تم الحذف'); loadCoupons(); } catch (e) {}
+}
+
+// ─── LOYALTY ───
+let loyaltySettings = { points_per_currency: 1, redeem_rate: 100, min_redeem: 100, is_active: true };
+
+async function loadLoyalty() {
+  try {
+    const [custRes, settingsRes] = await Promise.all([
+      fetch(`${API}/api/loyalty/customers`, { headers: authH() }),
+      fetch(`${API}/api/loyalty/settings`, { headers: authH() })
+    ]);
+    const custData = await custRes.json();
+    const setData = await settingsRes.json();
+    loyaltySettings = setData.settings || loyaltySettings;
+    const customers = custData.customers || [];
+
+    // Stats
+    document.getElementById('loy-customers').textContent = customers.length;
+    const totalPoints = customers.reduce((s, c) => s + parseInt(c.points || 0), 0);
+    document.getElementById('loy-points').textContent = totalPoints.toLocaleString('ar-IQ');
+    const totalRedeemed = customers.reduce((s, c) => s + parseInt(c.total_redeemed || 0), 0);
+    document.getElementById('loy-redeemed').textContent = totalRedeemed.toLocaleString('ar-IQ');
+    const top = customers[0];
+    document.getElementById('loy-top').textContent = top ? (top.customer_name || top.customer_phone).substring(0, 10) : '-';
+
+    const container = document.getElementById('loyalty-customers-list');
+    if (!customers.length) { container.innerHTML = '<div class="empty-state"><div class="emoji">⭐</div><p>لا يوجد عملاء في نظام النقاط بعد</p></div>'; return; }
+    container.innerHTML = customers.map((c, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:900;color:#fff">${i+1}</div>
+          <div>
+            <div style="font-weight:700">${esc(c.customer_name || 'غير محدد')}</div>
+            <div style="font-size:.78rem;color:var(--text2);direction:ltr">${esc(c.customer_phone)}</div>
+          </div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-weight:900;color:var(--accent);font-family:'IBM Plex Mono',monospace">${parseInt(c.points).toLocaleString('ar-IQ')} ⭐</div>
+          <div style="font-size:.72rem;color:var(--text2)">مكتسب: ${parseInt(c.total_earned).toLocaleString()}</div>
+        </div>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function loadCustomerLoyalty(phone) {
+  const cleaned = phone.replace(/[^0-9]/g, '');
+  if (cleaned.length < 7) { document.getElementById('loy-available').textContent = '—'; document.getElementById('loy-redeem-preview').style.display = 'none'; return; }
+  try {
+    const res = await fetch(`${API}/api/loyalty/customer/${encodeURIComponent(phone)}`, { headers: authH() });
+    const data = await res.json();
+    const pts = parseInt(data.loyalty?.points || 0);
+    document.getElementById('loy-available').textContent = pts.toLocaleString('ar-IQ') + ' ⭐';
+    document.getElementById('loy-redeem-amount').max = pts;
+  } catch (e) {}
+}
+
+async function redeemPoints() {
+  const phone = document.getElementById('loy-phone').value.trim();
+  const points = parseInt(document.getElementById('loy-redeem-amount').value);
+  if (!phone || !points || points <= 0) return showToast('⚠️ أدخل الهاتف والنقاط');
+  try {
+    const res = await fetch(`${API}/api/loyalty/redeem`, { method: 'POST', headers: authH(), body: JSON.stringify({ customer_phone: phone, points_to_redeem: points }) });
+    const data = await res.json();
+    if (data.success) {
+      const preview = document.getElementById('loy-redeem-preview');
+      preview.style.display = 'block';
+      preview.innerHTML = `✅ تم الاسترداد! <strong>${points}</strong> نقطة = خصم <strong style="color:var(--accent)">${data.discount} ${userSettings?.currency||'IQD'}</strong>`;
+      showToast(`✅ تم استرداد ${points} نقطة = خصم ${data.discount}`);
+      loadCustomerLoyalty(phone);
+      loadLoyalty();
+    } else showToast('❌ ' + (data.message || 'فشل'));
+  } catch (e) { showToast('❌ تعذر الاتصال'); }
+}
+
+async function loadLoyaltySettings() {
+  try {
+    const res = await fetch(`${API}/api/loyalty/settings`, { headers: authH() });
+    const data = await res.json();
+    loyaltySettings = data.settings || loyaltySettings;
+    document.getElementById('loy-set-rate').value = loyaltySettings.points_per_currency || 1;
+    document.getElementById('loy-set-redeem').value = loyaltySettings.redeem_rate || 100;
+    document.getElementById('loy-set-min').value = loyaltySettings.min_redeem || 100;
+    document.getElementById('loy-set-active').checked = loyaltySettings.is_active !== false;
+  } catch (e) {}
+}
+
+async function saveLoyaltySettings() {
+  const settings = {
+    points_per_currency: parseFloat(document.getElementById('loy-set-rate').value) || 1,
+    redeem_rate: parseFloat(document.getElementById('loy-set-redeem').value) || 100,
+    min_redeem: parseInt(document.getElementById('loy-set-min').value) || 100,
+    is_active: document.getElementById('loy-set-active').checked
+  };
+  try {
+    const res = await fetch(`${API}/api/loyalty/settings`, { method: 'PUT', headers: authH(), body: JSON.stringify(settings) });
+    const data = await res.json();
+    if (data.success) { loyaltySettings = settings; showToast('✅ تم حفظ إعدادات الولاء!'); }
+    else showToast('❌ ' + (data.message || 'فشل'));
+  } catch (e) { showToast('❌ تعذر الاتصال'); }
+}
+
+// Add points after order saved (called from saveOrder)
+async function addLoyaltyPoints(customerPhone, customerName, orderId, orderTotal) {
+  if (!loyaltySettings?.is_active) return;
+  try {
+    await fetch(`${API}/api/loyalty/add`, { method: 'POST', headers: authH(), body: JSON.stringify({ customer_phone: customerPhone, customer_name: customerName, order_id: orderId, order_total: orderTotal }) });
+  } catch (e) {}
+}
+
+// ─── BULK WHATSAPP ───
+let selectedBulkTarget = 'all_customers';
+let bulkLinks = [];
+
+async function loadBulkWA() {
+  try {
+    const res = await fetch(`${API}/api/whatsapp/bulk/counts`, { headers: authH() });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('bulk-count-all').textContent = data.counts.all;
+      document.getElementById('bulk-count-recent').textContent = data.counts.recent;
+      document.getElementById('bulk-count-loyalty').textContent = data.counts.loyalty;
+    }
+  } catch (e) {}
+}
+
+function selectBulkTarget(target, card) {
+  selectedBulkTarget = target;
+  document.getElementById('bulk-target').value = target;
+  document.querySelectorAll('#page-bulk-wa .stat-card').forEach(c => c.style.borderColor = 'var(--border)');
+  if (card) card.style.borderColor = 'var(--accent)';
+  document.getElementById('custom-phones-input').style.display = target === 'custom' ? 'block' : 'none';
+}
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'bulk-target') {
+    selectedBulkTarget = e.target.value;
+    document.getElementById('custom-phones-input').style.display = e.target.value === 'custom' ? 'block' : 'none';
+  }
+});
+
+function updateBulkPreview() {
+  const msg = document.getElementById('bulk-message')?.value || '';
+  const preview = document.getElementById('bulk-preview');
+  const counter = document.getElementById('bulk-char-count');
+  if (preview) preview.textContent = msg.replace('{اسم}', 'محمد أحمد') || 'معاينة الرسالة...';
+  if (counter) counter.textContent = `${msg.length} / 1000 حرف`;
+}
+
+function setBulkTemplate(type) {
+  const templates = {
+    offer: 'مرحباً {اسم}! 🔥\nلدينا عرض خاص اليوم فقط!\nلا تفوّت الفرصة — تواصل معنا الآن ⚡',
+    discount: 'أهلاً {اسم}! 🎉\nنقدّم لك خصم خاص على طلبك القادم.\nاستخدم كود: SAVE10\nصالح لفترة محدودة 🏷️',
+    loyalty: 'مرحباً {اسم}! ⭐\nلديك نقاط ولاء يمكنك استبدالها بخصم على طلبك القادم.\nتواصل معنا لمعرفة رصيدك 💎',
+    new: 'أهلاً {اسم}! 🆕\nوصلنا منتجات جديدة رائعة!\nتفضل بزيارة متجرنا والاختيار من أحدث التشكيلات 🛍️'
+  };
+  const el = document.getElementById('bulk-message');
+  if (el) { el.value = templates[type] || ''; updateBulkPreview(); }
+}
+
+async function sendBulkWhatsApp() {
+  const message = document.getElementById('bulk-message').value.trim();
+  const target = document.getElementById('bulk-target').value;
+  if (!message) return showToast('⚠️ اكتب الرسالة أولاً');
+  const btn = document.getElementById('bulk-send-btn');
+  btn.disabled = true; btn.textContent = '⏳ جاري التحضير...';
+  let body = { message, target };
+  if (target === 'custom') {
+    const phones = (document.getElementById('bulk-custom-phones').value || '').split('\n').map(p => p.trim()).filter(p => p.length >= 7);
+    if (!phones.length) { showToast('⚠️ أدخل أرقام الهواتف'); btn.disabled = false; btn.textContent = '📱 إنشاء روابط واتساب وإرسال'; return; }
+    body.phones = phones;
+  }
+  try {
+    const res = await fetch(`${API}/api/whatsapp/bulk`, { method: 'POST', headers: authH(), body: JSON.stringify(body) });
+    const data = await res.json();
+    if (data.success) {
+      bulkLinks = data.links;
+      showToast(`✅ ${data.links.length} رابط جاهز من أصل ${data.total} عميل`);
+      renderBulkLinks(data.links);
+    } else showToast('❌ ' + (data.message || 'فشل'));
+  } catch (e) { showToast('❌ تعذر الاتصال'); }
+  btn.disabled = false; btn.textContent = '📱 إنشاء روابط واتساب وإرسال';
+}
+
+function renderBulkLinks(links) {
+  const resultsDiv = document.getElementById('bulk-results');
+  const listDiv = document.getElementById('bulk-links-list');
+  resultsDiv.style.display = 'block';
+  listDiv.innerHTML = links.map((l, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
+      <div>
+        <div style="font-weight:700;font-size:.85rem">${i+1}. ${esc(l.name || 'عميل')}</div>
+        <div style="font-size:.75rem;color:var(--text2);direction:ltr">${esc(l.phone)}</div>
+      </div>
+      <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer"
+         style="padding:7px 14px;background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;border-radius:8px;text-decoration:none;font-size:.8rem;font-weight:700;white-space:nowrap">
+        📱 إرسال
+      </a>
+    </div>`).join('');
+  resultsDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function openAllBulkLinks() {
+  if (!bulkLinks.length) return;
+  showToast(`⚠️ سيتم فتح ${bulkLinks.length} نافذة — تأكد من السماح بالنوافذ المنبثقة`);
+  bulkLinks.forEach((l, i) => setTimeout(() => window.open(l.url, '_blank', 'noopener'), i * 800));
 }
 
 function showToast(msg){

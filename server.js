@@ -5,7 +5,19 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const app = express();
 
-app.use(cors());
+const ALLOWED_ORIGINS = [
+  'https://socialos-production-4aa6.up.railway.app',
+  'http://localhost:3000',
+  ...(process.env.EXTRA_ORIGINS ? process.env.EXTRA_ORIGINS.split(',') : [])
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, same-origin)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // ========== SECURITY MIDDLEWARE ==========
@@ -87,7 +99,22 @@ function formatCurrency(amount, currency = 'IQD') {
   const symbol = symbols[currency] || currency;
   return `${num.toLocaleString('ar-IQ')} ${symbol}`;
 }
-const JWT_SECRET = process.env.JWT_SECRET || 'socialos_secret_key';
+
+// ========== HTML ESCAPE ==========
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set. Exiting.');
+  process.exit(1);
+}
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -102,8 +129,8 @@ function authenticateToken(req, res, next) {
   }
 }
 
-const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || 'sbawpmxlnd2c1ic5fx';
-const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || 'nFlkLVf7FSvajkESBriVA7lrE3jTf29q';
+const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || '';
+const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || '';
 const TIKTOK_REDIRECT_URI = 'https://socialos-production-4aa6.up.railway.app/api/tiktok/callback';
 
 let pool = null;
@@ -243,6 +270,8 @@ app.get('/api/messages', authenticateToken, async (req, res) => {
 app.post('/api/orders', authenticateToken, async (req, res) => {
   const { customer_name, customer_phone, customer_address, items, total, deposit, deposit_type, payment_method, delivery_company, delivery_link, notes, platform } = req.body;
   const userId = req.user.id;
+  if (total !== undefined && (parseFloat(total) < 0 || isNaN(parseFloat(total)))) return res.status(400).json({ success: false, message: 'المبلغ لا يمكن أن يكون سالباً' });
+  if (deposit !== undefined && (parseFloat(deposit) < 0 || isNaN(parseFloat(deposit)))) return res.status(400).json({ success: false, message: 'العربون لا يمكن أن يكون سالباً' });
   try {
     if (pool) {
       const result = await pool.query('INSERT INTO orders (user_id, customer_name, customer_phone, customer_address, items, total, deposit, deposit_type, payment_method, delivery_company, delivery_link, notes, platform) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
@@ -301,8 +330,15 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
 app.put('/api/orders/:id', authenticateToken, async (req, res) => {
   try {
     if (pool) {
-      const fields = Object.keys(req.body).map((k, i) => `${k}=$${i + 2}`).join(', ');
-      await pool.query(`UPDATE orders SET ${fields} WHERE id=$1`, [req.params.id, ...Object.values(req.body)]);
+      // Only allow safe fields to be updated - prevent user_id injection
+      const allowedFields = ['status','customer_name','customer_phone','customer_address','items','total','deposit','deposit_type','payment_method','delivery_company','delivery_link','notes','platform'];
+      const updates = {};
+      for (const key of allowedFields) {
+        if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+      if (Object.keys(updates).length === 0) return res.status(400).json({ success: false, message: 'لا توجد حقول للتحديث' });
+      const fields = Object.keys(updates).map((k, i) => `${k}=$${i + 3}`).join(', ');
+      await pool.query(`UPDATE orders SET ${fields} WHERE id=$1 AND user_id=$2`, [req.params.id, req.user.id, ...Object.values(updates)]);
       return res.json({ success: true });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
@@ -310,7 +346,7 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
 });
 
 app.delete('/api/orders/:id', authenticateToken, async (req, res) => {
-  try { if (pool) { await pool.query('DELETE FROM orders WHERE id=$1', [req.params.id]); return res.json({ success: true }); } } catch (e) {}
+  try { if (pool) { await pool.query('DELETE FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]); return res.json({ success: true }); } } catch (e) {}
   res.json({ success: true });
 });
 
@@ -549,6 +585,7 @@ app.delete('/api/tiktok/disconnect', async (req, res) => {
 // ========== PROFILE ==========
 app.get('/api/profile', authenticateToken, async (req, res) => {
   try {
+    if (!pool) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة' });
     const r = await pool.query('SELECT id,name,email,bio,avatar_url,plan,plan_expires_at FROM users WHERE id=$1', [req.user.id]);
     if (r.rows.length === 0) return res.status(404).json({ message: 'User not found' });
     res.json(r.rows[0]);
@@ -557,6 +594,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 
 app.put('/api/profile', authenticateToken, async (req, res) => {
   try {
+    if (!pool) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة' });
     const { name, bio, avatar_url } = req.body;
     await pool.query('UPDATE users SET name=$1, bio=$2, avatar_url=$3 WHERE id=$4', [name||'', bio||'', avatar_url||'', req.user.id]);
     res.json({ success: true });
@@ -566,132 +604,349 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 // ========== PUBLIC STORE PAGE ==========
 app.get('/store/:userId', async (req, res) => {
   const { userId } = req.params;
+  if (!/^\d+$/.test(userId)) return res.status(400).send('<h1>رابط غير صحيح</h1>');
   try {
     if (pool) {
       const [user, products, settings] = await Promise.all([
         pool.query('SELECT name, bio, avatar_url FROM users WHERE id=$1', [userId]),
-        pool.query('SELECT * FROM products WHERE user_id=$1 AND is_available=true ORDER BY created_at DESC', [userId]),
+        pool.query('SELECT * FROM products WHERE user_id=$1 AND is_available=true ORDER BY category, created_at DESC', [userId]),
         pool.query('SELECT store_name, business_type, business_desc, location, currency FROM user_settings WHERE user_id=$1', [userId])
       ]);
       if (user.rows.length === 0) return res.status(404).send('<h1>المتجر غير موجود</h1>');
       const owner = user.rows[0];
       const set = settings.rows[0] || {};
       const prods = products.rows;
-      const storeName = set.store_name || owner.name || 'متجر';
-      const currency = set.currency || 'IQD';
+      const storeName = escapeHtml(set.store_name || owner.name || 'متجر');
+      const currency = escapeHtml(set.currency || 'IQD');
+      const businessDesc = escapeHtml(set.business_desc || '');
+      const location = escapeHtml(set.location || '');
+      const safeAvatar = (owner.avatar_url || '').startsWith('https://') ? escapeHtml(owner.avatar_url) : '';
+      const categories = [...new Set(prods.map(p => p.category).filter(Boolean))];
+      const prodsJson = JSON.stringify(prods.map(p => ({
+        id: p.id, name: p.name, description: p.description || '',
+        price: parseFloat(p.price)||0, stock: parseInt(p.stock)||0,
+        category: p.category||'',
+        image_url: (p.image_url||'').startsWith('https://') ? p.image_url : ''
+      })));
 
       const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="${businessDesc||storeName}">
 <title>${storeName}</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Tajawal',sans-serif;background:#080b14;color:#e8edf5;direction:rtl;}
-.header{background:linear-gradient(135deg,#0f1420,#161d2e);padding:40px 20px;text-align:center;border-bottom:1px solid #1e2a40;}
-.store-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#4f8ef7,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;margin:0 auto 16px;overflow:hidden;}
+:root{--bg:#080b14;--surface:#0f1420;--surface2:#161d2e;--border:#1e2a40;--accent:#4f8ef7;--accent2:#7c3aed;--text:#e8edf5;--text2:#6b7a99;--danger:#ff4466;--green:#00d4aa;}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);direction:rtl;min-height:100vh;}
+.header{background:linear-gradient(135deg,#0d1424,#111827);padding:32px 20px 24px;text-align:center;border-bottom:1px solid var(--border);}
+.store-avatar{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:900;margin:0 auto 14px;overflow:hidden;border:3px solid rgba(79,142,247,.3);box-shadow:0 0 32px rgba(79,142,247,.2);}
 .store-avatar img{width:100%;height:100%;object-fit:cover;}
-.store-name{font-size:1.8rem;font-weight:900;}
-.store-desc{color:#6b7a99;margin-top:8px;font-size:.95rem;}
-.container{max-width:900px;margin:0 auto;padding:24px 16px;}
-.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:24px;}
-.product-card{background:#0f1420;border:1px solid #1e2a40;border-radius:16px;overflow:hidden;transition:all .2s;}
-.product-card:hover{border-color:#4f8ef7;transform:translateY(-3px);}
-.product-img{height:180px;object-fit:cover;width:100%;background:#161d2e;display:flex;align-items:center;justify-content:center;font-size:3rem;}
-.product-info{padding:16px;}
-.product-name{font-weight:700;font-size:.95rem;margin-bottom:4px;}
-.product-desc{color:#6b7a99;font-size:.82rem;margin-bottom:10px;}
-.product-price{color:#4f8ef7;font-weight:900;font-size:1.2rem;}
-.order-btn{width:100%;padding:10px;background:linear-gradient(135deg,#4f8ef7,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;margin-top:10px;font-family:'Tajawal',sans-serif;}
-.order-btn:hover{opacity:.9;}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;padding:20px;}
-.modal.show{display:flex;}
-.modal-box{background:#0f1420;border:1px solid #1e2a40;border-radius:20px;padding:28px;width:100%;max-width:440px;}
-.modal-box h2{font-size:1.2rem;font-weight:700;margin-bottom:20px;}
-.inp{width:100%;background:#161d2e;border:1px solid #1e2a40;border-radius:10px;padding:12px;color:#e8edf5;font-size:.95rem;font-family:'Tajawal',sans-serif;margin-bottom:12px;outline:none;}
-.inp:focus{border-color:#4f8ef7;}
-.btn-row{display:flex;gap:10px;margin-top:8px;}
-.btn-cancel{flex:1;padding:12px;background:transparent;border:1px solid #1e2a40;color:#6b7a99;border-radius:10px;cursor:pointer;font-family:'Tajawal',sans-serif;}
-.btn-submit{flex:2;padding:12px;background:linear-gradient(135deg,#4f8ef7,#7c3aed);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#0f1420;border:1px solid #4f8ef7;border-radius:12px;padding:12px 24px;transition:transform .3s;z-index:9999;}
-.toast.show{transform:translateX(-50%) translateY(0);}
-.empty{text-align:center;padding:60px 20px;color:#6b7a99;}
+.store-name{font-size:1.7rem;font-weight:900;}
+.store-desc{color:var(--text2);margin-top:6px;font-size:.9rem;max-width:400px;margin-inline:auto;}
+.header-stats{display:flex;justify-content:center;gap:20px;margin-top:14px;}
+.header-stat{text-align:center;font-size:.78rem;color:var(--text2);}
+.header-stat strong{display:block;font-size:1rem;font-weight:900;color:var(--text);}
+.sticky-bar{position:sticky;top:0;z-index:100;background:rgba(8,11,20,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:10px 16px;}
+.search-wrap{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:8px 14px;margin-bottom:8px;}
+.search-wrap input{flex:1;background:transparent;border:none;color:var(--text);font-family:'Tajawal',sans-serif;font-size:.9rem;outline:none;}
+.search-wrap input::placeholder{color:var(--text2);}
+.cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;}
+.cats::-webkit-scrollbar{display:none;}
+.cat-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:'Tajawal',sans-serif;font-size:.8rem;font-weight:700;white-space:nowrap;transition:all .15s;flex-shrink:0;}
+.cat-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.container{max-width:960px;margin:0 auto;padding:20px 14px;padding-bottom:100px;}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+@media(max-width:480px){.products-grid{grid-template-columns:repeat(2,1fr);gap:10px;}}
+.product-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:all .2s;cursor:pointer;}
+.product-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.product-card.out{opacity:.6;cursor:default;}
+.pimg-wrap{position:relative;height:150px;background:var(--surface2);overflow:hidden;}
+.pimg-wrap img{width:100%;height:100%;object-fit:cover;transition:transform .3s;}
+.product-card:hover .pimg-wrap img{transform:scale(1.04);}
+.pimg-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;}
+.cat-tag{position:absolute;top:7px;right:7px;background:rgba(8,11,20,.8);backdrop-filter:blur(4px);border-radius:20px;padding:2px 8px;font-size:.68rem;color:var(--text2);}
+.out-badge{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--danger);}
+.pinfo{padding:11px;}
+.pname{font-weight:700;font-size:.86rem;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.pdesc{color:var(--text2);font-size:.74rem;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.pbottom{display:flex;justify-content:space-between;align-items:center;}
+.pprice{font-weight:900;font-size:.9rem;color:var(--accent);}
+.add-btn{width:30px;height:30px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.add-btn:hover{background:#3b6fd4;transform:scale(1.1);}
+.cart-float{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) scale(.95);background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:20px;padding:13px 24px;display:flex;align-items:center;gap:12px;cursor:pointer;z-index:200;box-shadow:0 8px 32px rgba(79,142,247,.4);transition:all .3s;opacity:0;pointer-events:none;}
+.cart-float.show{opacity:1;pointer-events:all;transform:translateX(-50%) scale(1);}
+.cart-count{background:rgba(255,255,255,.25);border-radius:20px;padding:2px 10px;font-weight:900;font-size:.82rem;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:flex-end;justify-content:center;}
+.overlay.show{display:flex;}
+@media(min-width:600px){.overlay{align-items:center;}}
+.sheet{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;padding:22px;animation:slideUp .25s ease;}
+@media(min-width:600px){.sheet{border-radius:24px;}}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.sheet h2{font-size:1.1rem;font-weight:700;margin-bottom:14px;}
+.inp{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:.9rem;font-family:'Tajawal',sans-serif;margin-bottom:10px;outline:none;}
+.inp:focus{border-color:var(--accent);}
+.btn-primary{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;margin-top:6px;transition:all .2s;}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;}
+.btn-outline{width:100%;padding:11px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif;margin-top:8px;}
+.cart-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.ci-img{width:50px;height:50px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;overflow:hidden;}
+.ci-img img{width:100%;height:100%;object-fit:cover;}
+.ci-info{flex:1;}
+.ci-name{font-weight:700;font-size:.85rem;}
+.ci-price{color:var(--accent);font-weight:700;font-size:.82rem;margin-top:2px;}
+.qty-ctrl{display:flex;align-items:center;gap:7px;}
+.qty-btn{width:27px;height:27px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;}
+.qty-num{font-weight:700;font-size:.88rem;min-width:18px;text-align:center;}
+.coupon-row{display:flex;gap:8px;margin-bottom:10px;}
+.coupon-row input{flex:1;margin:0;}
+.coupon-row button{padding:11px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);cursor:pointer;font-family:'Tajawal',sans-serif;font-weight:700;font-size:.82rem;white-space:nowrap;}
+.coup-ok{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);border-radius:8px;padding:7px 12px;font-size:.8rem;color:var(--green);margin-bottom:8px;}
+.srow{display:flex;justify-content:space-between;padding:5px 0;font-size:.86rem;color:var(--text2);}
+.srow.total{color:var(--text);font-weight:900;font-size:.95rem;border-top:1px solid var(--border);margin-top:5px;padding-top:8px;}
+.srow.disc{color:var(--green);}
+.success-screen{text-align:center;padding:28px 10px;}
+.success-icon{font-size:3.8rem;margin-bottom:14px;animation:pop .4s ease;}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.detail-img{width:100%;height:200px;object-fit:cover;border-radius:14px;margin-bottom:14px;}
+.detail-placeholder{width:100%;height:140px;border-radius:14px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:3.5rem;margin-bottom:14px;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(40px);background:var(--surface);border:1px solid rgba(79,142,247,.4);border-radius:12px;padding:10px 20px;font-size:.86rem;font-weight:600;z-index:9999;transition:all .3s;opacity:0;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text2);}
 </style>
 </head>
 <body>
 <div class="header">
-  <div class="store-avatar">${owner.avatar_url?`<img src="${owner.avatar_url}" onerror="this.parentElement.textContent='${storeName.charAt(0)}'">`:storeName.charAt(0)}</div>
+  <div class="store-avatar">${safeAvatar?`<img src="${safeAvatar}" alt="${storeName}" onerror="this.style.display='none'">`:storeName.charAt(0)}</div>
   <div class="store-name">${storeName}</div>
-  ${set.business_desc?`<div class="store-desc">${set.business_desc}</div>`:''}
-  ${set.location?`<div class="store-desc">📍 ${set.location}</div>`:''}
+  ${businessDesc?`<div class="store-desc">${businessDesc}</div>`:''}
+  ${location?`<div class="store-desc" style="font-size:.8rem">📍 ${location}</div>`:''}
+  <div class="header-stats">
+    <div class="header-stat"><strong>${prods.length}</strong>منتج</div>
+    <div class="header-stat"><strong>${categories.length}</strong>فئة</div>
+  </div>
 </div>
-
+<div class="sticky-bar">
+  <div class="search-wrap">
+    <span style="color:var(--text2)">🔍</span>
+    <input id="sinp" placeholder="ابحث عن منتج..." oninput="filterP()" autocomplete="off">
+    <button id="sclear" onclick="clearS()" style="display:none;background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem">✕</button>
+  </div>
+  <div class="cats">
+    <button class="cat-btn active" onclick="filterCat('',this)">الكل</button>
+    ${categories.map(c=>`<button class="cat-btn" onclick="filterCat(${JSON.stringify(escapeHtml(c))},this)">${escapeHtml(c)}</button>`).join('')}
+  </div>
+</div>
 <div class="container">
-  ${prods.length === 0 ? '<div class="empty"><div style="font-size:3rem;margin-bottom:12px">📦</div><p>لا توجد منتجات متاحة حالياً</p></div>' : 
-  `<div class="products-grid">
-    ${prods.map(p=>`
-      <div class="product-card">
-        ${p.image_url?`<img class="product-img" src="${p.image_url}" alt="${p.name}" onerror="this.style.display='none'">`:
-        `<div class="product-img">📦</div>`}
-        <div class="product-info">
-          <div class="product-name">${p.name}</div>
-          ${p.description?`<div class="product-desc">${p.description.substring(0,80)}</div>`:''}
-          <div class="product-price">${parseFloat(p.price).toFixed(0)} ${currency}</div>
-          ${p.stock>0?`<button class="order-btn" onclick="openOrder(${p.id},'${p.name.replace(/'/g,"\'")}',${p.price})">🛒 اطلب الآن</button>`:'<div style="color:#ff4466;font-size:.85rem;margin-top:8px;text-align:center">نفذ من المخزون</div>'}
-        </div>
-      </div>`).join('')}
-  </div>`}
+  <div class="products-grid" id="pgrid"></div>
+  <div class="empty-state" id="nores" style="display:none"><div style="font-size:2.5rem;margin-bottom:10px">🔍</div><p>لا توجد نتائج</p></div>
 </div>
-
-<div class="modal" id="order-modal">
-  <div class="modal-box">
-    <h2 id="modal-title">🛒 طلب منتج</h2>
-    <input id="c-name" class="inp" placeholder="اسمك الكريم *">
-    <input id="c-phone" class="inp" placeholder="رقم هاتفك *" dir="ltr">
-    <input id="c-address" class="inp" placeholder="عنوان التوصيل">
-    <input id="c-qty" class="inp" type="number" value="1" min="1" placeholder="الكمية" dir="ltr">
-    <input id="c-notes" class="inp" placeholder="ملاحظات إضافية">
-    <div class="btn-row">
-      <button class="btn-cancel" onclick="closeOrder()">إلغاء</button>
-      <button class="btn-submit" onclick="submitOrder()">✅ تأكيد الطلب</button>
+<div class="cart-float" id="cfloat" onclick="openCart()">
+  <span style="font-size:1.2rem">🛒</span>
+  <span class="cart-count" id="ccount">0</span>
+  <span id="ctotal" style="font-weight:700;font-size:.88rem">0 ${currency}</span>
+  <span style="font-size:.82rem;opacity:.8">السلة ←</span>
+</div>
+<div class="overlay" id="doverlay" onclick="closeDet(event)"><div class="sheet" id="dsheet"><div class="sheet-handle"></div><div id="dcontent"></div></div></div>
+<div class="overlay" id="coverlay" onclick="closeCart(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2>🛒 سلة التسوق</h2>
+    <div id="citems"></div>
+    <div style="margin-top:12px">
+      <div class="coupon-row">
+        <input class="inp" id="cinp" placeholder="كود خصم (اختياري)" style="margin:0;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        <button onclick="applyC()">تطبيق</button>
+      </div>
+      <div id="cmsg"></div>
+    </div>
+    <div id="csum" style="margin-top:8px"></div>
+    <button class="btn-primary" onclick="openCO()">💳 متابعة الطلب</button>
+    <button class="btn-outline" onclick="closeCart()">متابعة التسوق</button>
+  </div>
+</div>
+<div class="overlay" id="cooverlay" onclick="closeCO(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="cocontent">
+      <h2>📝 تفاصيل الطلب</h2>
+      <input class="inp" id="cname" placeholder="اسمك الكريم *" autocomplete="name">
+      <input class="inp" id="cphone" placeholder="رقم هاتفك *" dir="ltr" type="tel" autocomplete="tel">
+      <input class="inp" id="caddr" placeholder="عنوان التوصيل (اختياري)">
+      <textarea class="inp" id="cnotes" placeholder="ملاحظات..." style="min-height:65px;resize:none"></textarea>
+      <div id="cosum" style="margin:10px 0"></div>
+      <button class="btn-primary" id="sbtn" onclick="submitOrder()">✅ تأكيد الطلب</button>
+      <button class="btn-outline" onclick="closeCO()">رجوع للسلة</button>
     </div>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
-
 <script>
-let selectedProduct = null;
-function openOrder(id, name, price){
-  selectedProduct = {id, name, price};
-  document.getElementById('modal-title').textContent = '🛒 طلب: ' + name;
-  document.getElementById('order-modal').classList.add('show');
+const UID=${parseInt(userId)},CUR=${JSON.stringify(currency)},PRODS=${prodsJson};
+let cart=[],coupon=null,cat='',sq='';
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function sub(){return cart.reduce((s,c)=>s+c.price*c.qty,0);}
+function disc(){if(!coupon)return 0;const s=sub();return coupon.type==='percent'?+(s*coupon.value/100).toFixed(2):Math.min(+coupon.value,s);}
+function total(){return Math.max(0,sub()-disc());}
+function render(){
+  const grid=document.getElementById('pgrid'),nr=document.getElementById('nores');
+  let p=PRODS;
+  if(cat)p=p.filter(x=>x.category===cat);
+  if(sq){const q=sq.toLowerCase();p=p.filter(x=>x.name.toLowerCase().includes(q)||x.description.toLowerCase().includes(q));}
+  if(!p.length){grid.innerHTML='';nr.style.display='block';return;}
+  nr.style.display='none';
+  grid.innerHTML=p.map(x=>{
+    const ic=cart.find(c=>c.id===x.id);
+    return \`<div class="product-card\${x.stock===0?' out':''}" onclick="openDet(\${x.id})">
+      <div class="pimg-wrap">
+        \${x.image_url?'<img src="'+escH(x.image_url)+'" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=pimg-placeholder>📦</div>\'">':'<div class="pimg-placeholder">📦</div>'}
+        \${x.category?'<div class="cat-tag">'+escH(x.category)+'</div>':''}
+        \${x.stock===0?'<div class="out-badge">نفذ من المخزون</div>':''}
+      </div>
+      <div class="pinfo">
+        <div class="pname">\${escH(x.name)}</div>
+        \${x.description?'<div class="pdesc">'+escH(x.description.substring(0,55))+'</div>':''}
+        <div class="pbottom">
+          <div class="pprice">\${x.price.toFixed(0)} \${CUR}</div>
+          \${x.stock>0?'<button class="add-btn" onclick="event.stopPropagation();add(\${x.id})">'+(ic?'✓':'+')+' </button>':''}
+        </div>
+      </div>
+    </div>\`;
+  }).join('');
 }
-function closeOrder(){ document.getElementById('order-modal').classList.remove('show'); }
-async function submitOrder(){
-  const name=document.getElementById('c-name').value.trim();
-  const phone=document.getElementById('c-phone').value.trim();
-  if(!name||!phone){showToast('⚠️ الاسم والهاتف مطلوبان');return;}
+function filterCat(c,btn){cat=c;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+function filterP(){sq=document.getElementById('sinp').value.trim();document.getElementById('sclear').style.display=sq?'block':'none';render();}
+function clearS(){document.getElementById('sinp').value='';sq='';document.getElementById('sclear').style.display='none';render();}
+function openDet(id){
+  const x=PRODS.find(p=>p.id===id);if(!x)return;
+  const ic=cart.find(c=>c.id===id);
+  document.getElementById('dcontent').innerHTML=
+    (x.image_url?'<img class="detail-img" src="'+escH(x.image_url)+'" onerror="this.outerHTML=\'<div class=detail-placeholder>📦</div>\'">'
+               :'<div class="detail-placeholder">📦</div>')+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+      '<h2 style="font-size:1.15rem;font-weight:900;flex:1">'+escH(x.name)+'</h2>'+
+      (x.category?'<span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.72rem;color:var(--text2)">'+escH(x.category)+'</span>':'')+
+    '</div>'+
+    (x.description?'<p style="color:var(--text2);font-size:.88rem;line-height:1.7;margin-bottom:14px">'+escH(x.description)+'</p>':'')+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">'+
+      '<div style="font-size:1.4rem;font-weight:900;color:var(--accent)">'+x.price.toFixed(0)+' '+CUR+'</div>'+
+      '<div style="font-size:.78rem;color:'+(x.stock<=5&&x.stock>0?'var(--danger)':'var(--text2)')+'">متبقي: '+x.stock+'</div>'+
+    '</div>'+
+    (x.stock>0
+      ?'<button class="btn-primary" onclick="add('+x.id+');closeDet()">'+(ic?'✅ في السلة — إضافة كمية':'🛒 أضف للسلة')+'</button>'
+      :'<div style="text-align:center;padding:11px;background:rgba(255,68,102,.1);border-radius:10px;color:var(--danger);font-weight:700">نفذ من المخزون</div>')+
+    '<button class="btn-outline" onclick="closeDet()">رجوع</button>';
+  document.getElementById('doverlay').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeDet(e){if(e&&e.target!==document.getElementById('doverlay'))return;document.getElementById('doverlay').classList.remove('show');document.body.style.overflow='';}
+function add(id){
+  const x=PRODS.find(p=>p.id===id);if(!x||x.stock===0)return;
+  const e=cart.find(c=>c.id===id);
+  if(e){if(e.qty>=x.stock){showToast('⚠️ وصلت للحد الأقصى');return;}e.qty++;}
+  else cart.push({id:x.id,name:x.name,price:x.price,image_url:x.image_url,qty:1,stock:x.stock});
+  coupon=null;updateFloat();showToast('✅ أضيف للسلة');render();
+}
+function rem(id){cart=cart.filter(c=>c.id!==id);coupon=null;updateFloat();renderCart();render();}
+function chQty(id,d){const e=cart.find(c=>c.id===id);if(!e)return;e.qty=Math.max(1,Math.min(e.qty+d,e.stock));coupon=null;updateFloat();renderCart();}
+function updateFloat(){
+  const n=cart.reduce((s,c)=>s+c.qty,0);
+  document.getElementById('ccount').textContent=n;
+  document.getElementById('ctotal').textContent=total().toFixed(0)+' '+CUR;
+  document.getElementById('cfloat').classList.toggle('show',n>0);
+}
+function openCart(){renderCart();document.getElementById('coverlay').classList.add('show');document.body.style.overflow='hidden';}
+function closeCart(e){if(e&&e.target!==document.getElementById('coverlay'))return;document.getElementById('coverlay').classList.remove('show');document.body.style.overflow='';}
+function renderCart(){
+  const el=document.getElementById('citems');
+  if(!cart.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--text2)">السلة فارغة</div>';renderSum();return;}
+  el.innerHTML=cart.map(c=>\`<div class="cart-item">
+    <div class="ci-img">\${c.image_url?'<img src="'+escH(c.image_url)+'" onerror="this.parentElement.textContent=\'📦\'">':'📦'}</div>
+    <div class="ci-info"><div class="ci-name">\${escH(c.name)}</div><div class="ci-price">\${(c.price*c.qty).toFixed(0)} \${CUR}</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="chQty(\${c.id},-1)">−</button>
+        <span class="qty-num">\${c.qty}</span>
+        <button class="qty-btn" onclick="chQty(\${c.id},1)">+</button>
+      </div>
+      <button onclick="rem(\${c.id})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:.72rem">حذف</button>
+    </div>
+  </div>\`).join('');
+  renderSum();
+}
+function renderSum(){
+  const s=sub(),d=disc(),t=total();
+  document.getElementById('csum').innerHTML=
+    '<div class="srow"><span>المجموع</span><span>'+s.toFixed(0)+' '+CUR+'</span></div>'+
+    (d>0?'<div class="srow disc"><span>خصم 🎟️</span><span>- '+d.toFixed(0)+' '+CUR+'</span></div>':'')+
+    '<div class="srow total"><span>الإجمالي</span><span>'+t.toFixed(0)+' '+CUR+'</span></div>';
+}
+async function applyC(){
+  const code=document.getElementById('cinp').value.trim();if(!code)return;
+  const m=document.getElementById('cmsg');
+  m.innerHTML='<span style="color:var(--text2);font-size:.8rem">⏳ جاري التحقق...</span>';
   try{
-    const res=await fetch('/api/marketplace/order',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({store_user_id:${userId},customer_name:name,customer_phone:phone,
-        customer_address:document.getElementById('c-address').value,
-        product_id:selectedProduct.id,quantity:document.getElementById('c-qty').value,
-        notes:document.getElementById('c-notes').value})});
-    const data=await res.json();
-    if(data.success){closeOrder();showToast('✅ تم إرسال طلبك بنجاح! سنتواصل معك قريباً');}
-    else showToast('❌ '+(data.message||'فشل الطلب'));
-  }catch(e){showToast('❌ تعذر الاتصال');}
+    const r=await fetch('/api/coupons/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,order_total:sub(),store_user_id:UID})});
+    const d=await r.json();
+    if(d.success){coupon=d.coupon;m.innerHTML='<div class="coup-ok">✅ خصم '+d.discount.toFixed(0)+' '+CUR+'!</div>';renderCart();}
+    else{m.innerHTML='<span style="color:var(--danger);font-size:.8rem">❌ '+escH(d.message)+'</span>';coupon=null;}
+  }catch(e){m.innerHTML='<span style="color:var(--danger);font-size:.8rem">❌ تعذر التحقق</span>';}
 }
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function openCO(){
+  if(!cart.length)return showToast('⚠️ السلة فارغة');
+  closeCart();
+  const s=sub(),d=disc(),t=total();
+  document.getElementById('cosum').innerHTML=
+    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px">'+
+    cart.map(c=>'<div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px"><span>'+escH(c.name)+' ×'+c.qty+'</span><span>'+(c.price*c.qty).toFixed(0)+' '+CUR+'</span></div>').join('')+
+    (d>0?'<div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--green);margin-top:5px"><span>خصم</span><span>- '+d.toFixed(0)+' '+CUR+'</span></div>':'')+
+    '<div style="display:flex;justify-content:space-between;font-weight:900;font-size:.92rem;margin-top:7px;padding-top:7px;border-top:1px solid var(--border)"><span>الإجمالي</span><span style="color:var(--accent)">'+t.toFixed(0)+' '+CUR+'</span></div></div>';
+  document.getElementById('cooverlay').classList.add('show');document.body.style.overflow='hidden';
+}
+function closeCO(e){if(e&&e.target!==document.getElementById('cooverlay'))return;document.getElementById('cooverlay').classList.remove('show');document.body.style.overflow='';}
+async function submitOrder(){
+  const name=document.getElementById('cname').value.trim(),phone=document.getElementById('cphone').value.trim();
+  if(!name||!phone)return showToast('⚠️ الاسم والهاتف مطلوبان');
+  if(!cart.length)return showToast('⚠️ السلة فارغة');
+  const btn=document.getElementById('sbtn');btn.disabled=true;btn.textContent='⏳ جاري الإرسال...';
+  try{
+    const r=await fetch('/api/marketplace/order',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({store_user_id:UID,customer_name:name,customer_phone:phone,
+        customer_address:document.getElementById('caddr').value.trim(),
+        notes:document.getElementById('cnotes').value.trim(),
+        items:cart.map(c=>({description:c.name+' ×'+c.qty,quantity:c.qty,price:c.price})),
+        total:total(),coupon_code:coupon?.code||null})});
+    const d=await r.json();
+    if(d.success){
+      if(coupon){try{await fetch('/api/coupons/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:coupon.code})});}catch(e){}}
+      document.getElementById('cocontent').innerHTML=
+        '<div class="success-screen">'+
+        '<div class="success-icon">🎉</div>'+
+        '<div style="font-size:1.2rem;font-weight:900;margin-bottom:8px">تم استلام طلبك!</div>'+
+        '<div style="background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);border-radius:10px;padding:10px 18px;font-family:monospace;font-size:1.05rem;font-weight:900;color:var(--accent);display:inline-block;margin-bottom:16px">#'+(d.order?.id||'—')+'</div>'+
+        '<div style="color:var(--text2);font-size:.88rem;margin-bottom:20px;line-height:1.6">شكراً '+escH(name)+'!<br>سنتواصل معك قريباً.</div>'+
+        '<div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:18px;font-size:.85rem">'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>رقم الطلب</span><span style="font-family:monospace;color:var(--accent)">#'+(d.order?.id||'—')+'</span></div>'+
+          '<div style="display:flex;justify-content:space-between"><span>الإجمالي</span><span style="font-weight:900;color:var(--accent)">'+total().toFixed(0)+' '+CUR+'</span></div>'+
+        '</div>'+
+        '<button class="btn-primary" onclick="closeCO();cart=[];coupon=null;updateFloat();render()">🛍️ متابعة التسوق</button>'+
+        '</div>';
+      cart=[];coupon=null;updateFloat();
+    }else{showToast('❌ '+(d.message||'فشل'));btn.disabled=false;btn.textContent='✅ تأكيد الطلب';}
+  }catch(e){showToast('❌ تعذر الاتصال');btn.disabled=false;btn.textContent='✅ تأكيد الطلب';}
+}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+render();
 </script>
 </body>
 </html>`;
       return res.send(html);
     }
   } catch (e) { res.status(500).send('<h1>خطأ في السيرفر</h1>'); }
+});
 });
 
 // ========== STATIC & ROOT ==========
@@ -876,25 +1131,50 @@ app.delete('/api/templates/:id', authenticateToken, async (req, res) => {
 // ========== WEEKLY REPORT ==========
 app.get('/api/reports/weekly', authenticateToken, async (req, res) => {
   const userId = req.user.id;
+  const { period } = req.query;
+  const days = period === 'month' ? 30 : period === 'year' ? 365 : 7;
+  const prevDays = days * 2;
   try {
     if (pool) {
-      const [orders, posts, topOrders] = await Promise.all([
-        pool.query(`SELECT COUNT(*) as count, SUM(total) as revenue, status FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days' GROUP BY status`, [userId]),
-        pool.query(`SELECT COUNT(*) as count FROM posts WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days'`, [userId]),
-        pool.query(`SELECT customer_name, total, status FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '7 days' ORDER BY total DESC LIMIT 5`, [userId])
+      const [orders, posts, topOrders, prevOrders, dailyRevenue, topProducts, statusBreakdown] = await Promise.all([
+        // Current period
+        pool.query(`SELECT COUNT(*) as count, SUM(total) as revenue, SUM(deposit) as deposits, status FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' GROUP BY status`, [userId]),
+        pool.query(`SELECT COUNT(*) as count FROM posts WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days'`, [userId]),
+        pool.query(`SELECT customer_name, customer_phone, total, status, created_at FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' ORDER BY total DESC LIMIT 10`, [userId]),
+        // Previous period for comparison
+        pool.query(`SELECT COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${prevDays} days' AND created_at < NOW() - INTERVAL '${days} days'`, [userId]),
+        // Daily revenue chart
+        pool.query(`SELECT DATE(created_at) as date, SUM(total) as revenue, COUNT(*) as orders FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' GROUP BY DATE(created_at) ORDER BY date ASC`, [userId]),
+        // Top products
+        pool.query(`SELECT name, price, stock FROM products WHERE user_id=$1 ORDER BY created_at DESC LIMIT 5`, [userId]),
+        // Status breakdown
+        pool.query(`SELECT status, COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' GROUP BY status`, [userId])
       ]);
+
       const totalRevenue = orders.rows.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
       const totalOrders = orders.rows.reduce((s, r) => s + parseInt(r.count || 0), 0);
+      const totalDeposits = orders.rows.reduce((s, r) => s + parseFloat(r.deposits || 0), 0);
+      const prevRevenue = parseFloat(prevOrders.rows[0]?.revenue || 0);
+      const prevCount = parseInt(prevOrders.rows[0]?.count || 0);
+      const revenueGrowth = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue * 100).toFixed(1) : null;
+      const ordersGrowth = prevCount > 0 ? ((totalOrders - prevCount) / prevCount * 100).toFixed(1) : null;
+      const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
       return res.json({
         success: true,
-        period: 'آخر 7 أيام',
-        orders: { total: totalOrders, revenue: totalRevenue, by_status: orders.rows },
+        period: days === 7 ? 'آخر 7 أيام' : days === 30 ? 'آخر 30 يوم' : 'آخر سنة',
+        days,
+        orders: { total: totalOrders, revenue: totalRevenue, deposits: totalDeposits, avg: avgOrder, by_status: orders.rows },
         posts: parseInt(posts.rows[0]?.count || 0),
-        top_orders: topOrders.rows
+        top_orders: topOrders.rows,
+        comparison: { prev_revenue: prevRevenue, prev_orders: prevCount, revenue_growth: revenueGrowth, orders_growth: ordersGrowth },
+        daily_revenue: dailyRevenue.rows,
+        top_products: topProducts.rows,
+        status_breakdown: statusBreakdown.rows
       });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
-  res.json({ success: true, period: 'آخر 7 أيام', orders: { total: 0, revenue: 0, by_status: [] }, posts: 0, top_orders: [] });
+  res.json({ success: true, period: 'آخر 7 أيام', orders: { total: 0, revenue: 0, by_status: [] }, posts: 0, top_orders: [], comparison: {}, daily_revenue: [], top_products: [], status_breakdown: [] });
 });
 
 // ========== CREATE TABLES ==========
@@ -1007,6 +1287,7 @@ app.post('/api/payment/iraqi', authenticateToken, async (req, res) => {
 
   try {
     if (pool && transfer_ref) {
+      const receiptNote = receipt_image ? ' | مع صورة الوصل' : '';
       // Save payment request
       await pool.query(
         `INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)`,
@@ -1098,14 +1379,26 @@ if (pool) {
 
 // ========== AI AGENT ==========
 const agentConversations = {};
+// Clean up agent conversations for inactive users every hour
+setInterval(() => {
+  const now = Date.now();
+  Object.keys(agentConversations).forEach(userId => {
+    if (agentConversations[userId]._lastActivity && now - agentConversations[userId]._lastActivity > 2 * 60 * 60 * 1000) {
+      delete agentConversations[userId];
+    }
+  });
+}, 60 * 60 * 1000);
 
 app.post('/api/agent/chat', authenticateToken, rateLimit(20, 60*1000), async (req, res) => {
   const userId = req.user.id;
   const { message, voice } = req.body;
   if (!message) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
+  // Cap message length at 2000 chars
+  const safeMessage = message.substring(0, 2000);
 
   // Initialize conversation history
   if (!agentConversations[userId]) agentConversations[userId] = [];
+  agentConversations[userId]._lastActivity = Date.now();
   
   // Get user stats and settings for context
   let context = { orders: 0, posts: 0, messages: 0, revenue: 0 };
@@ -1223,11 +1516,11 @@ ${dialectInstruction}
 - كن موجزاً وعملياً ومباشراً`;
 
   // Add message to history
-  agentConversations[userId].push({ role: 'user', content: message });
+  agentConversations[userId].push({ role: 'user', content: safeMessage });
   
-  // Keep only last 10 messages
+  // Keep only last 20 messages (10 exchanges)
   if (agentConversations[userId].length > 20) {
-    agentConversations[userId] = agentConversations[userId].slice(-30);
+    agentConversations[userId] = agentConversations[userId].slice(-20);
   }
 
   try {
@@ -1256,7 +1549,7 @@ ${dialectInstruction}
     agentConversations[userId].push({ role: 'assistant', content: aiResponse });
 
     // ===== كشف الإجراءات من الرسالة والرد =====
-    const lowerMsg = message.toLowerCase();
+    const lowerMsg = safeMessage.toLowerCase();
     const lowerResp = aiResponse.toLowerCase();
 
     // منشور
@@ -1364,7 +1657,6 @@ app.post('/api/auth/send-otp', async (req, res) => {
   return res.json({ 
     success: true, 
     wa_url: waUrl,
-    dev_otp: otp, // Remove in production
     message: 'افتح واتساب وأرسل الرسالة للحصول على الرمز'
   });
 });
@@ -1414,6 +1706,7 @@ app.post('/api/products', authenticateToken, async (req, res) => {
   const { name, description, price, category, stock, image_url } = req.body;
   const userId = req.user.id;
   if (!name || !price) return res.status(400).json({ success: false, message: 'الاسم والسعر مطلوبان' });
+  if (parseFloat(price) <= 0 || isNaN(parseFloat(price))) return res.status(400).json({ success: false, message: 'السعر يجب أن يكون أكبر من صفر' });
   try {
     if (pool) {
       const result = await pool.query(
@@ -1650,89 +1943,199 @@ app.get('/api/reports/pdf', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   const { period } = req.query;
   const days = period === 'month' ? 30 : period === 'year' ? 365 : 7;
+  const prevDays = days * 2;
   try {
     if (pool) {
-      const [orders, products, topCustomers] = await Promise.all([
+      const [orders, products, topCustomers, prevPeriod, dailyRevenue, statusBreakdown] = await Promise.all([
         pool.query(`SELECT * FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' ORDER BY created_at DESC`, [userId]),
         pool.query(`SELECT COUNT(*) as total, SUM(CASE WHEN stock=0 THEN 1 ELSE 0 END) as out_of_stock FROM products WHERE user_id=$1`, [userId]),
-        pool.query(`SELECT customer_name, customer_phone, COUNT(*) as orders, SUM(total) as spent FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' GROUP BY customer_name, customer_phone ORDER BY spent DESC LIMIT 10`, [userId])
+        pool.query(`SELECT customer_name, customer_phone, COUNT(*) as orders, SUM(total) as spent FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' GROUP BY customer_name, customer_phone ORDER BY spent DESC LIMIT 10`, [userId]),
+        pool.query(`SELECT COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${prevDays} days' AND created_at < NOW() - INTERVAL '${days} days'`, [userId]),
+        pool.query(`SELECT DATE(created_at) as date, SUM(total) as revenue, COUNT(*) as orders FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' GROUP BY DATE(created_at) ORDER BY date ASC`, [userId]),
+        pool.query(`SELECT status, COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '${days} days' GROUP BY status`, [userId])
       ]);
 
       const totalRevenue = orders.rows.reduce((s, o) => s + parseFloat(o.total || 0), 0);
       const totalOrders = orders.rows.length;
-      const avgOrder = totalOrders > 0 ? formatCurrency(totalRevenue / totalOrders) : formatCurrency(0);
-      const periodLabel = period === 'month' ? 'الشهر الماضي' : period === 'year' ? 'السنة الماضية' : 'الأسبوع الماضي';
+      const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      const prevRevenue = parseFloat(prevPeriod.rows[0]?.revenue || 0);
+      const prevCount = parseInt(prevPeriod.rows[0]?.count || 0);
+      const revenueGrowth = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue * 100).toFixed(1) : null;
+      const ordersGrowth = prevCount > 0 ? ((totalOrders - prevCount) / prevCount * 100).toFixed(1) : null;
+      const periodLabel = period === 'month' ? 'آخر 30 يوم' : period === 'year' ? 'آخر سنة' : 'آخر 7 أيام';
+      const statusLabels = { new: 'جديد', confirmed: 'مؤكد', processing: 'قيد التجهيز', delivered: 'تم التوصيل', cancelled: 'ملغي' };
+      const statusColors = { new: '#3b82f6', confirmed: '#10b981', processing: '#f59e0b', delivered: '#8b5cf6', cancelled: '#ef4444' };
+
+      // Build mini bar chart for daily revenue (text-based for print)
+      const maxRev = Math.max(...dailyRevenue.rows.map(d => parseFloat(d.revenue || 0)), 1);
+      const chartBars = dailyRevenue.rows.map(d => {
+        const pct = Math.round((parseFloat(d.revenue || 0) / maxRev) * 60);
+        const date = new Date(d.date).toLocaleDateString('ar', { day: 'numeric', month: 'short' });
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="width:70px;font-size:.75rem;color:#64748b;text-align:right">${date}</div>
+          <div style="flex:1;height:18px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#4f8ef7,#7c3aed);border-radius:4px"></div>
+          </div>
+          <div style="width:90px;font-size:.75rem;color:#1e293b;font-weight:700;text-align:left">${formatCurrency(d.revenue)} (${d.orders})</div>
+        </div>`;
+      }).join('');
+
+      const growthBadge = (growth) => {
+        if (growth === null) return '<span style="color:#94a3b8;font-size:.8rem">لا مقارنة</span>';
+        const positive = parseFloat(growth) >= 0;
+        return `<span style="color:${positive?'#10b981':'#ef4444'};font-weight:700;font-size:.9rem">${positive?'↑':'↓'} ${Math.abs(growth)}%</span>`;
+      };
 
       const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>تقرير SocialOS</title>
+<title>تقرير SocialOS — ${periodLabel}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Tajawal',Arial,sans-serif; background:#f8fafc; color:#1e293b; direction:rtl; }
-  .header { background:linear-gradient(135deg,#4f8ef7,#7c3aed); color:#fff; padding:40px; text-align:center; }
-  .header h1 { font-size:2rem; font-weight:900; margin-bottom:8px; }
-  .header p { opacity:.8; font-size:1rem; }
-  .container { max-width:900px; margin:0 auto; padding:30px; }
-  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:24px 0; }
-  .stat-box { background:#fff; border-radius:12px; padding:20px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.08); }
-  .stat-value { font-size:1.8rem; font-weight:900; color:#4f8ef7; }
-  .stat-label { font-size:.8rem; color:#64748b; margin-top:4px; }
-  .section { background:#fff; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
-  .section h2 { font-size:1.1rem; font-weight:700; margin-bottom:16px; color:#1e293b; padding-bottom:8px; border-bottom:2px solid #4f8ef7; }
-  table { width:100%; border-collapse:collapse; }
-  th { background:#f1f5f9; padding:10px; text-align:right; font-size:.85rem; color:#64748b; }
-  td { padding:10px; border-bottom:1px solid #f1f5f9; font-size:.9rem; }
-  .badge { padding:3px 10px; border-radius:20px; font-size:.75rem; font-weight:700; }
-  .badge-new { background:#dbeafe; color:#1d4ed8; }
-  .badge-confirmed { background:#d1fae5; color:#065f46; }
-  .badge-delivered { background:#ede9fe; color:#5b21b6; }
-  .badge-cancelled { background:#fee2e2; color:#991b1b; }
-  .footer { text-align:center; padding:20px; color:#94a3b8; font-size:.85rem; }
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Tajawal',Arial,sans-serif;background:#f8fafc;color:#1e293b;direction:rtl;font-size:14px;}
+.header{background:linear-gradient(135deg,#4f8ef7,#7c3aed);color:#fff;padding:36px 40px;display:flex;justify-content:space-between;align-items:center;}
+.header h1{font-size:1.6rem;font-weight:900;}
+.header p{opacity:.85;font-size:.9rem;margin-top:4px;}
+.header-badge{background:rgba(255,255,255,.2);border-radius:12px;padding:10px 20px;text-align:center;}
+.header-badge div{font-size:1.4rem;font-weight:900;}
+.header-badge small{font-size:.78rem;opacity:.8;}
+.container{max-width:1000px;margin:0 auto;padding:28px 24px;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-box{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 6px rgba(0,0,0,.08);border-top:3px solid transparent;}
+.stat-box.blue{border-top-color:#4f8ef7;}
+.stat-box.green{border-top-color:#10b981;}
+.stat-box.purple{border-top-color:#8b5cf6;}
+.stat-box.amber{border-top-color:#f59e0b;}
+.stat-value{font-size:1.5rem;font-weight:900;color:#1e293b;margin-bottom:3px;}
+.stat-label{font-size:.75rem;color:#64748b;}
+.stat-growth{font-size:.78rem;margin-top:6px;}
+.section{background:#fff;border-radius:12px;padding:22px;margin-bottom:18px;box-shadow:0 1px 6px rgba(0,0,0,.08);}
+.section-title{font-size:1rem;font-weight:700;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f1f5f9;display:flex;align-items:center;gap:8px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+table{width:100%;border-collapse:collapse;}
+th{background:#f8fafc;padding:9px 12px;text-align:right;font-size:.78rem;color:#64748b;font-weight:700;border-bottom:2px solid #f1f5f9;}
+td{padding:9px 12px;border-bottom:1px solid #f8fafc;font-size:.85rem;}
+tr:hover td{background:#fafafa;}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700;}
+.status-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.status-bar{flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;}
+.status-bar-fill{height:100%;border-radius:4px;}
+.footer{text-align:center;padding:24px;color:#94a3b8;font-size:.8rem;border-top:1px solid #e2e8f0;margin-top:8px;}
+@media print{body{background:#fff;}.header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>⚡ SocialOS — تقرير الأداء</h1>
-  <p>${periodLabel} | ${new Date().toLocaleDateString('ar', {year:'numeric',month:'long',day:'numeric'})}</p>
+  <div>
+    <h1>⚡ SocialOS — تقرير الأداء</h1>
+    <p>${periodLabel} · أُنشئ ${new Date().toLocaleDateString('ar', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
+  </div>
+  <div class="header-badge">
+    <div>${totalOrders}</div>
+    <small>إجمالي الطلبات</small>
+  </div>
 </div>
+
 <div class="container">
+  <!-- STATS -->
   <div class="stats-grid">
-    <div class="stat-box"><div class="stat-value">${formatCurrency(totalRevenue)}</div><div class="stat-label">إجمالي الإيرادات</div></div>
-    <div class="stat-box"><div class="stat-value">${totalOrders}</div><div class="stat-label">إجمالي الطلبات</div></div>
-    <div class="stat-box"><div class="stat-value">${avgOrder}</div><div class="stat-label">متوسط قيمة الطلب</div></div>
-    <div class="stat-box"><div class="stat-value">${products.rows[0]?.total || 0}</div><div class="stat-label">المنتجات</div></div>
+    <div class="stat-box blue">
+      <div class="stat-value">${formatCurrency(totalRevenue)}</div>
+      <div class="stat-label">إجمالي الإيرادات</div>
+      <div class="stat-growth">${growthBadge(revenueGrowth)} مقارنةً بالفترة السابقة</div>
+    </div>
+    <div class="stat-box green">
+      <div class="stat-value">${totalOrders}</div>
+      <div class="stat-label">إجمالي الطلبات</div>
+      <div class="stat-growth">${growthBadge(ordersGrowth)} مقارنةً بالفترة السابقة</div>
+    </div>
+    <div class="stat-box purple">
+      <div class="stat-value">${formatCurrency(avgOrder)}</div>
+      <div class="stat-label">متوسط قيمة الطلب</div>
+      <div class="stat-growth" style="color:#94a3b8;font-size:.78rem">لكل طلب</div>
+    </div>
+    <div class="stat-box amber">
+      <div class="stat-value">${products.rows[0]?.total || 0}</div>
+      <div class="stat-label">المنتجات المسجلة</div>
+      <div class="stat-growth" style="color:#ef4444;font-size:.78rem">${products.rows[0]?.out_of_stock || 0} نفذت</div>
+    </div>
   </div>
 
+  <div class="grid-2">
+    <!-- CHART -->
+    <div class="section">
+      <div class="section-title">📈 الإيرادات اليومية</div>
+      ${dailyRevenue.rows.length ? chartBars : '<p style="color:#94a3b8;text-align:center;padding:20px">لا توجد بيانات</p>'}
+    </div>
+
+    <!-- STATUS BREAKDOWN -->
+    <div class="section">
+      <div class="section-title">🥧 توزيع الطلبات</div>
+      ${statusBreakdown.rows.length ?
+        statusBreakdown.rows.map(s => {
+          const pct = totalOrders > 0 ? ((parseInt(s.count)/totalOrders)*100).toFixed(0) : 0;
+          return `<div class="status-row">
+            <div class="status-dot" style="background:${statusColors[s.status]||'#94a3b8'}"></div>
+            <div style="width:80px;font-size:.82rem">${statusLabels[s.status]||s.status}</div>
+            <div class="status-bar"><div class="status-bar-fill" style="width:${pct}%;background:${statusColors[s.status]||'#94a3b8'}"></div></div>
+            <div style="width:40px;text-align:left;font-size:.78rem;color:#64748b">${pct}%</div>
+            <div style="width:50px;text-align:left;font-size:.78rem;font-weight:700">${s.count}</div>
+          </div>`;
+        }).join('') :
+        '<p style="color:#94a3b8;text-align:center;padding:20px">لا توجد بيانات</p>'
+      }
+    </div>
+  </div>
+
+  <!-- TOP CUSTOMERS -->
   <div class="section">
-    <h2>🏆 أفضل العملاء</h2>
+    <div class="section-title">🏆 أفضل العملاء</div>
     <table>
       <tr><th>العميل</th><th>الهاتف</th><th>الطلبات</th><th>الإجمالي</th></tr>
-      ${topCustomers.rows.map(c => `<tr><td>${c.customer_name}</td><td dir="ltr">${c.customer_phone}</td><td>${c.orders}</td><td>${formatCurrency(c.spent)}</td></tr>`).join('')}
+      ${topCustomers.rows.map((c,i) => `
+        <tr>
+          <td><span style="background:#f1f5f9;border-radius:20px;padding:1px 8px;font-size:.72rem;margin-left:6px">${i+1}</span>${escapeHtml(c.customer_name)}</td>
+          <td dir="ltr" style="color:#64748b">${escapeHtml(c.customer_phone)}</td>
+          <td style="text-align:center;font-weight:700">${c.orders}</td>
+          <td style="font-weight:700;color:#4f8ef7">${formatCurrency(c.spent)}</td>
+        </tr>`).join('')}
     </table>
   </div>
 
+  <!-- ORDERS TABLE -->
   <div class="section">
-    <h2>📋 آخر الطلبات</h2>
+    <div class="section-title">📋 تفاصيل الطلبات (أحدث ${Math.min(orders.rows.length,30)})</div>
     <table>
-      <tr><th>#</th><th>العميل</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr>
-      ${orders.rows.slice(0,20).map(o => `<tr><td>${o.id}</td><td>${o.customer_name}</td><td>${formatCurrency(o.total)}</td><td><span class="badge badge-${o.status}">${o.status}</span></td><td>${new Date(o.created_at).toLocaleDateString('ar')}</td></tr>`).join('')}
+      <tr><th>#</th><th>العميل</th><th>الهاتف</th><th>المبلغ</th><th>العربون</th><th>الحالة</th><th>التاريخ</th></tr>
+      ${orders.rows.slice(0,30).map(o => `
+        <tr>
+          <td style="color:#94a3b8;font-family:monospace">${o.id}</td>
+          <td>${escapeHtml(o.customer_name)}</td>
+          <td dir="ltr" style="color:#64748b;font-size:.82rem">${escapeHtml(o.customer_phone)}</td>
+          <td style="font-weight:700">${formatCurrency(o.total)}</td>
+          <td style="color:#64748b">${parseFloat(o.deposit||0)>0?formatCurrency(o.deposit):'-'}</td>
+          <td><span class="badge" style="background:${statusColors[o.status]||'#94a3b8'}22;color:${statusColors[o.status]||'#94a3b8'}">${statusLabels[o.status]||o.status}</span></td>
+          <td style="color:#64748b;font-size:.82rem">${new Date(o.created_at).toLocaleDateString('ar',{day:'numeric',month:'short',year:'numeric'})}</td>
+        </tr>`).join('')}
     </table>
   </div>
 </div>
-<div class="footer">تم إنشاء هذا التقرير تلقائياً بواسطة SocialOS ⚡</div>
+<div class="footer">
+  تم إنشاء هذا التقرير تلقائياً بواسطة SocialOS ⚡ · ${new Date().toLocaleDateString('ar')}
+  <button onclick="window.print()" style="margin-right:16px;padding:6px 16px;background:#4f8ef7;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:.82rem">🖨️ طباعة</button>
+</div>
 </body>
 </html>`;
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="report-${period || 'weekly'}.html"`);
+      res.setHeader('Content-Disposition', `attachment; filename="socialos-report-${period||'weekly'}-${new Date().toISOString().split('T')[0]}.html"`);
       return res.send(html);
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
-
 
 // ========== MARKETPLACE ==========
 app.get('/api/marketplace/store/:userId', async (req, res) => {
@@ -1891,13 +2294,12 @@ app.post('/api/voice-command', authenticateToken, async (req, res) => {
 
     const aiData = await response.json();
     console.log('Voice AI response:', JSON.stringify(aiData.content?.[0]?.text?.substring(0,200)));
-    // prefilled with '{' so we prepend it back
-    let rawText = '{' + (aiData.content?.[0]?.text || '"}');
+    let rawText = aiData.content?.[0]?.text || '';
     
     let command;
     try {
       // Extract complete JSON object
-      const jsonMatch = rawText.match(/\{[^{}]*\}/);
+      const jsonMatch = rawText.match(/\{[\s\S]*?\}/);
       command = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
       if(!command || !command.action) throw new Error('no action');
     } catch(e) {
@@ -2040,8 +2442,8 @@ Return ONLY the final English prompt. No explanation.` }]
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// PORT defined here but listen called at end of file
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));
 
 // ========== SEARCH ORDERS ==========
 app.get('/api/orders/search', authenticateToken, async (req, res) => {
@@ -2068,24 +2470,95 @@ app.get('/api/orders/search', authenticateToken, async (req, res) => {
 // ========== EXPORT ORDERS ==========
 app.get('/api/orders/export', authenticateToken, async (req, res) => {
   const userId = req.user.id;
+  const { format, period } = req.query;
+  const days = period === 'month' ? 30 : period === 'year' ? 365 : null;
   try {
     if (pool) {
-      const r = await pool.query(
-        'SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC',
-        [userId]
-      );
+      let query = 'SELECT * FROM orders WHERE user_id=$1';
+      const params = [userId];
+      if (days) { query += ` AND created_at >= NOW() - INTERVAL '${days} days'`; }
+      query += ' ORDER BY created_at DESC';
+      const r = await pool.query(query, params);
       const orders = r.rows;
-      // CSV format
-      const headers = ['ID', 'العميل', 'الهاتف', 'العنوان', 'المبلغ', 'العربون', 'الحالة', 'المنصة', 'التاريخ'];
+
+      // Proper CSV with quoting for Arabic/special chars
+      const csvEscape = (val) => {
+        const str = String(val == null ? '' : val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+      const statusLabels = { new: 'جديد', confirmed: 'مؤكد', processing: 'قيد التجهيز', delivered: 'تم التوصيل', cancelled: 'ملغي' };
+      const headers = ['رقم الطلب', 'اسم العميل', 'الهاتف', 'العنوان', 'المبلغ الإجمالي', 'العربون', 'المتبقي', 'الحالة', 'طريقة الدفع', 'شركة التوصيل', 'المنصة', 'ملاحظات', 'التاريخ'];
       const rows = orders.map(o => [
-        o.id, o.customer_name, o.customer_phone, o.customer_address || '',
-        o.total, o.deposit, o.status, o.platform || '',
-        new Date(o.created_at).toLocaleDateString('ar')
+        o.id,
+        o.customer_name,
+        o.customer_phone,
+        o.customer_address || '',
+        parseFloat(o.total || 0).toFixed(2),
+        parseFloat(o.deposit || 0).toFixed(2),
+        (parseFloat(o.total || 0) - parseFloat(o.deposit || 0)).toFixed(2),
+        statusLabels[o.status] || o.status,
+        o.payment_method || '',
+        o.delivery_company || '',
+        o.platform || '',
+        o.notes || '',
+        new Date(o.created_at).toLocaleString('ar')
       ]);
-      const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+      const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+      const filename = `orders-${new Date().toISOString().split('T')[0]}.csv`;
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
-      return res.send('﻿' + csv); // BOM for Arabic Excel
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.send('\uFEFF' + csv); // BOM for Excel Arabic
+    }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ========== EXPORT PRODUCTS ==========
+app.get('/api/products/export', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM products WHERE user_id=$1 ORDER BY category, name', [userId]);
+      const csvEscape = (val) => `"${String(val == null ? '' : val).replace(/"/g, '""')}"`;
+      const headers = ['رقم', 'اسم المنتج', 'الفئة', 'السعر', 'المخزون', 'الوصف', 'متاح', 'التاريخ'];
+      const rows = r.rows.map(p => [
+        p.id, p.name, p.category || '', parseFloat(p.price||0).toFixed(2),
+        p.stock || 0, p.description || '', p.is_available ? 'نعم' : 'لا',
+        new Date(p.created_at).toLocaleDateString('ar')
+      ]);
+      const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().split('T')[0]}.csv"`);
+      return res.send('\uFEFF' + csv);
+    }
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ========== EXPORT CUSTOMERS ==========
+app.get('/api/customers/export', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query(`
+        SELECT c.*, 
+          COUNT(o.id) as orders_count, 
+          COALESCE(SUM(o.total),0) as total_spent,
+          MAX(o.created_at) as last_order
+        FROM customers c
+        LEFT JOIN orders o ON o.user_id=c.user_id AND o.customer_phone=c.phone
+        WHERE c.user_id=$1
+        GROUP BY c.id ORDER BY total_spent DESC`, [userId]);
+      const csvEscape = (val) => `"${String(val == null ? '' : val).replace(/"/g, '""')}"`;
+      const headers = ['رقم', 'الاسم', 'الهاتف', 'العنوان', 'عدد الطلبات', 'إجمالي الإنفاق', 'آخر طلب', 'ملاحظات'];
+      const rows = r.rows.map(c => [
+        c.id, c.name, c.phone, c.address || '',
+        c.orders_count || 0, parseFloat(c.total_spent||0).toFixed(2),
+        c.last_order ? new Date(c.last_order).toLocaleDateString('ar') : '-',
+        c.notes || ''
+      ]);
+      const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="customers-${new Date().toISOString().split('T')[0]}.csv"`);
+      return res.send('\uFEFF' + csv);
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -2164,7 +2637,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       resetCodes[email] = { code, expires: Date.now() + 15 * 60 * 1000 };
       console.log(`Reset code for ${email}: ${code}`);
-      return res.json({ success: true, message: 'تم إرسال رمز التحقق', dev_code: code });
+      return res.json({ success: true, message: 'تم إرسال رمز التحقق' });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
   res.status(404).json({ success: false, message: 'البريد غير موجود' });
@@ -2277,3 +2750,568 @@ if (pool) {
     created_at TIMESTAMP DEFAULT NOW()
   )`).catch(e => console.log('notifications table:', e.message));
 }
+-e 
+// ========== COUPONS ==========
+if (pool) {
+  pool.query(`CREATE TABLE IF NOT EXISTS coupons (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    type VARCHAR(20) DEFAULT 'percent',
+    value DECIMAL(10,2) NOT NULL,
+    min_order DECIMAL(10,2) DEFAULT 0,
+    max_uses INTEGER DEFAULT 100,
+    used_count INTEGER DEFAULT 0,
+    expires_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`).catch(e => console.log('coupons table:', e.message));
+}
+
+// Create coupon
+app.post('/api/coupons', authenticateToken, async (req, res) => {
+  const { code, type, value, min_order, max_uses, expires_at } = req.body;
+  const userId = req.user.id;
+  if (!code || !value) return res.status(400).json({ success: false, message: 'الكود والقيمة مطلوبان' });
+  if (!['percent', 'fixed'].includes(type)) return res.status(400).json({ success: false, message: 'نوع غير صحيح' });
+  if (parseFloat(value) <= 0) return res.status(400).json({ success: false, message: 'القيمة يجب أن تكون أكبر من صفر' });
+  if (type === 'percent' && parseFloat(value) > 100) return res.status(400).json({ success: false, message: 'النسبة لا تتجاوز 100%' });
+  try {
+    if (pool) {
+      const result = await pool.query(
+        'INSERT INTO coupons (user_id, code, type, value, min_order, max_uses, expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+        [userId, code.toUpperCase().trim(), type || 'percent', parseFloat(value), parseFloat(min_order) || 0, parseInt(max_uses) || 100, expires_at || null]
+      );
+      return res.json({ success: true, coupon: result.rows[0] });
+    }
+  } catch (e) {
+    return res.status(400).json({ success: false, message: e.message.includes('unique') ? 'هذا الكود مستخدم مسبقاً' : e.message });
+  }
+});
+
+// Get all coupons
+app.get('/api/coupons', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM coupons WHERE user_id=$1 ORDER BY created_at DESC', [userId]);
+      return res.json({ success: true, coupons: r.rows });
+    }
+  } catch (e) {}
+  res.json({ success: true, coupons: [] });
+});
+
+// Validate coupon (public - used by store customers)
+app.post('/api/coupons/validate', async (req, res) => {
+  const { code, order_total, store_user_id } = req.body;
+  if (!code || !store_user_id) return res.status(400).json({ success: false, message: 'البيانات ناقصة' });
+  try {
+    if (pool) {
+      const r = await pool.query(
+        `SELECT * FROM coupons WHERE user_id=$1 AND code=$2 AND is_active=true
+         AND (expires_at IS NULL OR expires_at > NOW())
+         AND used_count < max_uses`,
+        [store_user_id, code.toUpperCase().trim()]
+      );
+      if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'الكود غير صحيح أو منتهي الصلاحية' });
+      const coupon = r.rows[0];
+      const total = parseFloat(order_total) || 0;
+      if (total < parseFloat(coupon.min_order)) {
+        return res.status(400).json({ success: false, message: `الحد الأدنى للطلب ${coupon.min_order}` });
+      }
+      const discount = coupon.type === 'percent'
+        ? (total * parseFloat(coupon.value) / 100)
+        : Math.min(parseFloat(coupon.value), total);
+      return res.json({ success: true, coupon, discount: parseFloat(discount.toFixed(2)), final_total: parseFloat((total - discount).toFixed(2)) });
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Apply coupon (increment used_count)
+app.post('/api/coupons/apply', authenticateToken, async (req, res) => {
+  const { code } = req.body;
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      await pool.query('UPDATE coupons SET used_count=used_count+1 WHERE user_id=$1 AND code=$2', [userId, code.toUpperCase().trim()]);
+      return res.json({ success: true });
+    }
+  } catch (e) {}
+  res.json({ success: true });
+});
+
+// Delete coupon
+app.delete('/api/coupons/:id', authenticateToken, async (req, res) => {
+  try {
+    if (pool) { await pool.query('DELETE FROM coupons WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]); }
+    return res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Toggle coupon active
+app.put('/api/coupons/:id/toggle', authenticateToken, async (req, res) => {
+  try {
+    if (pool) {
+      await pool.query('UPDATE coupons SET is_active=NOT is_active WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+      return res.json({ success: true });
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ========== LOYALTY POINTS ==========
+if (pool) {
+  pool.query(`CREATE TABLE IF NOT EXISTS loyalty_points (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    customer_phone VARCHAR(50),
+    customer_name VARCHAR(255),
+    points INTEGER DEFAULT 0,
+    total_earned INTEGER DEFAULT 0,
+    total_redeemed INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, customer_phone)
+  )`).catch(e => console.log('loyalty table:', e.message));
+
+  pool.query(`CREATE TABLE IF NOT EXISTS loyalty_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    customer_phone VARCHAR(50),
+    points INTEGER,
+    type VARCHAR(20),
+    order_id INTEGER,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`).catch(e => console.log('loyalty_tx table:', e.message));
+
+  pool.query(`CREATE TABLE IF NOT EXISTS loyalty_settings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE,
+    points_per_currency DECIMAL(10,4) DEFAULT 1,
+    redeem_rate DECIMAL(10,4) DEFAULT 100,
+    min_redeem INTEGER DEFAULT 100,
+    is_active BOOLEAN DEFAULT TRUE
+  )`).catch(e => console.log('loyalty_settings table:', e.message));
+}
+
+// Get loyalty settings
+app.get('/api/loyalty/settings', authenticateToken, async (req, res) => {
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM loyalty_settings WHERE user_id=$1', [req.user.id]);
+      return res.json({ success: true, settings: r.rows[0] || { points_per_currency: 1, redeem_rate: 100, min_redeem: 100, is_active: true } });
+    }
+  } catch (e) {}
+  res.json({ success: true, settings: { points_per_currency: 1, redeem_rate: 100, min_redeem: 100, is_active: true } });
+});
+
+// Save loyalty settings
+app.put('/api/loyalty/settings', authenticateToken, async (req, res) => {
+  const { points_per_currency, redeem_rate, min_redeem, is_active } = req.body;
+  try {
+    if (pool) {
+      await pool.query(`INSERT INTO loyalty_settings (user_id, points_per_currency, redeem_rate, min_redeem, is_active)
+        VALUES ($1,$2,$3,$4,$5)
+        ON CONFLICT (user_id) DO UPDATE SET points_per_currency=$2, redeem_rate=$3, min_redeem=$4, is_active=$5`,
+        [req.user.id, parseFloat(points_per_currency)||1, parseFloat(redeem_rate)||100, parseInt(min_redeem)||100, is_active!==false]
+      );
+      return res.json({ success: true });
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Get customer loyalty points
+app.get('/api/loyalty/customer/:phone', authenticateToken, async (req, res) => {
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM loyalty_points WHERE user_id=$1 AND customer_phone=$2', [req.user.id, req.params.phone]);
+      const txs = await pool.query('SELECT * FROM loyalty_transactions WHERE user_id=$1 AND customer_phone=$2 ORDER BY created_at DESC LIMIT 20', [req.user.id, req.params.phone]);
+      return res.json({ success: true, loyalty: r.rows[0] || { points: 0, total_earned: 0, total_redeemed: 0 }, transactions: txs.rows });
+    }
+  } catch (e) {}
+  res.json({ success: true, loyalty: { points: 0 }, transactions: [] });
+});
+
+// Add points (called after order completion)
+app.post('/api/loyalty/add', authenticateToken, async (req, res) => {
+  const { customer_phone, customer_name, order_id, order_total } = req.body;
+  const userId = req.user.id;
+  if (!customer_phone || !order_total) return res.status(400).json({ success: false, message: 'البيانات ناقصة' });
+  try {
+    if (pool) {
+      const settingsRes = await pool.query('SELECT * FROM loyalty_settings WHERE user_id=$1', [userId]);
+      const settings = settingsRes.rows[0] || { points_per_currency: 1, is_active: true };
+      if (!settings.is_active) return res.json({ success: false, message: 'نظام النقاط غير مفعّل' });
+      const points = Math.floor(parseFloat(order_total) * parseFloat(settings.points_per_currency));
+      if (points <= 0) return res.json({ success: false, message: 'لا نقاط لهذا الطلب' });
+      await pool.query(`INSERT INTO loyalty_points (user_id, customer_phone, customer_name, points, total_earned)
+        VALUES ($1,$2,$3,$4,$4)
+        ON CONFLICT (user_id, customer_phone) DO UPDATE SET
+          points=loyalty_points.points+$4,
+          total_earned=loyalty_points.total_earned+$4,
+          customer_name=COALESCE($3, loyalty_points.customer_name),
+          updated_at=NOW()`,
+        [userId, customer_phone, customer_name || '', points]
+      );
+      await pool.query('INSERT INTO loyalty_transactions (user_id, customer_phone, points, type, order_id, note) VALUES ($1,$2,$3,$4,$5,$6)',
+        [userId, customer_phone, points, 'earn', order_id || null, `طلب #${order_id || '?'} — ${parseFloat(order_total).toFixed(0)}`]
+      );
+      return res.json({ success: true, points_added: points });
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Redeem points
+app.post('/api/loyalty/redeem', authenticateToken, async (req, res) => {
+  const { customer_phone, points_to_redeem } = req.body;
+  const userId = req.user.id;
+  if (!customer_phone || !points_to_redeem) return res.status(400).json({ success: false, message: 'البيانات ناقصة' });
+  try {
+    if (pool) {
+      const [loyaltyRes, settingsRes] = await Promise.all([
+        pool.query('SELECT * FROM loyalty_points WHERE user_id=$1 AND customer_phone=$2', [userId, customer_phone]),
+        pool.query('SELECT * FROM loyalty_settings WHERE user_id=$1', [userId])
+      ]);
+      const loyalty = loyaltyRes.rows[0];
+      const settings = settingsRes.rows[0] || { redeem_rate: 100, min_redeem: 100 };
+      if (!loyalty || loyalty.points < parseInt(points_to_redeem)) return res.status(400).json({ success: false, message: 'رصيد النقاط غير كافٍ' });
+      if (parseInt(points_to_redeem) < parseInt(settings.min_redeem)) return res.status(400).json({ success: false, message: `الحد الأدنى للاسترداد ${settings.min_redeem} نقطة` });
+      const discount = parseFloat((parseInt(points_to_redeem) / parseFloat(settings.redeem_rate)).toFixed(2));
+      await pool.query('UPDATE loyalty_points SET points=points-$1, total_redeemed=total_redeemed+$1, updated_at=NOW() WHERE user_id=$2 AND customer_phone=$3',
+        [parseInt(points_to_redeem), userId, customer_phone]
+      );
+      await pool.query('INSERT INTO loyalty_transactions (user_id, customer_phone, points, type, note) VALUES ($1,$2,$3,$4,$5)',
+        [userId, customer_phone, -parseInt(points_to_redeem), 'redeem', `استرداد ${points_to_redeem} نقطة = خصم ${discount}`]
+      );
+      return res.json({ success: true, discount, points_redeemed: parseInt(points_to_redeem) });
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Get all loyalty customers
+app.get('/api/loyalty/customers', authenticateToken, async (req, res) => {
+  try {
+    if (pool) {
+      const r = await pool.query('SELECT * FROM loyalty_points WHERE user_id=$1 ORDER BY points DESC', [req.user.id]);
+      return res.json({ success: true, customers: r.rows });
+    }
+  } catch (e) {}
+  res.json({ success: true, customers: [] });
+});
+
+// ========== BULK WHATSAPP ==========
+app.post('/api/whatsapp/bulk', authenticateToken, async (req, res) => {
+  const { message, target } = req.body;
+  const userId = req.user.id;
+  if (!message || !message.trim()) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
+  if (message.length > 1000) return res.status(400).json({ success: false, message: 'الرسالة طويلة جداً (أقصى 1000 حرف)' });
+  try {
+    if (pool) {
+      let phones = [];
+      if (target === 'all_customers') {
+        const r = await pool.query('SELECT DISTINCT customer_phone, customer_name FROM orders WHERE user_id=$1', [userId]);
+        phones = r.rows;
+      } else if (target === 'loyalty') {
+        const r = await pool.query('SELECT customer_phone, customer_name FROM loyalty_points WHERE user_id=$1 AND points > 0', [userId]);
+        phones = r.rows;
+      } else if (target === 'recent') {
+        const r = await pool.query(`SELECT DISTINCT customer_phone, customer_name FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '30 days'`, [userId]);
+        phones = r.rows;
+      } else if (target === 'custom' && req.body.phones) {
+        phones = req.body.phones.map(p => ({ customer_phone: p, customer_name: '' }));
+      }
+      if (phones.length === 0) return res.json({ success: false, message: 'لا يوجد عملاء في هذه الفئة' });
+      // Build WhatsApp links (max 50 at a time to avoid spam detection)
+      const links = phones.slice(0, 50).map(c => {
+        const cleanPhone = (c.customer_phone || '').replace(/[^0-9]/g, '');
+        const waPhone = cleanPhone.startsWith('0') ? '964' + cleanPhone.slice(1) : cleanPhone;
+        const personalizedMsg = message.replace('{اسم}', c.customer_name || 'عزيزي العميل');
+        return { phone: waPhone, name: c.customer_name, url: `https://wa.me/${waPhone}?text=${encodeURIComponent(personalizedMsg)}` };
+      });
+      return res.json({ success: true, links, total: phones.length, shown: links.length });
+    }
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Get bulk targets count
+app.get('/api/whatsapp/bulk/counts', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (pool) {
+      const [all, recent, loyalty] = await Promise.all([
+        pool.query('SELECT COUNT(DISTINCT customer_phone) as count FROM orders WHERE user_id=$1', [userId]),
+        pool.query(`SELECT COUNT(DISTINCT customer_phone) as count FROM orders WHERE user_id=$1 AND created_at >= NOW() - INTERVAL '30 days'`, [userId]),
+        pool.query('SELECT COUNT(*) as count FROM loyalty_points WHERE user_id=$1 AND points > 0', [userId])
+      ]);
+      return res.json({
+        success: true,
+        counts: {
+          all: parseInt(all.rows[0]?.count || 0),
+          recent: parseInt(recent.rows[0]?.count || 0),
+          loyalty: parseInt(loyalty.rows[0]?.count || 0)
+        }
+      });
+    }
+  } catch (e) {}
+  res.json({ success: true, counts: { all: 0, recent: 0, loyalty: 0 } });
+});
+
+// ========== CLOUDINARY IMAGE UPLOAD ==========
+app.post('/api/upload/image', authenticateToken, async (req, res) => {
+  const { image, folder } = req.body; // image = base64 data URL
+  if (!image) return res.status(400).json({ success: false, message: 'الصورة مطلوبة' });
+
+  const CLOUDINARY_CLOUD = process.env.CLOUDINARY_CLOUD_NAME;
+  const CLOUDINARY_KEY   = process.env.CLOUDINARY_API_KEY;
+  const CLOUDINARY_SECRET= process.env.CLOUDINARY_API_SECRET;
+
+  // If Cloudinary not configured → return the base64 as-is (fallback)
+  if (!CLOUDINARY_CLOUD || !CLOUDINARY_KEY || !CLOUDINARY_SECRET) {
+    // Validate it's actually an image base64
+    if (!image.startsWith('data:image/')) {
+      return res.status(400).json({ success: false, message: 'صيغة صورة غير صحيحة' });
+    }
+    // Size check: base64 ~1.37x actual size, limit 2MB actual
+    if (image.length > 2.8 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'الصورة أكبر من 2MB' });
+    }
+    return res.json({ success: true, url: image, source: 'base64', message: 'تم الحفظ (Cloudinary غير مفعّل)' });
+  }
+
+  try {
+    // Validate image size before upload (base64 ~1.37x actual)
+    if (image.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'الصورة أكبر من 7MB' });
+    }
+
+    // Use Cloudinary REST API directly (no SDK needed)
+    const crypto = require('crypto');
+    const timestamp = Math.floor(Date.now() / 1000);
+    const uploadFolder = folder || 'socialos';
+    const paramsToSign = `folder=${uploadFolder}&timestamp=${timestamp}`;
+    const signature = crypto.createHmac('sha256', CLOUDINARY_SECRET)
+      .update(paramsToSign)
+      .digest('hex');
+
+    // Build form data manually
+    const boundary = '----CloudinaryBoundary' + Date.now();
+    const base64Data = image.includes(',') ? image.split(',')[1] : image;
+    const mimeType = image.includes('data:') ? image.split(';')[0].split(':')[1] : 'image/jpeg';
+
+    const formBody = [
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="file"',
+      '',
+      image, // send full data URL
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="api_key"',
+      '',
+      CLOUDINARY_KEY,
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="timestamp"',
+      '',
+      String(timestamp),
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="signature"',
+      '',
+      signature,
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="folder"',
+      '',
+      uploadFolder,
+      `--${boundary}--`
+    ].join('\r\n');
+
+    const uploadRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+        body: formBody
+      }
+    );
+    const uploadData = await uploadRes.json();
+
+    if (uploadData.secure_url) {
+      return res.json({ success: true, url: uploadData.secure_url, public_id: uploadData.public_id, source: 'cloudinary' });
+    }
+    // Cloudinary returned error → fallback to base64
+    console.log('Cloudinary error:', uploadData.error?.message);
+    return res.json({ success: true, url: image, source: 'base64', message: 'تم الحفظ (Cloudinary فشل مؤقتاً)' });
+  } catch (e) {
+    console.log('Upload error:', e.message);
+    // Fallback: return base64
+    return res.json({ success: true, url: image, source: 'base64' });
+  }
+});
+
+// Cloudinary status check
+app.get('/api/upload/status', authenticateToken, (req, res) => {
+  const configured = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+  res.json({ configured, message: configured ? '✅ Cloudinary مفعّل' : '⚠️ Cloudinary غير مفعّل — الصور تُحفظ كـ Base64' });
+});
+
+// ========== PUSH NOTIFICATIONS ==========
+// Store push subscriptions in DB
+if (pool) {
+  pool.query(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    endpoint TEXT UNIQUE,
+    p256dh TEXT,
+    auth TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  )`).catch(e => console.log('push_subscriptions table:', e.message));
+}
+
+// Save push subscription
+app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
+  const { endpoint, keys } = req.body;
+  const userId = req.user.id;
+  if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    return res.status(400).json({ success: false, message: 'بيانات الاشتراك ناقصة' });
+  }
+  try {
+    if (pool) {
+      await pool.query(`
+        INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+        VALUES ($1,$2,$3,$4)
+        ON CONFLICT (endpoint) DO UPDATE SET user_id=$1, p256dh=$3, auth=$4`,
+        [userId, endpoint, keys.p256dh, keys.auth]
+      );
+      return res.json({ success: true });
+    }
+  } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+  res.json({ success: true });
+});
+
+// Remove push subscription
+app.delete('/api/push/unsubscribe', authenticateToken, async (req, res) => {
+  const { endpoint } = req.body;
+  try {
+    if (pool && endpoint) {
+      await pool.query('DELETE FROM push_subscriptions WHERE endpoint=$1 AND user_id=$2', [endpoint, req.user.id]);
+    }
+  } catch (e) {}
+  res.json({ success: true });
+});
+
+// Send push notification to user (internal helper + API)
+async function sendPushToUser(userId, title, body, url = '/') {
+  const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY;
+  const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
+  const VAPID_EMAIL   = process.env.VAPID_EMAIL || 'mailto:admin@socialos.app';
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE || !pool) return;
+  try {
+    const subs = await pool.query('SELECT * FROM push_subscriptions WHERE user_id=$1', [userId]);
+    if (!subs.rows.length) return;
+    // Use web-push if available, otherwise skip gracefully
+    let webpush;
+    try { webpush = require('web-push'); } catch(e) { return; }
+    webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC, VAPID_PRIVATE);
+    const payload = JSON.stringify({ title, body, url, icon: '/icon-192.png' });
+    for (const sub of subs.rows) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload
+        );
+      } catch (e) {
+        // Subscription expired → remove it
+        if (e.statusCode === 410) {
+          await pool.query('DELETE FROM push_subscriptions WHERE id=$1', [sub.id]).catch(()=>{});
+        }
+      }
+    }
+  } catch (e) { console.log('Push error:', e.message); }
+}
+
+// Send test push
+app.post('/api/push/test', authenticateToken, async (req, res) => {
+  try {
+    await sendPushToUser(req.user.id, '🔔 SocialOS', 'الإشعارات تعمل بنجاح! ⚡', '/');
+    res.json({ success: true, message: 'تم إرسال الإشعار التجريبي' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Get VAPID public key (needed by browser to subscribe)
+app.get('/api/push/vapid-public', authenticateToken, (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY;
+  if (!key) return res.json({ success: false, message: 'VAPID غير مضبوط' });
+  res.json({ success: true, key });
+});
+
+// Hook push into new order notification
+const originalSendOrderNotif = async (userId, orderId, customerName, total) => {
+  await sendPushToUser(userId, '🛒 طلب جديد!', `طلب من ${customerName} — ${formatCurrency(total)}`, '/?page=orders');
+};
+
+// ========== ENHANCED DELIVERY TRACKING ==========
+// Iraqi + Gulf delivery companies + live status fetch
+app.post('/api/delivery/track', authenticateToken, async (req, res) => {
+  const { company, tracking_number, order_id } = req.body;
+  if (!tracking_number) return res.status(400).json({ success: false, message: 'رقم التتبع مطلوب' });
+
+  const trackingUrls = {
+    // العراق
+    madar:     `https://madarexpress.com/track/${tracking_number}`,
+    alozon:    `https://alozon.iq/track?awb=${tracking_number}`,
+    almada:    `https://almada-express.com/tracking?id=${tracking_number}`,
+    // الخليج
+    aramex:    `https://www.aramex.com/track/results?ShipmentNumber=${tracking_number}`,
+    dhl:       `https://www.dhl.com/en/express/tracking.html?AWB=${tracking_number}`,
+    fedex:     `https://www.fedex.com/apps/fedextrack/?tracknumbers=${tracking_number}`,
+    ups:       `https://www.ups.com/track?tracknum=${tracking_number}`,
+    smsa:      `https://www.smsaexpress.com/trackshipment?awbno=${tracking_number}`,
+    naqel:     `https://www.naqelexpress.com/tracking?trackingNumber=${tracking_number}`,
+    imile:     `https://www.imile.com/tracking?trackingNumber=${tracking_number}`,
+    zajil:     `https://zajil.com/track?awb=${tracking_number}`,
+    custom:    tracking_number // treat as direct URL
+  };
+
+  const companyNames = {
+    madar: 'مدار إكسبرس', alozon: 'الوزن', almada: 'المدى إكسبرس',
+    aramex: 'أرامكس', dhl: 'DHL', fedex: 'FedEx', ups: 'UPS',
+    smsa: 'SMSA', naqel: 'ناقل', imile: 'iMile', zajil: 'زاجل', custom: 'مخصص'
+  };
+
+  const key = (company || '').toLowerCase();
+  const url = trackingUrls[key] || tracking_number;
+  const companyName = companyNames[key] || company || 'غير محدد';
+
+  // Update order with tracking link if order_id provided
+  if (order_id && pool) {
+    try {
+      await pool.query(
+        'UPDATE orders SET delivery_link=$1, delivery_company=$2 WHERE id=$3 AND user_id=$4',
+        [url, companyName, order_id, req.user.id]
+      );
+    } catch(e) {}
+  }
+
+  return res.json({ success: true, tracking_url: url, company: companyName, tracking_number });
+});
+
+// Get all supported delivery companies
+app.get('/api/delivery/companies', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    companies: [
+      { id: 'madar',   name: 'مدار إكسبرس',    flag: '🇮🇶', region: 'العراق' },
+      { id: 'alozon',  name: 'الوزن',            flag: '🇮🇶', region: 'العراق' },
+      { id: 'almada',  name: 'المدى إكسبرس',    flag: '🇮🇶', region: 'العراق' },
+      { id: 'aramex',  name: 'أرامكس',           flag: '🌍', region: 'الخليج' },
+      { id: 'dhl',     name: 'DHL',              flag: '🌍', region: 'دولي' },
+      { id: 'fedex',   name: 'FedEx',            flag: '🌍', region: 'دولي' },
+      { id: 'smsa',    name: 'SMSA',             flag: '🇸🇦', region: 'السعودية' },
+      { id: 'naqel',   name: 'ناقل',             flag: '🇸🇦', region: 'السعودية' },
+      { id: 'imile',   name: 'iMile',            flag: '🌍', region: 'الخليج' },
+      { id: 'zajil',   name: 'زاجل',             flag: '🇸🇦', region: 'السعودية' },
+      { id: 'ups',     name: 'UPS',              flag: '🌍', region: 'دولي' },
+      { id: 'custom',  name: 'رابط مخصص',        flag: '🔗', region: 'أخرى' }
+    ]
+  });
+});
+
+// ========== START SERVER ==========
+app.listen(PORT, () => console.log(`SocialOS running on port ${PORT}`));
