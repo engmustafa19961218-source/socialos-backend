@@ -14,26 +14,25 @@
    Dark luxury • Glassmorphism • Fluid motion
 ============================================================ */
 :root {
-  --bg: #030508;
-  --bg2: #070b12;
-  --surface: rgba(255,255,255,.03);
-  --surface2: rgba(255,255,255,.055);
-  --surface3: rgba(255,255,255,.08);
-  --border: rgba(255,255,255,.07);
-  --border2: rgba(255,255,255,.12);
+  --bg: #060910;
+  --bg2: #080c14;
+  --surface: #0d1120;
+  --surface2: #111827;
+  --surface3: #161e2e;
+  --border: #1e2a3d;
+  --border2: #253447;
   --accent: #4f8ef7;
   --accent2: #7c3aed;
   --accent3: #f59e0b;
   --accent4: #00d4aa;
   --mike: #4f8ef7;
-  --text: #e8edf8;
-  --text2: #4a5a7a;
-  --text3: #2a3550;
-  --danger: #ff4466;
-  --green: #00d4aa;
-  --radius: 16px;
+  --text: #e2e8f5;
+  --text2: #64748b;
+  --text3: #334155;
+  --danger: #f04060;
+  --green: #00c896;
+  --radius: 14px;
   --sidebar: 64px;
-  --glow: 0 0 40px rgba(79,142,247,.12);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -79,18 +78,17 @@ body::after{
 .auth-feat-text b{color:var(--text);display:block;font-size:.86rem;margin-bottom:1px;}
 
 .auth-card{
-  background:rgba(7,11,18,.85);
-  backdrop-filter:blur(40px);
+  background:#0d1120;
   border:1px solid var(--border2);
-  border-radius:24px;
-  padding:36px 32px;
-  box-shadow:0 40px 120px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
-  animation:slideUp .5s cubic-bezier(.16,1,.3,1);
+  border-radius:22px;
+  padding:34px 30px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5),0 0 0 1px rgba(79,142,247,.06);
+  animation:slideUp .45s cubic-bezier(.16,1,.3,1);
   position:relative;overflow:hidden;
 }
 .auth-card::before{
-  content:'';position:absolute;top:-1px;right:20%;left:20%;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(79,142,247,.5),transparent);
+  content:'';position:absolute;top:0;right:15%;left:15%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(79,142,247,.4),transparent);
 }
 @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
 
@@ -167,8 +165,7 @@ body::after{
 /* ─── SIDEBAR ─── */
 .sidebar{
   position:fixed;top:0;right:0;bottom:0;width:var(--sidebar);
-  background:rgba(7,11,18,.92);
-  backdrop-filter:blur(30px);
+  background:#080c14;
   border-left:1px solid var(--border);
   display:flex;flex-direction:column;align-items:center;
   z-index:300;
@@ -385,10 +382,10 @@ body::after{
 .mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:400;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(6px);}
 .mo.show{display:flex;}
 .mdl{
-  background:rgba(7,11,18,.97);border:1px solid var(--border2);border-radius:22px;
-  padding:26px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;
+  background:#0d1120;border:1px solid var(--border2);border-radius:20px;
+  padding:24px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;
   animation:slideUp .25s cubic-bezier(.16,1,.3,1);
-  box-shadow:0 40px 100px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.05);
+  box-shadow:0 32px 80px rgba(0,0,0,.6);
 }
 .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
 .mh h2{font-size:1rem;font-weight:700;}
@@ -540,6 +537,36 @@ tr:hover td{background:rgba(79,142,247,.02);}
 
 /* ─── IMAGE PICKER ─── */
 .img-picker{display:flex;gap:6px;align-items:center;}
+
+/* ─── MIKE MIC BUTTON ─── */
+.mike-mic{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  background:var(--surface);border:1px solid var(--border);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:.95rem;transition:all .2s;color:var(--text2);padding:0;
+}
+.mike-mic:hover{border-color:var(--accent);background:rgba(79,142,247,.08);}
+.mike-mic.listening{
+  background:rgba(255,68,102,.15);border-color:var(--danger);
+  color:var(--danger);animation:micPulse .8s ease-in-out infinite;
+}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,68,102,.3)}50%{box-shadow:0 0 0 6px rgba(255,68,102,0)}}
+
+/* ─── BACK BUTTON ─── */
+.back-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:9px;border:none;
+  background:var(--surface);color:var(--text2);
+  cursor:pointer;font-family:'Tajawal',sans-serif;
+  font-size:.8rem;font-weight:700;transition:all .2s;
+  margin-bottom:16px;
+}
+.back-btn:hover{background:var(--surface2);color:var(--text);}
+
+/* ─── PAGE HEADER ─── */
+.ph{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.ph h1{font-size:1.3rem;font-weight:900;letter-spacing:-.3px;display:flex;align-items:center;gap:7px;}
+.ph-actions{display:flex;gap:6px;align-items:center;margin-right:auto;}
 .img-picker .fi{flex:1;min-width:0;}
 .img-pick-btn{
   width:38px;height:38px;border-radius:10px;flex-shrink:0;
@@ -649,10 +676,22 @@ tr:hover td{background:rgba(79,142,247,.02);}
       </div>
     </div>
     <div class="obs" id="obs1">
-      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">🏪</div><h2>ما نوع عملك؟</h2><p>اختر الأقرب لنشاطك</p></div>
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">🏪</div><h2>ما نوع عملك؟</h2><p>اختر من القائمة أو اشرح بكلماتك الخاصة</p></div>
+
+      <!-- اختيار سريع -->
       <div class="btg" id="btg"></div>
-      <button class="btn ba" onclick="nextStep()" style="width:100%;padding:12px">التالي ←</button>
-      <button class="btn bo" onclick="nextStep()" style="width:100%;padding:10px;margin-top:7px">تخطي</button>
+
+      <!-- أو اكتب بحرية -->
+      <div class="card" style="margin-top:4px;border-color:rgba(79,142,247,.15)">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+          <div style="width:2px;height:16px;background:var(--accent);border-radius:2px"></div>
+          <span style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">أو صف عملك بكلماتك</span>
+        </div>
+        <textarea class="ft" id="ob1-custom" placeholder="مثال: عندي محل ملابس رجالية في البصرة، أبيع بالتجزئة وأحياناً بالجملة، عملائي من 20-45 سنة، أركز على الجودة وسعر مناسب..." style="min-height:100px"></textarea>
+        <div style="font-size:.72rem;color:var(--text2);margin-top:5px">💡 كلما كان الوصف أدق، كلما تعلم الذكاء الاصطناعي عنك أكثر</div>
+      </div>
+
+      <button class="btn ba" onclick="saveOb1()" style="width:100%;padding:12px;margin-top:12px">التالي ←</button>
     </div>
     <div class="obs" id="obs2">
       <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">✍️</div><h2>صف عملك</h2><p>كأنك تشرح لموظف جديد</p></div>
@@ -758,7 +797,8 @@ tr:hover td{background:rgba(79,142,247,.02);}
 
   <!-- MOBILE TOPBAR -->
   <div class="topbar">
-    <div class="tlogo">
+    <div class="tlogo" style="gap:6px">
+      <button id="global-back-btn" onclick="goBack()" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--text2);font-size:.85rem;display:none;align-items:center;justify-content:center" title="رجوع">←</button>
       <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.8rem">⚡</div>
       <h2>SocialOS</h2>
     </div>
@@ -808,10 +848,11 @@ tr:hover td{background:rgba(79,142,247,.02);}
           <div class="mike-msgs" id="mike-msgs"></div>
           <div class="mike-input-wrap">
             <div class="mike-input-row">
-              <input id="mike-input" placeholder="قل لـ Mike ماذا تريد..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMike()">
+              <button class="mike-mic" id="mike-mic-btn" onclick="toggleMikeMic()" title="تحدث بصوتك">🎤</button>
+              <input id="mike-input" placeholder="قل لـ Mike ماذا تريد أو اضغط 🎤 للتحدث..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMike()">
               <button class="mike-send" onclick="sendMike()" id="mike-btn">↑</button>
             </div>
-            <div class="mike-hint">Mike يستطيع: إضافة طلبات · منتجات · عملاء · نشر على المنصات · إرسال واتساب · تقارير فورية</div>
+            <div class="mike-hint" id="mike-hint-text">Mike يستطيع: إضافة طلبات · منتجات · عملاء · نشر على المنصات · إرسال واتساب · تقارير فورية</div>
           </div>
         </div>
       </div>
@@ -1726,22 +1767,6 @@ function toggleSidebar(){
 function openMobileMenu(){document.getElementById('mobile-menu').style.display='block';}
 function closeMobileMenu(){document.getElementById('mobile-menu').style.display='none';}
 
-function sp(name,btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.si-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.mike-btn').forEach(b=>b.classList.remove('active'));
-  const pg=document.getElementById('page-'+name);
-  if(pg) pg.classList.add('active');
-  if(btn) btn.classList.add('active');
-  // تفعيل Mike button خاص
-  if(name==='mike') document.getElementById('mike-nav-btn')?.classList.add('active');
-  // إغلاق mobile menu
-  closeMobileMenu();
-  const ldr={home:ldHome,mike:ldMike,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs};
-  if(ldr[name]) ldr[name]();
-  setTimeout(initImgPickers, 100);
-}
-
 // ============================================================
 // AUTH
 // ============================================================
@@ -1873,13 +1898,32 @@ function setUser(user,tok){
   chkOnboard();
 }
 async function chkOnboard(){
-  const d=await api('/api/business/profile');
-  biz=d.profile||{};
-  if(!biz.onboarding_done){
+  // أولاً نتحقق من localStorage للسرعة
+  const localDone = localStorage.getItem('sos_onboarded');
+  if(localDone === '1'){
     document.getElementById('auth').style.display='none';
-    initOb();
-    document.getElementById('onboarding').style.display='block';
-  } else {
+    document.getElementById('onboarding').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    ldHome();
+    return;
+  }
+  // إذا لم يكن محفوظاً، نتحقق من الـ API
+  try {
+    const d=await api('/api/business/profile');
+    biz=d.profile||{};
+    if(biz.onboarding_done){
+      localStorage.setItem('sos_onboarded','1');
+      document.getElementById('auth').style.display='none';
+      document.getElementById('onboarding').style.display='none';
+      document.getElementById('dashboard').style.display='block';
+      ldHome();
+    } else {
+      document.getElementById('auth').style.display='none';
+      initOb();
+      document.getElementById('onboarding').style.display='block';
+    }
+  } catch(e) {
+    // إذا فشل الـ API ولدينا token، ندخل للداشبورد
     document.getElementById('auth').style.display='none';
     document.getElementById('onboarding').style.display='none';
     document.getElementById('dashboard').style.display='block';
@@ -1888,7 +1932,9 @@ async function chkOnboard(){
 }
 function logout(){
   token='';cu=null;
-  localStorage.removeItem('sos_token');localStorage.removeItem('sos_user');
+  localStorage.removeItem('sos_token');
+  localStorage.removeItem('sos_user');
+  localStorage.removeItem('sos_onboarded');
   document.getElementById('dashboard').style.display='none';
   document.getElementById('auth').style.display='flex';
 }
@@ -1897,12 +1943,36 @@ window.onload=()=>{const sv=localStorage.getItem('sos_user');if(token&&sv){cu=JS
 // ============================================================
 // ONBOARDING
 // ============================================================
-let obS=0,selBT='';
+let obS=0,selBT='',ob1CustomDesc='';
 function initOb(){
-  const types=[{id:'retail',n:'تجارة',i:'🛍️'},{id:'restaurant',n:'مطاعم',i:'🍽️'},{id:'real_estate',n:'عقارات',i:'🏠'},{id:'services',n:'خدمات',i:'🔧'},{id:'health',n:'صحة',i:'💆'},{id:'education',n:'تعليم',i:'📚'},{id:'fashion',n:'أزياء',i:'👗'},{id:'electronics',n:'إلكترونيات',i:'📱'},{id:'perfume',n:'عطور',i:'🌹'},{id:'furniture',n:'أثاث',i:'🛋️'},{id:'sports',n:'رياضة',i:'⚽'},{id:'other',n:'أخرى',i:'🏪'}];
+  const types=[
+    {id:'retail',n:'تجارة',i:'🛍️'},{id:'restaurant',n:'مطاعم',i:'🍽️'},
+    {id:'real_estate',n:'عقارات',i:'🏠'},{id:'services',n:'خدمات',i:'🔧'},
+    {id:'health',n:'صحة',i:'💆'},{id:'education',n:'تعليم',i:'📚'},
+    {id:'fashion',n:'أزياء',i:'👗'},{id:'electronics',n:'إلكترونيات',i:'📱'},
+    {id:'perfume',n:'عطور',i:'🌹'},{id:'furniture',n:'أثاث',i:'🛋️'},
+    {id:'sports',n:'رياضة',i:'⚽'},{id:'other',n:'أخرى',i:'🏪'}
+  ];
   document.getElementById('btg').innerHTML=types.map(t=>`<div class="btc" onclick="pickBT('${t.id}',this)"><div class="bi">${t.i}</div><div class="bn">${t.n}</div></div>`).join('');
 }
-function pickBT(id,el){selBT=id;document.querySelectorAll('.btc').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+function pickBT(id,el){
+  selBT=id;
+  document.querySelectorAll('.btc').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+async function saveOb1(){
+  // جمع نوع العمل من الاختيار
+  const customDesc = document.getElementById('ob1-custom')?.value.trim() || '';
+  ob1CustomDesc = customDesc;
+  // حفظ نوع العمل مؤقتاً
+  if(selBT || customDesc){
+    await api('/api/business/profile',{method:'PUT',body:JSON.stringify({
+      business_type: selBT || 'other',
+      business_desc: customDesc || ''
+    })});
+  }
+  nextStep();
+}
 function nextStep(){goOb(obS+1);}
 function goOb(n){
   document.getElementById('obs'+obS).classList.remove('active');
@@ -1913,9 +1983,18 @@ function goOb(n){
   document.getElementById('pd'+obS).classList.add('active');
 }
 async function saveOb2(){
-  const name=document.getElementById('obsn').value.trim(),desc=document.getElementById('obsd').value.trim(),wa=document.getElementById('obsw').value.trim();
+  const name=document.getElementById('obsn').value.trim();
+  const desc=document.getElementById('obsd').value.trim();
+  const wa=document.getElementById('obsw').value.trim();
   if(!name) return toast('⚠️ أدخل اسم متجرك');
-  await api('/api/business/profile',{method:'PUT',body:JSON.stringify({store_name:name,business_type:selBT,business_desc:desc,whatsapp_number:wa})});
+  // دمج الوصف الحر من الخطوة الأولى مع وصف الخطوة الثانية
+  const finalDesc = desc || ob1CustomDesc || '';
+  await api('/api/business/profile',{method:'PUT',body:JSON.stringify({
+    store_name:name,
+    business_type:selBT||'other',
+    business_desc:finalDesc,
+    whatsapp_number:wa
+  })});
   nextStep();
 }
 async function saveOb3(){
@@ -1925,6 +2004,7 @@ async function saveOb3(){
   finOb();
 }
 function finOb(){
+  localStorage.setItem('sos_onboarded','1');
   document.getElementById('onboarding').style.display='none';
   document.getElementById('dashboard').style.display='block';
   toast('🎉 تم إعداد نظامك بنجاح!');
@@ -3198,6 +3278,118 @@ async function generateText(){
 }
 
 // ============================================================
+// ============================================================
+// NAVIGATION HISTORY — سهم الرجوع
+// ============================================================
+const navHistory = [];
+let currentPage = 'home';
+
+function sp(name, btn) {
+  // حفظ الصفحة السابقة
+  if (currentPage && currentPage !== name) navHistory.push(currentPage);
+  currentPage = name;
+  // تحديث زر الرجوع
+  updateBackBtn();
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.si-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.mike-btn').forEach(b => b.classList.remove('active'));
+  const pg = document.getElementById('page-' + name);
+  if (pg) pg.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'mike') document.getElementById('mike-nav-btn')?.classList.add('active');
+  closeMobileMenu();
+  const ldr = {home:ldHome,mike:ldMike,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs};
+  if (ldr[name]) ldr[name]();
+  setTimeout(initImgPickers, 100);
+}
+
+function goBack() {
+  if (navHistory.length === 0) return sp('home', null);
+  const prev = navHistory.pop();
+  currentPage = prev;
+  updateBackBtn();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.si-btn').forEach(b => b.classList.remove('active'));
+  const pg = document.getElementById('page-' + prev);
+  if (pg) pg.classList.add('active');
+  const ldr = {home:ldHome,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs};
+  if (ldr[prev]) ldr[prev]();
+}
+
+function updateBackBtn() {
+  const btn = document.getElementById('global-back-btn');
+  if (btn) btn.style.display = navHistory.length > 0 ? 'inline-flex' : 'none';
+}
+
+// ============================================================
+// MIKE MICROPHONE — الميكروفون الصوتي
+// ============================================================
+let mikeRecognition = null;
+let mikeMicActive = false;
+
+function toggleMikeMic() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    toast('⚠️ المتصفح لا يدعم التعرف على الصوت — جرب Chrome');
+    return;
+  }
+  if (mikeMicActive) {
+    stopMikeMic();
+  } else {
+    startMikeMic();
+  }
+}
+
+function startMikeMic() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  mikeRecognition = new SpeechRecognition();
+  mikeRecognition.lang = 'ar-SA';
+  mikeRecognition.continuous = false;
+  mikeRecognition.interimResults = true;
+
+  mikeRecognition.onstart = () => {
+    mikeMicActive = true;
+    const btn = document.getElementById('mike-mic-btn');
+    if (btn) btn.classList.add('listening');
+    const hint = document.getElementById('mike-hint-text');
+    if (hint) hint.textContent = '🎤 يستمع... تكلم الآن';
+    document.getElementById('mike-input').placeholder = '🎤 يستمع...';
+  };
+
+  mikeRecognition.onresult = (e) => {
+    let transcript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    document.getElementById('mike-input').value = transcript;
+  };
+
+  mikeRecognition.onend = () => {
+    stopMikeMic();
+    // إرسال تلقائي إذا كان هناك نص
+    const txt = document.getElementById('mike-input').value.trim();
+    if (txt) setTimeout(() => sendMike(), 300);
+  };
+
+  mikeRecognition.onerror = (e) => {
+    stopMikeMic();
+    if (e.error === 'not-allowed') toast('⚠️ يرجى السماح بالوصول للميكروفون');
+    else toast('⚠️ تعذر التعرف على الصوت');
+  };
+
+  mikeRecognition.start();
+}
+
+function stopMikeMic() {
+  mikeMicActive = false;
+  if (mikeRecognition) { try { mikeRecognition.stop(); } catch(e) {} mikeRecognition = null; }
+  const btn = document.getElementById('mike-mic-btn');
+  if (btn) btn.classList.remove('listening');
+  const hint = document.getElementById('mike-hint-text');
+  if (hint) hint.textContent = 'Mike يستطيع: إضافة طلبات · منتجات · عملاء · نشر على المنصات · إرسال واتساب · تقارير فورية';
+  document.getElementById('mike-input').placeholder = 'قل لـ Mike ماذا تريد أو اضغط 🎤 للتحدث...';
+}
+
 // IMAGE PICKER — رفع الصور من الجهاز
 // ============================================================
 
