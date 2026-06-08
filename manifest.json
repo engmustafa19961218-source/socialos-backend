@@ -1,76 +1,17 @@
 {
   "name": "SocialOS",
   "short_name": "SocialOS",
-  "description": "منصة إدارة التواصل الاجتماعي والمبيعات",
+  "description": "نظام التشغيل الذكي للأعمال العربية",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#080b14",
+  "background_color": "#06080f",
   "theme_color": "#4f8ef7",
   "orientation": "portrait-primary",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
-    {
-      "src": "/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
-  "categories": ["business", "productivity"],
-  "shortcuts": [
-    {
-      "name": "الطلبات",
-      "short_name": "طلبات",
-      "description": "عرض الطلبات الجديدة",
-      "url": "/?page=orders",
-      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "إضافة طلب",
-      "short_name": "طلب جديد",
-      "description": "إضافة طلب جديد",
-      "url": "/?page=orders&action=new",
-      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "المنتجات",
-      "short_name": "منتجات",
-      "description": "إدارة المنتجات",
-      "url": "/?page=products",
-      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
-    }
-  ]
+  "categories": ["business", "productivity"]
 }
