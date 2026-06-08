@@ -532,6 +532,11 @@ try {
     alters.forEach(q => pool.query(q).catch(() => {}));
     // إضافة عمود phone للمستخدمين القدامى
     pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20) UNIQUE`).catch(() => {});
+    // إضافة أعمدة سياسة العربون
+    pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS deposit_policy VARCHAR(20) DEFAULT 'none'`).catch(() => {});
+    pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS deposit_value DECIMAL(10,2) DEFAULT 0`).catch(() => {});
+    pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS deposit_note TEXT DEFAULT ''`).catch(() => {});
+    pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS deposit_required BOOLEAN DEFAULT FALSE`).catch(() => {});
   }, 2000);
 
 } catch (e) {
@@ -680,13 +685,12 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 
 // نسيت كلمة المرور — طلب كود
 app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
-  const { identifier } = req.body; // email أو phone
+  const { identifier } = req.body;
   if (!identifier) return res.status(400).json({ success: false, message: 'البريد أو الهاتف مطلوب' });
 
   try {
     if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
 
-    // البحث عن المستخدم
     const cleanPhone = /^\d+$/.test(identifier.replace(/[+\s]/g,'')) ? identifier.replace(/[^\d+]/g,'') : null;
     let user;
     if (cleanPhone) {
@@ -697,33 +701,28 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
       user = r.rows[0];
     }
 
-    if (!user) {
-      // نرجع نجاح لحماية الخصوصية
-      return res.json({ success: true, message: 'إذا كان الحساب موجوداً ستصله رسالة' });
-    }
+    if (!user) return res.json({ success: true, message: 'إذا كان الحساب موجوداً ستصله رسالة' });
 
-    // توليد كود 6 أرقام
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 دقيقة
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // حذف الكودات القديمة
     await pool.query('DELETE FROM reset_codes WHERE identifier=$1', [identifier]);
+    await pool.query('INSERT INTO reset_codes (identifier, code, expires_at) VALUES ($1,$2,$3)', [identifier, code, expiresAt]);
 
-    // حفظ الكود
-    await pool.query(
-      'INSERT INTO reset_codes (identifier, code, expires_at) VALUES ($1,$2,$3)',
-      [identifier, code, expiresAt]
-    );
-
-    // في بيئة الإنتاج يُرسل عبر SMS أو email
-    // حالياً نعيده مباشرة للتطوير (يمكن إزالته لاحقاً)
     console.log(`Reset code for ${identifier}: ${code}`);
+
+    // إذا كان هاتف — نولّد رابط واتساب لإرسال الكود
+    let waLink = null;
+    if (cleanPhone) {
+      const msg = `مرحباً ${escapeHtml(user.name||'')} 👋\n\nكود إعادة تعيين كلمة المرور لـ SocialOS:\n\n*${code}*\n\nصالح لمدة 15 دقيقة فقط.\nإذا لم تطلب هذا الكود تجاهل الرسالة.`;
+      waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    }
 
     return res.json({
       success: true,
-      message: 'تم إرسال كود إعادة التعيين',
-      // في التطوير فقط — احذفه في الإنتاج
-      dev_code: process.env.NODE_ENV === 'development' ? code : undefined
+      message: cleanPhone ? 'سيُفتح واتساب لإرسال الكود' : 'تم إرسال الكود',
+      wa_link: waLink,
+      code_hint: code.substring(0,2) + '****'
     });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -959,66 +958,151 @@ app.post('/api/training/chat', authenticateToken, rateLimit(30, 60*1000), async 
   const userId = req.user.id;
   if (!message) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
 
-  let businessProfile = {}, employee = {}, knowledge = [], decisions = [];
+  let businessProfile = {}, employee = {}, knowledge = [], decisions = [], corrections = [], products = [];
   try {
     if (pool) {
-      const [bp, emp, kb, dm] = await Promise.all([
+      const [bp, emp, kb, dm, cor, prods] = await Promise.all([
         pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId]),
         pool.query('SELECT * FROM digital_employee WHERE user_id=$1', [userId]),
-        pool.query('SELECT title, content, type FROM knowledge_base WHERE user_id=$1 ORDER BY created_at DESC LIMIT 10', [userId]),
-        pool.query('SELECT decision, reason, context FROM decision_memory WHERE user_id=$1 AND is_active=true LIMIT 10', [userId])
+        pool.query('SELECT title, content, type FROM knowledge_base WHERE user_id=$1 ORDER BY created_at DESC LIMIT 15', [userId]),
+        pool.query('SELECT decision, reason, context FROM decision_memory WHERE user_id=$1 AND is_active=true LIMIT 15', [userId]),
+        pool.query('SELECT corrected_response, lesson FROM training_corrections WHERE user_id=$1 ORDER BY created_at DESC LIMIT 10', [userId]),
+        pool.query('SELECT name, price, description, stock FROM products WHERE user_id=$1 AND is_available=true LIMIT 20', [userId])
       ]);
       businessProfile = bp.rows[0] || {};
       employee = emp.rows[0] || {};
       knowledge = kb.rows;
       decisions = dm.rows;
+      corrections = cor.rows;
+      products = prods.rows;
     }
   } catch (e) {}
 
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
   if (!OPENROUTER_KEY) return res.status(500).json({ success: false, message: 'OpenRouter غير مفعّل' });
 
-  // Build system prompt based on mode
+  // ═══════════════════════════════════════════════════
+  // بناء الـ system prompt حسب الوضع
+  // ═══════════════════════════════════════════════════
   let systemPrompt = '';
-  if (mode === 'simulate_customer') {
-    systemPrompt = `أنت تلعب دور عميل يتواصل مع متجر "${businessProfile.store_name || 'المتجر'}".
-نوع العمل: ${businessProfile.business_type || 'غير محدد'}
-كن عميلاً حقيقياً: اسأل عن الأسعار، اعترض، تفاوض، أبدِ تردداً.
-لا تكشف أنك AI. كن طبيعياً وتلقائياً.`;
-  } else if (mode === 'evaluate') {
-    systemPrompt = `أنت مدرب أعمال خبير. مهمتك تقييم أداء الموظف الرقمي.
-فلسفة العمل: ${employee.philosophy || 'لم تُحدد بعد'}
-أسلوب البيع: ${employee.sales_style || 'لم يُحدد بعد'}
-قيّم الرد وأعطِ:
-1. النقاط الإيجابية
-2. نقاط التحسين
-3. درجة من 10
-4. ردّ أفضل مقترح
-كن صريحاً ومفيداً.`;
-  } else {
-    // Open training
-    systemPrompt = `أنت الموظف الرقمي الذكي لمتجر "${businessProfile.store_name || 'المتجر'}".
-أنت في جلسة تدريب مع صاحب العمل. تعلم منه وطبّق توجيهاته.
 
-معلومات العمل:
-- النشاط: ${businessProfile.business_type || 'غير محدد'}
-- الوصف: ${businessProfile.business_desc || ''}
-- أسلوب التواصل: ${businessProfile.communication_style || 'ودي وقريب'}
-- السياسات: ${businessProfile.policies || ''}
+  // ─── وضع خدمة العملاء الحقيقي ───
+  if (mode === 'customer') {
+    const stage = employee.trust_level >= 3 ? 'autonomous' : employee.trust_level >= 2 ? 'assisted' : 'supervised';
+    systemPrompt = `أنت الموظف الرقمي الذكي لمتجر "${escapeHtml(businessProfile.store_name||'المتجر')}".
+اسمك: ${escapeHtml(employee.name||'المساعد')}
+مهمتك: الرد على العملاء وإغلاق الصفقات بأسلوب صاحب العمل.
 
-فلسفتك الحالية: ${employee.philosophy || 'لم تُحدد بعد'}
-أسلوب بيعك: ${employee.sales_style || 'لم يُحدد بعد'}
+═══ هوية العمل ═══
+نوع النشاط: ${escapeHtml(businessProfile.business_type||'')}
+وصف العمل: ${escapeHtml(businessProfile.business_desc||'')}
+أسلوب التواصل: ${escapeHtml(businessProfile.communication_style||'ودي وقريب')}
+السياسات: ${escapeHtml(businessProfile.policies||'')}
 
-مركز المعرفة:
-${knowledge.map(k => `[${k.type}] ${k.title}: ${k.content.substring(0, 200)}`).join('\n') || 'فارغ'}
+═══ فلسفتك وأسلوبك ═══
+${escapeHtml(employee.philosophy||'كن ودياً ومحترفاً')}
+أسلوب البيع: ${escapeHtml(employee.sales_style||'استمع أولاً ثم اقترح')}
+كيفية التعامل مع الاعتراضات: ${escapeHtml(employee.objection_handling||'افهم السبب وقدم بديلاً')}
 
-قرارات مهمة:
-${decisions.map(d => `- ${d.decision} (السبب: ${d.reason})`).join('\n') || 'لا توجد'}
+═══ المنتجات المتاحة ═══
+${products.length ? products.map(p=>`- ${escapeHtml(p.name)}: ${p.price} (${escapeHtml(p.description||'')})`).join('\n') : 'لا منتجات مضافة بعد'}
+
+═══ مركز المعرفة ═══
+${knowledge.length ? knowledge.map(k=>`[${k.type}] ${escapeHtml(k.title)}: ${escapeHtml(k.content.substring(0,300))}`).join('\n') : 'فارغ'}
+
+═══ قرارات مهمة يجب تطبيقها ═══
+${decisions.length ? decisions.map(d=>`⚠️ ${escapeHtml(d.decision)} — السبب: ${escapeHtml(d.reason)}`).join('\n') : 'لا قرارات خاصة'}
+
+═══ دروس من التدريب ═══
+${corrections.length ? corrections.map(c=>`✓ ${escapeHtml(c.lesson||c.corrected_response.substring(0,150))}`).join('\n') : 'لا دروس بعد'}
+
+═══ قواعد صارمة ═══
+1. تحدث بأسلوب صاحب العمل وفلسفته دائماً
+2. طبّق القرارات المهمة بدقة ولا تتجاوزها
+3. لا تعطِ خصومات خارج السياسات المحددة
+4. لا تحذف بيانات أو تغير سياسات
+5. إذا كان الطلب خارج صلاحياتك أو معقداً، قل: "سأحول طلبك لصاحب العمل مباشرة"
+6. مرحلتك الحالية: ${stage === 'supervised' ? 'مراقبة (احرص على الدقة)' : stage === 'assisted' ? 'مساعدة (يمكن تصرف محدود)' : 'استقلالية (ثق بحكمك ضمن الحدود)'}
+7. أجب بالعربية دائماً بأسلوب طبيعي وودي`;
+
+  // ─── وضع محاكاة العميل ───
+  } else if (mode === 'simulate_customer') {
+    const scenarios = [
+      'عميل يسأل عن الأسعار ويريد خصماً',
+      'عميل يتردد في الشراء ويقارن بمنافسين',
+      'عميل يشكو من منتج سابق',
+      'عميل جديد يسأل عن التوصيل',
+      'عميل يريد كميات كبيرة ويتفاوض على السعر'
+    ];
+    const scenario = message.includes('سيناريو:') ? message : scenarios[Math.floor(Math.random() * scenarios.length)];
+    systemPrompt = `أنت تلعب دور عميل حقيقي يتواصل مع متجر "${escapeHtml(businessProfile.store_name||'المتجر')}".
+نوع المتجر: ${escapeHtml(businessProfile.business_type||'')}
+المنتجات: ${products.slice(0,5).map(p=>escapeHtml(p.name)).join('، ')||'منتجات متنوعة'}
+
+سيناريو محادثتك: ${typeof scenario === 'string' ? escapeHtml(scenario) : ''}
 
 قواعد:
-- أجب بطريقة تعكس ما تعلمته
-- إذا صحّح صاحب العمل ردك، اشكره واحفظ الدرس
-- اسأل عن سبب التصحيح لتتعلم أكثر`;
+- كن عميلاً حقيقياً طبيعياً، لا تكشف أنك AI
+- اسأل عن الأسعار والتوصيل والضمان
+- اعترض وتفاوض بشكل طبيعي
+- أبدِ اهتماماً حقيقياً أو تردداً حسب السيناريو
+- استخدم لغة عامية عراقية أو خليجية طبيعية`;
+
+  // ─── وضع التقييم ───
+  } else if (mode === 'evaluate') {
+    systemPrompt = `أنت مدرب أعمال خبير متخصص في المبيعات العربية.
+فلسفة المتجر: ${escapeHtml(businessProfile.business_desc||'')}
+أسلوب صاحب العمل: ${escapeHtml(employee.sales_style||'')}
+فلسفة الموظف: ${escapeHtml(employee.philosophy||'')}
+
+مهمتك: تقييم رد الموظف الرقمي وإعطاء:
+1. ✅ ما أجاد فيه
+2. ⚠️ ما يحتاج تحسيناً
+3. 💡 رد أفضل مقترح
+4. 📊 درجة من 10
+5. 🎯 درس يجب أن يتعلمه
+
+كن صريحاً وعملياً ومحدداً.`;
+
+  // ─── وضع "لماذا أجبت هكذا؟" ───
+  } else if (mode === 'explain') {
+    systemPrompt = `أنت الموظف الرقمي لمتجر "${escapeHtml(businessProfile.store_name||'المتجر')}".
+فلسفتك: ${escapeHtml(employee.philosophy||'')}
+أسلوبك: ${escapeHtml(employee.sales_style||'')}
+القرارات التي تطبقها: ${decisions.map(d=>escapeHtml(d.decision)).join('، ')||'لا قرارات خاصة'}
+
+صاحب العمل يسألك لماذا أجبت بطريقة معينة.
+اشرح تفكيرك بصراحة: ما الذي جعلك تختار هذا الرد؟ ما الذي طبّقته من فلسفة العمل؟ هل كنت متأكداً؟`;
+
+  // ─── وضع التدريب المفتوح ───
+  } else {
+    systemPrompt = `أنت الموظف الرقمي الذكي لمتجر "${escapeHtml(businessProfile.store_name||'المتجر')}".
+أنت في جلسة تدريب مع صاحب العمل — تعلم منه وطرح أسئلة وطبّق توجيهاته.
+
+معلومات العمل:
+- النشاط: ${escapeHtml(businessProfile.business_type||'')}
+- الوصف: ${escapeHtml(businessProfile.business_desc||'')}
+- أسلوب التواصل: ${escapeHtml(businessProfile.communication_style||'ودي وقريب')}
+- السياسات: ${escapeHtml(businessProfile.policies||'')}
+
+ما تعلمته حتى الآن:
+الفلسفة: ${escapeHtml(employee.philosophy||'لم تُحدد بعد')}
+أسلوب البيع: ${escapeHtml(employee.sales_style||'لم يُحدد بعد')}
+التعامل مع الاعتراضات: ${escapeHtml(employee.objection_handling||'لم يُحدد بعد')}
+
+مركز المعرفة:
+${knowledge.map(k=>`[${k.type}] ${escapeHtml(k.title)}: ${escapeHtml(k.content.substring(0,200))}`).join('\n')||'فارغ'}
+
+القرارات المهمة:
+${decisions.map(d=>`- ${escapeHtml(d.decision)}`).join('\n')||'لا توجد'}
+
+دروس من التصحيحات السابقة:
+${corrections.map(c=>`✓ ${escapeHtml(c.lesson||c.corrected_response.substring(0,100))}`).join('\n')||'لا دروس بعد'}
+
+قواعد:
+- عندما يصحح صاحب العمل ردك، اشكره واطلب منه توضيح السبب
+- اسأل أسئلة لتتعلم أكثر عن فلسفة العمل
+- بعد كل تصحيح قل: "فهمت، هل تريد مني تطبيق هذا في حالة [مثال مشابه]؟"`;
   }
 
   try {
@@ -1112,16 +1196,16 @@ app.get('/api/training/corrections', authenticateToken, async (req, res) => {
 // KNOWLEDGE BASE — مركز المعرفة
 // ============================================================
 app.post('/api/knowledge', authenticateToken, async (req, res) => {
-  const { title, content, type } = req.body;
+  const { title, content, type, file_url, tags } = req.body;
   const userId = req.user.id;
   if (!title || !content) return res.status(400).json({ success: false, message: 'العنوان والمحتوى مطلوبان' });
-  const validTypes = ['policy', 'faq', 'catalog', 'warranty', 'return', 'price_list', 'other'];
-  if (!validTypes.includes(type)) return res.status(400).json({ success: false, message: 'نوع غير صحيح' });
+  const validTypes = ['policy', 'faq', 'catalog', 'warranty', 'return', 'price_list', 'shipping', 'product_info', 'other'];
+  const safeType = validTypes.includes(type) ? type : 'other';
   try {
     if (pool) {
       const r = await pool.query(
-        'INSERT INTO knowledge_base (user_id, title, content, type) VALUES ($1,$2,$3,$4) RETURNING *',
-        [userId, title, content, type || 'other']
+        'INSERT INTO knowledge_base (user_id, title, content, type, file_url) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [userId, escapeHtml(title), content, safeType, file_url||'']
       );
       return res.json({ success: true, item: r.rows[0] });
     }
@@ -1129,12 +1213,16 @@ app.post('/api/knowledge', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/knowledge', authenticateToken, async (req, res) => {
-  const { type } = req.query;
+  const { type, search } = req.query;
   try {
     if (pool) {
       let q = 'SELECT * FROM knowledge_base WHERE user_id=$1';
       const params = [req.user.id];
       if (type) { q += ' AND type=$2'; params.push(type); }
+      if (search) {
+        q += ` AND (title ILIKE $${params.length+1} OR content ILIKE $${params.length+1})`;
+        params.push('%'+search+'%');
+      }
       q += ' ORDER BY created_at DESC';
       const r = await pool.query(q, params);
       return res.json({ success: true, items: r.rows });
@@ -1145,10 +1233,12 @@ app.get('/api/knowledge', authenticateToken, async (req, res) => {
 
 app.put('/api/knowledge/:id', authenticateToken, async (req, res) => {
   const { title, content, type } = req.body;
+  const validTypes = ['policy', 'faq', 'catalog', 'warranty', 'return', 'price_list', 'shipping', 'product_info', 'other'];
+  const safeType = validTypes.includes(type) ? type : 'other';
   try {
     if (pool) {
       await pool.query('UPDATE knowledge_base SET title=$1, content=$2, type=$3 WHERE id=$4 AND user_id=$5',
-        [title, content, type, req.params.id, req.user.id]);
+        [escapeHtml(title), content, safeType, req.params.id, req.user.id]);
       return res.json({ success: true });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
@@ -1158,6 +1248,97 @@ app.delete('/api/knowledge/:id', authenticateToken, async (req, res) => {
   try {
     if (pool) { await pool.query('DELETE FROM knowledge_base WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]); }
     return res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// بحث ذكي في المعرفة بالذكاء الاصطناعي
+app.post('/api/knowledge/search', authenticateToken, async (req, res) => {
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ success: false, message: 'query مطلوب' });
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+  try {
+    if (!pool) return res.json({ success: true, results: [], answer: '' });
+    const kb = await pool.query('SELECT * FROM knowledge_base WHERE user_id=$1 ORDER BY created_at DESC', [req.user.id]);
+    if (!kb.rows.length) return res.json({ success: true, results: [], answer: 'مركز المعرفة فارغ — أضف محتوى أولاً' });
+
+    const context = kb.rows.map(k => `[${k.type}] ${k.title}:\n${k.content.substring(0,400)}`).join('\n\n---\n\n');
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 600,
+        messages: [{
+          role: 'user',
+          content: `أنت مساعد يبحث في مركز معرفة متجر عربي.
+
+مركز المعرفة:
+${context}
+
+السؤال: ${escapeHtml(query)}
+
+أجب بناءً على المعلومات الموجودة فقط. إذا لم تجد الإجابة قل ذلك صراحةً.
+أجب بإيجاز ووضوح باللغة العربية.`
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    const answer = aiData.choices?.[0]?.message?.content || '';
+
+    // إرجاع العناصر ذات الصلة
+    const relevant = kb.rows.filter(k =>
+      k.title.toLowerCase().includes(query.toLowerCase()) ||
+      k.content.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 5);
+
+    res.json({ success: true, answer, results: relevant });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// رفع PDF وقراءته
+app.post('/api/knowledge/upload-pdf', authenticateToken, async (req, res) => {
+  const { pdf_base64, title, type } = req.body;
+  if (!pdf_base64 || !title) return res.status(400).json({ success: false, message: 'PDF والعنوان مطلوبان' });
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح لاستخراج النص' });
+  try {
+    // استخراج النص من PDF بالذكاء الاصطناعي
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: pdf_base64.replace(/^data:application\/pdf;base64,/, '') }
+            },
+            { type: 'text', text: 'استخرج كل النصوص المهمة من هذا المستند بالعربية. ركّز على السياسات والمعلومات العملية.' }
+          ]
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    const extractedText = aiData.choices?.[0]?.message?.content || '';
+
+    if (!extractedText) return res.status(500).json({ success: false, message: 'لم يتم استخراج نص من الملف' });
+
+    // حفظ في قاعدة البيانات
+    if (pool) {
+      const validTypes = ['policy','faq','catalog','warranty','return','price_list','shipping','product_info','other'];
+      const safeType = validTypes.includes(type) ? type : 'other';
+      const r = await pool.query(
+        'INSERT INTO knowledge_base (user_id, title, content, type) VALUES ($1,$2,$3,$4) RETURNING *',
+        [req.user.id, escapeHtml(title), extractedText, safeType]
+      );
+      return res.json({ success: true, item: r.rows[0], extracted_text: extractedText.substring(0, 300) });
+    }
+    res.json({ success: true, extracted_text: extractedText });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -1179,12 +1360,13 @@ app.post('/api/decisions', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/decisions', authenticateToken, async (req, res) => {
-  const { context, phone } = req.query;
+  const { context, phone, all } = req.query;
   try {
     if (pool) {
-      let q = 'SELECT * FROM decision_memory WHERE user_id=$1 AND is_active=true';
+      let q = 'SELECT * FROM decision_memory WHERE user_id=$1';
+      if (!all) q += ' AND is_active=true';
       const params = [req.user.id];
-      if (context) { q += ' AND context=$2'; params.push(context); }
+      if (context) { q += ` AND context=$${params.length+1}`; params.push(context); }
       if (phone) { q += ` AND customer_phone=$${params.length+1}`; params.push(phone); }
       q += ' ORDER BY created_at DESC';
       const r = await pool.query(q, params);
@@ -1192,6 +1374,14 @@ app.get('/api/decisions', authenticateToken, async (req, res) => {
     }
   } catch (e) {}
   res.json({ success: true, decisions: [] });
+});
+
+app.put('/api/decisions/:id', authenticateToken, async (req, res) => {
+  const { is_active } = req.body;
+  try {
+    if (pool) await pool.query('UPDATE decision_memory SET is_active=$1 WHERE id=$2 AND user_id=$3', [is_active, req.params.id, req.user.id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.delete('/api/decisions/:id', authenticateToken, async (req, res) => {
@@ -1287,6 +1477,17 @@ ${decisions.map(d => `• ${d.decision} ← ${d.reason}`).join('\n') || 'لا ت
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
   if (!OPENROUTER_KEY) return res.status(500).json({ success: false, message: 'OpenRouter غير مفعّل' });
 
+  // ─── تعزيز الـ system prompt بتحويل للبشر ───
+  const enhancedPrompt = systemPrompt + `
+
+━━━ التحويل للبشر ━━━
+إذا وجدت أن الحالة تحتاج تدخل صاحب العمل (شكوى جدية، طلب استثنائي، خلاف في الأسعار، موقف حساس)، أضف في نهاية ردك:
+[TRANSFER_TO_HUMAN: سبب التحويل]
+
+━━━ صلاحياتك ━━━
+- يمكنك: الإجابة عن الأسئلة، شرح المنتجات، أخذ معلومات الطلب
+- لا يمكنك: تغيير الأسعار، منح خصومات خارج السياسة، الوعد بما لم يوافق عليه صاحب العمل`;
+
   try {
     const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -1294,23 +1495,37 @@ ${decisions.map(d => `• ${d.decision} ← ${d.reason}`).join('\n') || 'لا ت
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4-5',
         max_tokens: 2000,
-        messages: [{ role: 'system', content: systemPrompt }, ...agentConversations[userId].filter(m => m.role)]
+        messages: [{ role: 'system', content: enhancedPrompt }, ...agentConversations[userId].filter(m => m.role)]
       })
     });
     const aiData = await aiRes.json();
     if (aiData.error) return res.json({ success: false, message: aiData.error.message });
-    const response = aiData.choices?.[0]?.message?.content || '';
+
+    let response = aiData.choices?.[0]?.message?.content || '';
+    let transferReason = null;
+    let needsHuman = false;
+
+    // استخراج تحويل للبشر
+    const transferMatch = response.match(/\[TRANSFER_TO_HUMAN:\s*(.*?)\]/s);
+    if (transferMatch) {
+      transferReason = transferMatch[1].trim();
+      needsHuman = true;
+      response = response.replace(/\[TRANSFER_TO_HUMAN:.*?\]/s, '').trim();
+      // إشعار صاحب العمل
+      if (pool) await notify(userId, '🔔 تحويل للبشر', `عميل يحتاج تدخلك: ${escapeHtml(transferReason.substring(0,100))}`, 'warning');
+    }
+
     agentConversations[userId].push({ role: 'assistant', content: response });
     if (pool) await pool.query('UPDATE digital_employee SET total_interactions=total_interactions+1 WHERE user_id=$1', [userId]);
 
-    // Detect action type
+    // كشف نوع الإجراء
     let action = null;
     const lm = safeMessage.toLowerCase();
     if (lm.includes('طلب') && (lm.includes('أضف')||lm.includes('جديد'))) action = { type: 'new_order' };
     else if (lm.includes('منشور')||lm.includes('اكتب')||lm.includes('محتوى')) action = { type: 'create_post', content: response };
     else if (lm.includes('تقرير')||lm.includes('إحصائيات')) action = { type: 'report' };
 
-    return res.json({ success: true, response, action });
+    return res.json({ success: true, response, action, needs_human: needsHuman, transfer_reason: transferReason });
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -1967,42 +2182,72 @@ app.get('/api/security/status', authenticateToken, (req, res) => {
 app.post('/api/backup/create', authenticateToken, async (req, res) => {
   const userId = req.user.id;
   try {
-    if (pool) {
-      const [bp, emp, products, customers, orders, knowledge, decisions, coupons] = await Promise.all([
-        pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId]),
-        pool.query('SELECT * FROM digital_employee WHERE user_id=$1', [userId]),
-        pool.query('SELECT * FROM products WHERE user_id=$1', [userId]),
-        pool.query('SELECT * FROM customers WHERE user_id=$1', [userId]),
-        pool.query('SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 500', [userId]),
-        pool.query('SELECT * FROM knowledge_base WHERE user_id=$1', [userId]),
-        pool.query('SELECT * FROM decision_memory WHERE user_id=$1', [userId]),
-        pool.query('SELECT * FROM coupons WHERE user_id=$1', [userId])
-      ]);
-      const backupData = JSON.stringify({
-        timestamp: new Date().toISOString(),
-        business_profile: bp.rows[0],
-        digital_employee: emp.rows[0],
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    const [bp, emp, products, customers, orders, knowledge, decisions, coupons, corrections, sessions, identity, loyalty] = await Promise.all([
+      pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM digital_employee WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM products WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM customers WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 500', [userId]),
+      pool.query('SELECT * FROM knowledge_base WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM decision_memory WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM coupons WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM training_corrections WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100', [userId]),
+      pool.query('SELECT * FROM training_sessions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20', [userId]),
+      pool.query('SELECT * FROM store_identity WHERE user_id=$1', [userId]).catch(()=>({rows:[]})),
+      pool.query('SELECT * FROM loyalty_points WHERE user_id=$1', [userId]).catch(()=>({rows:[]}))
+    ]);
+
+    const backupData = JSON.stringify({
+      version: '2.0',
+      timestamp: new Date().toISOString(),
+      user_id: userId,
+      sections: {
+        business_profile: bp.rows[0] || {},
+        digital_employee: emp.rows[0] || {},
+        store_identity: identity.rows[0] || {},
         products: products.rows,
         customers: customers.rows,
         orders: orders.rows,
         knowledge_base: knowledge.rows,
         decision_memory: decisions.rows,
-        coupons: coupons.rows
-      });
-      const r = await pool.query(
-        'INSERT INTO backups (user_id, type, data, size) VALUES ($1,$2,$3,$4) RETURNING id, created_at',
-        [userId, 'full', backupData, backupData.length]
-      );
-      await auditLog(userId, 'create_backup', 'backup', r.rows[0].id, `Size: ${backupData.length} bytes`, req.ip);
-      return res.json({ success: true, backup_id: r.rows[0].id, created_at: r.rows[0].created_at, size: backupData.length });
-    }
+        coupons: coupons.rows,
+        training_corrections: corrections.rows,
+        training_sessions: sessions.rows,
+        loyalty_points: loyalty.rows
+      },
+      stats: {
+        products: products.rows.length,
+        customers: customers.rows.length,
+        orders: orders.rows.length,
+        knowledge: knowledge.rows.length,
+        decisions: decisions.rows.length,
+        corrections: corrections.rows.length
+      }
+    });
+
+    const r = await pool.query(
+      'INSERT INTO backups (user_id, type, data, size) VALUES ($1,$2,$3,$4) RETURNING id, created_at',
+      [userId, 'full', backupData, backupData.length]
+    );
+    await auditLog(userId, 'create_backup', 'backup', r.rows[0].id, `Full backup ${(backupData.length/1024).toFixed(1)}KB`, req.ip);
+    await notify(userId, '💾 نسخة احتياطية', 'تم إنشاء نسخة احتياطية كاملة', 'success');
+
+    return res.json({
+      success: true,
+      backup_id: r.rows[0].id,
+      created_at: r.rows[0].created_at,
+      size: backupData.length,
+      stats: JSON.parse(backupData).stats
+    });
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.get('/api/backup/list', authenticateToken, async (req, res) => {
   try {
     if (pool) {
-      const r = await pool.query('SELECT id, type, size, created_at FROM backups WHERE user_id=$1 ORDER BY created_at DESC LIMIT 10', [req.user.id]);
+      const r = await pool.query('SELECT id, type, size, created_at FROM backups WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20', [req.user.id]);
       return res.json({ success: true, backups: r.rows });
     }
   } catch (e) {}
@@ -2014,11 +2259,86 @@ app.get('/api/backup/:id/download', authenticateToken, async (req, res) => {
     if (pool) {
       const r = await pool.query('SELECT * FROM backups WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
       if (!r.rows.length) return res.status(404).json({ message: 'النسخة غير موجودة' });
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="socialos-backup-${req.params.id}.json"`);
+      const date = new Date(r.rows[0].created_at).toISOString().split('T')[0];
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="socialos-backup-${date}.json"`);
       return res.send(r.rows[0].data);
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// استيراد نسخة احتياطية
+app.post('/api/backup/restore', authenticateToken, async (req, res) => {
+  const { backup_data, sections } = req.body;
+  if (!backup_data) return res.status(400).json({ success: false, message: 'بيانات النسخة مطلوبة' });
+  const userId = req.user.id;
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    let data;
+    try { data = typeof backup_data === 'string' ? JSON.parse(backup_data) : backup_data; } catch { return res.status(400).json({ success: false, message: 'تنسيق النسخة غير صالح' }); }
+
+    // التحقق من أن النسخة تخص نفس المستخدم أو نسخة عامة
+    const src = data.sections || data; // دعم النسختين القديمة والجديدة
+    const restored = [];
+
+    // استيراد الأقسام المطلوبة فقط
+    const toRestore = sections || ['business_profile','digital_employee','knowledge_base','decision_memory','training_corrections'];
+
+    if (toRestore.includes('business_profile') && src.business_profile) {
+      const bp = src.business_profile;
+      await pool.query(`INSERT INTO business_profile (user_id,store_name,business_type,business_desc,target_audience,communication_style,policies,whatsapp_number,onboarding_done)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true) ON CONFLICT(user_id) DO UPDATE SET
+        store_name=$2,business_type=$3,business_desc=$4,target_audience=$5,communication_style=$6,policies=$7,whatsapp_number=$8`,
+        [userId,bp.store_name||'',bp.business_type||'',bp.business_desc||'',bp.target_audience||'',bp.communication_style||'',bp.policies||'',bp.whatsapp_number||'']);
+      restored.push('بيانات المتجر');
+    }
+
+    if (toRestore.includes('digital_employee') && src.digital_employee) {
+      const emp = src.digital_employee;
+      await pool.query(`INSERT INTO digital_employee (user_id,name,personality,sales_style,philosophy,objection_handling,boundaries)
+        VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(user_id) DO UPDATE SET
+        name=$2,personality=$3,sales_style=$4,philosophy=$5,objection_handling=$6,boundaries=$7`,
+        [userId,emp.name||'',emp.personality||'',emp.sales_style||'',emp.philosophy||'',emp.objection_handling||'',emp.boundaries||'']);
+      restored.push('الموظف الرقمي');
+    }
+
+    if (toRestore.includes('knowledge_base') && src.knowledge_base?.length) {
+      for (const k of src.knowledge_base.slice(0,100)) {
+        await pool.query('INSERT INTO knowledge_base (user_id,title,content,type) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+          [userId, escapeHtml(k.title||''), k.content||'', k.type||'other']).catch(()=>{});
+      }
+      restored.push(`مركز المعرفة (${src.knowledge_base.length})`);
+    }
+
+    if (toRestore.includes('decision_memory') && src.decision_memory?.length) {
+      for (const d of src.decision_memory.slice(0,100)) {
+        await pool.query('INSERT INTO decision_memory (user_id,decision,reason,context,is_active) VALUES ($1,$2,$3,$4,true) ON CONFLICT DO NOTHING',
+          [userId, d.decision||'', d.reason||'', d.context||'general']).catch(()=>{});
+      }
+      restored.push(`القرارات (${src.decision_memory.length})`);
+    }
+
+    if (toRestore.includes('training_corrections') && src.training_corrections?.length) {
+      for (const c of src.training_corrections.slice(0,50)) {
+        await pool.query('INSERT INTO training_corrections (user_id,original_response,corrected_response,lesson) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+          [userId, c.original_response||'', c.corrected_response||'', c.lesson||'']).catch(()=>{});
+      }
+      restored.push(`التصحيحات (${src.training_corrections.length})`);
+    }
+
+    if (toRestore.includes('products') && src.products?.length) {
+      for (const p of src.products.slice(0,200)) {
+        await pool.query('INSERT INTO products (user_id,name,description,price,stock,category,is_available) VALUES ($1,$2,$3,$4,$5,$6,true) ON CONFLICT DO NOTHING',
+          [userId, escapeHtml(p.name||''), escapeHtml(p.description||''), parseFloat(p.price)||0, parseInt(p.stock)||0, escapeHtml(p.category||'عام')]).catch(()=>{});
+      }
+      restored.push(`المنتجات (${src.products.length})`);
+    }
+
+    await auditLog(userId, 'restore_backup', 'backup', null, `Restored: ${restored.join(', ')}`, req.ip);
+    await notify(userId, '💾 استيراد نسخة', `تم استيراد: ${restored.join('، ')}`, 'success');
+    res.json({ success: true, restored, message: `تم استيراد: ${restored.join('، ')}` });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ============================================================
@@ -2129,29 +2449,166 @@ app.get('/store/:userId', async (req, res) => {
   const { userId } = req.params;
   if (!/^\d+$/.test(userId)) return res.status(400).send('<h1>رابط غير صحيح</h1>');
   try {
-    if (pool) {
-      const [user, products, bp] = await Promise.all([
-        pool.query('SELECT name, avatar_url FROM users WHERE id=$1', [userId]),
-        pool.query('SELECT * FROM products WHERE user_id=$1 AND is_available=true ORDER BY category, created_at DESC', [userId]),
-        pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId])
-      ]);
-      if (!user.rows.length) return res.status(404).send('<h1>المتجر غير موجود</h1>');
-      const owner = user.rows[0];
-      const profile = bp.rows[0] || {};
-      const storeName = escapeHtml(profile.store_name || owner.name || 'متجر');
-      const cur = escapeHtml(profile.currency || 'IQD');
-      const prods = products.rows;
-      const categories = [...new Set(prods.map(p => p.category).filter(Boolean))];
-      const prodsJson = JSON.stringify(prods.map(p => ({ id: p.id, name: p.name, description: p.description||'', price: parseFloat(p.price)||0, stock: parseInt(p.stock)||0, category: p.category||'', image_url: (p.image_url||'').startsWith('https://')?p.image_url:'' })));
+    if (!pool) return res.status(503).send('<h1>الخدمة غير متاحة</h1>');
+    const [user, products, bp, identity] = await Promise.all([
+      pool.query('SELECT name, avatar_url FROM users WHERE id=$1', [userId]),
+      pool.query('SELECT * FROM products WHERE user_id=$1 AND is_available=true ORDER BY category, created_at DESC', [userId]),
+      pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId]),
+      pool.query('SELECT * FROM store_identity WHERE user_id=$1', [userId]).catch(()=>({rows:[]}))
+    ]);
+    if (!user.rows.length) return res.status(404).send('<h1>المتجر غير موجود</h1>');
+    const owner = user.rows[0];
+    const profile = bp.rows[0] || {};
+    const id = identity.rows[0] || {};
+    const storeName = escapeHtml(profile.store_name || owner.name || 'متجر');
+    const cur = escapeHtml(profile.currency || 'IQD');
+    const prods = products.rows;
+    const categories = [...new Set(prods.map(p => p.category).filter(Boolean))];
+    const prodsJson = JSON.stringify(prods.map(p => ({
+      id: p.id,
+      name: escapeHtml(p.name||''),
+      description: escapeHtml(p.description||''),
+      price: parseFloat(p.price)||0,
+      stock: parseInt(p.stock)||0,
+      category: escapeHtml(p.category||''),
+      image_url: (p.image_url||'').startsWith('https://') ? p.image_url : ''
+    })));
 
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${storeName}</title><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;background:#080b14;color:#e8edf5;direction:rtl}.header{background:linear-gradient(135deg,#0d1424,#111827);padding:28px 20px;text-align:center;border-bottom:1px solid #1e2a40}.store-name{font-size:1.6rem;font-weight:900;margin-bottom:6px}.store-desc{color:#6b7a99;font-size:.85rem}.sticky-bar{position:sticky;top:0;background:rgba(8,11,20,.95);backdrop-filter:blur(16px);border-bottom:1px solid #1e2a40;padding:10px 16px;z-index:100}.search-wrap{display:flex;align-items:center;gap:8px;background:#161d2e;border:1px solid #1e2a40;border-radius:12px;padding:8px 14px;margin-bottom:8px}.search-wrap input{flex:1;background:transparent;border:none;color:#e8edf5;font-family:Tajawal,sans-serif;font-size:.9rem;outline:none}.cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.cat-btn{padding:5px 14px;border-radius:20px;border:1px solid #1e2a40;background:#161d2e;color:#6b7a99;cursor:pointer;font-family:Tajawal,sans-serif;font-size:.78rem;font-weight:700;white-space:nowrap}.cat-btn.active{background:#4f8ef7;border-color:#4f8ef7;color:#fff}.container{max-width:960px;margin:0 auto;padding:20px 14px 100px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}.card{background:#0f1420;border:1px solid #1e2a40;border-radius:14px;overflow:hidden;cursor:pointer;transition:all .2s}.card:hover{border-color:#4f8ef7;transform:translateY(-2px)}.pimg{height:140px;background:#161d2e;display:flex;align-items:center;justify-content:center;font-size:2.2rem;overflow:hidden;position:relative}.pimg img{width:100%;height:100%;object-fit:cover}.pinfo{padding:10px}.pname{font-weight:700;font-size:.84rem;margin-bottom:4px}.pprice{color:#4f8ef7;font-weight:900;font-size:.88rem}.cart-float{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) scale(.95);background:linear-gradient(135deg,#4f8ef7,#7c3aed);border-radius:18px;padding:12px 22px;display:flex;align-items:center;gap:10px;cursor:pointer;z-index:200;opacity:0;pointer-events:none;transition:all .3s}.cart-float.show{opacity:1;pointer-events:all;transform:translateX(-50%) scale(1)}.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;align-items:flex-end;justify-content:center}.overlay.show{display:flex}.sheet{background:#0f1420;border-radius:20px 20px 0 0;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;padding:20px}.inp{width:100%;background:#161d2e;border:1px solid #1e2a40;border-radius:10px;padding:11px 14px;color:#e8edf5;font-size:.9rem;font-family:Tajawal,sans-serif;margin-bottom:10px;outline:none}.btn{width:100%;padding:13px;background:linear-gradient(135deg,#4f8ef7,#7c3aed);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;margin-top:6px}.btn2{width:100%;padding:11px;background:transparent;border:1px solid #1e2a40;color:#6b7a99;border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;margin-top:6px}</style></head><body>
-<div class="header"><div class="store-name">${storeName}</div>${profile.business_desc?`<div class="store-desc">${escapeHtml(profile.business_desc)}</div>`:''}</div>
-<div class="sticky-bar"><div class="search-wrap"><span style="color:#6b7a99">🔍</span><input id="si" placeholder="ابحث..." oninput="filt()"></div><div class="cats"><button class="cat-btn active" onclick="fCat('',this)">الكل</button>${categories.map(c=>`<button class="cat-btn" onclick="fCat(${JSON.stringify(escapeHtml(c))},this)">${escapeHtml(c)}</button>`).join('')}</div></div>
-<div class="container"><div class="grid" id="grid"></div></div>
-<div class="cart-float" id="cf" onclick="openCart()"><span>🛒</span><span id="cc">0</span><span id="ct">0 ${cur}</span><span style="font-size:.8rem;opacity:.8">السلة ←</span></div>
-<div class="overlay" id="co" onclick="if(event.target===this)closeCo()"><div class="sheet"><div style="width:40px;height:4px;background:#1e2a40;border-radius:2px;margin:0 auto 16px"></div><h2 style="margin-bottom:14px">🛒 السلة</h2><div id="ci"></div><button class="btn" onclick="openOrder()">متابعة الطلب</button><button class="btn2" onclick="closeCo()">متابعة التسوق</button></div></div>
-<div class="overlay" id="oo" onclick="if(event.target===this)closeOo()"><div class="sheet"><div style="width:40px;height:4px;background:#1e2a40;border-radius:2px;margin:0 auto 16px"></div><div id="oc"><h2 style="margin-bottom:14px">📝 تفاصيل الطلب</h2><input class="inp" id="cn" placeholder="اسمك *"><input class="inp" id="cp" placeholder="هاتفك *" dir="ltr"><input class="inp" id="ca" placeholder="العنوان (اختياري)"><textarea class="inp" id="cno" placeholder="ملاحظات..." style="min-height:60px;resize:none"></textarea><div id="os" style="margin:8px 0"></div><button class="btn" id="sb" onclick="submitO()">✅ تأكيد الطلب</button><button class="btn2" onclick="closeOo()">رجوع</button></div></div></div>
+    // ألوان المتجر من الهوية
+    const c1 = id.primary_color || '#4f8ef7';
+    const c2 = id.secondary_color || '#7c3aed';
+    const c3 = id.accent_color || '#00d4aa';
+    const logoUrl = id.logo_url || owner.avatar_url || '';
+    const coverUrl = id.cover_url || '';
+    const fontName = id.font_name || 'Tajawal';
+    const watermark = escapeHtml(id.watermark_text || storeName);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="${c1}">
+<title>${storeName}</title>
+<link href="https://fonts.googleapis.com/css2?family=${fontName.replace(' ','+')}:wght@400;700;900&family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--c1:${c1};--c2:${c2};--c3:${c3};}
+body{font-family:'${fontName}',Tajawal,sans-serif;background:#06080f;color:#e2e8f5;direction:rtl;min-height:100vh}
+/* HEADER */
+.header{position:relative;background:linear-gradient(135deg,#0a0e18,#111827);border-bottom:1px solid rgba(255,255,255,.07);overflow:hidden}
+.cover{width:100%;height:160px;object-fit:cover;display:block;opacity:.5}
+.cover-placeholder{height:100px;background:linear-gradient(135deg,var(--c1),var(--c2));opacity:.15}
+.header-inner{padding:20px 18px 22px;text-align:center;position:relative}
+.store-logo{width:70px;height:70px;border-radius:18px;object-fit:cover;border:3px solid var(--c1);box-shadow:0 4px 20px rgba(0,0,0,.4);margin:-35px auto 12px;display:block;background:var(--c1)}
+.store-logo-placeholder{width:70px;height:70px;border-radius:18px;background:linear-gradient(135deg,var(--c1),var(--c2));display:flex;align-items:center;justify-content:center;font-size:1.6rem;border:3px solid rgba(255,255,255,.1);margin:12px auto;font-weight:900;color:#fff}
+.store-name{font-size:1.5rem;font-weight:900;margin-bottom:5px;background:linear-gradient(135deg,#fff,var(--c1));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.store-desc{color:rgba(255,255,255,.45);font-size:.82rem;line-height:1.5}
+.store-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:4px 11px;font-size:.74rem;margin-top:8px;color:rgba(255,255,255,.5)}
+/* NAV */
+.nav-bar{position:sticky;top:0;background:rgba(6,8,15,.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06);z-index:100;padding:10px 14px}
+.search-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 14px;margin-bottom:9px}
+.search-row input{flex:1;background:transparent;border:none;color:#e2e8f5;font-family:inherit;font-size:.88rem;outline:none}
+.search-row input::placeholder{color:rgba(255,255,255,.3)}
+.cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.cats::-webkit-scrollbar{display:none}
+.cat-btn{padding:5px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.45);cursor:pointer;font-family:inherit;font-size:.77rem;font-weight:700;white-space:nowrap;transition:all .18s}
+.cat-btn.active{background:var(--c1);border-color:var(--c1);color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+/* GRID */
+.container{max-width:960px;margin:0 auto;padding:16px 12px 110px}
+.section-title{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:11px;padding-right:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:11px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .22s;position:relative}
+.card:hover{border-color:var(--c1);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.card:active{transform:scale(.97)}
+.pimg{height:145px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:2.2rem;overflow:hidden;position:relative}
+.pimg img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+.card:hover .pimg img{transform:scale(1.05)}
+.pinfo{padding:10px 11px 11px}
+.pname{font-weight:700;font-size:.84rem;margin-bottom:4px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pprice{color:var(--c1);font-weight:900;font-size:.9rem}
+.pstock{font-size:.68rem;color:rgba(255,255,255,.3);margin-top:3px}
+.out-badge{position:absolute;top:8px;right:8px;background:rgba(240,64,96,.85);color:#fff;border-radius:6px;padding:2px 7px;font-size:.68rem;font-weight:700}
+/* CART FLOAT */
+.cart-float{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(30px);background:linear-gradient(135deg,var(--c1),var(--c2));border-radius:20px;padding:12px 22px;display:flex;align-items:center;gap:10px;cursor:pointer;z-index:200;opacity:0;pointer-events:none;transition:all .3s cubic-bezier(.16,1,.3,1);box-shadow:0 8px 32px rgba(0,0,0,.4);font-weight:700}
+.cart-float.show{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
+/* OVERLAYS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px)}
+.overlay.show{display:flex}
+.sheet{background:#0a0e18;border-radius:22px 22px 0 0;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;padding:20px 18px 30px;border-top:1px solid rgba(255,255,255,.08)}
+.handle{width:40px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:0 auto 18px}
+.inp{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:11px;padding:11px 14px;color:#e2e8f5;font-size:.9rem;font-family:inherit;margin-bottom:9px;outline:none;transition:border-color .2s}
+.inp:focus{border-color:var(--c1)}
+.btn-main{width:100%;padding:13px;background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;border:none;border-radius:13px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;transition:all .2s}
+.btn-main:hover{opacity:.9;transform:translateY(-1px)}
+.btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-sec{width:100%;padding:11px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;color:rgba(255,255,255,.25);grid-column:1/-1}
+/* WATERMARK */
+.watermark{text-align:center;color:rgba(255,255,255,.15);font-size:.7rem;padding:12px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="header">
+  ${coverUrl ? `<img class="cover" src="${escapeHtml(coverUrl)}" alt="غلاف">` : '<div class="cover-placeholder"></div>'}
+  <div class="header-inner">
+    ${logoUrl ? `<img class="store-logo" src="${escapeHtml(logoUrl)}" alt="شعار">` : `<div class="store-logo-placeholder">${storeName.charAt(0)}</div>`}
+    <div class="store-name">${storeName}</div>
+    ${profile.business_desc ? `<div class="store-desc">${escapeHtml(profile.business_desc)}</div>` : ''}
+    <div class="store-badge">🛍️ ${prods.length} منتج متاح</div>
+  </div>
+</div>
+
+<div class="nav-bar">
+  <div class="search-row"><span style="color:rgba(255,255,255,.3)">🔍</span><input id="si" placeholder="ابحث في المنتجات..." oninput="filt()"></div>
+  <div class="cats">
+    <button class="cat-btn active" onclick="fCat('',this)">الكل</button>
+    ${categories.map(c=>`<button class="cat-btn" onclick="fCat(${JSON.stringify(escapeHtml(c))},this)">${escapeHtml(c)}</button>`).join('')}
+  </div>
+</div>
+
+<div class="container">
+  <div class="section-title" id="grid-label">جميع المنتجات (${prods.length})</div>
+  <div class="grid" id="grid"></div>
+  <div class="watermark">${watermark}</div>
+</div>
+
+<div class="cart-float" id="cf" onclick="openCart()">
+  <span>🛒</span><span id="cc">0</span><span style="font-size:.75rem;opacity:.8">منتج</span>
+  <span id="ct" style="font-weight:900">0</span><span style="font-size:.75rem">${cur}</span>
+  <span style="font-size:.8rem;opacity:.75">اطلب الآن ←</span>
+</div>
+
+<!-- السلة -->
+<div class="overlay" id="co" onclick="if(event.target===this)closeCo()">
+  <div class="sheet">
+    <div class="handle"></div>
+    <h2 style="margin-bottom:14px;font-size:1.1rem">🛒 السلة</h2>
+    <div id="ci"></div>
+    <button class="btn-main" onclick="openOrder()">متابعة الطلب ←</button>
+    <button class="btn-sec" onclick="closeCo()">متابعة التسوق</button>
+  </div>
+</div>
+
+<!-- الطلب -->
+<div class="overlay" id="oo" onclick="if(event.target===this)closeOo()">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div id="oc">
+      <h2 style="margin-bottom:14px;font-size:1.1rem">📝 تفاصيل الطلب</h2>
+      <input class="inp" id="cn" placeholder="اسمك الكريم *">
+      <input class="inp" id="cp" placeholder="رقم هاتفك *" dir="ltr" type="tel">
+      <input class="inp" id="ca" placeholder="عنوان التوصيل (اختياري)">
+      <textarea class="inp" id="cno" placeholder="ملاحظات للبائع..." style="min-height:65px;resize:none"></textarea>
+      <div id="os" style="margin:10px 0"></div>
+      <button class="btn-main" id="sb" onclick="submitO()">✅ تأكيد الطلب</button>
+      <button class="btn-sec" onclick="closeOo()">رجوع</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const UID=${parseInt(userId)},CUR=${JSON.stringify(cur)},PRODS=${prodsJson};
 let cart=[],cat='',sq='';
@@ -2159,52 +2616,118 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function sub(){return cart.reduce((s,c)=>s+c.price*c.qty,0);}
 function render(){
   let p=PRODS;
-  if(cat)p=p.filter(x=>x.category===cat);
+  if(cat) p=p.filter(x=>x.category===cat);
   if(sq){const q=sq.toLowerCase();p=p.filter(x=>x.name.toLowerCase().includes(q)||x.description.toLowerCase().includes(q));}
-  var html=p.length?p.map(function(x){return '<div class="card" onclick="addC('+x.id+')"><div class="pimg">'+(x.image_url?'<img src="'+esc(x.image_url)+'" loading="lazy">':'&#x1F4E6;')+'</div><div class="pinfo"><div class="pname">'+esc(x.name)+'</div><div class="pprice">'+x.price.toFixed(0)+' '+CUR+'</div></div></div>';}).join(''):'<p style="color:#6b7a99;text-align:center;padding:40px;grid-column:1/-1">&#x644;&#x627; &#x62A;&#x648;&#x62C;&#x62F; &#x645;&#x646;&#x62A;&#x62C;&#x627;&#x62A;</p>';
-  document.getElementById('grid').innerHTML=html;
+  document.getElementById('grid-label').textContent=(cat?cat+' ':'جميع المنتجات ')+'('+p.length+')';
+  if(!p.length){document.getElementById('grid').innerHTML='<div class="empty"><div style="font-size:2rem;margin-bottom:8px">🔍</div><div>لا توجد منتجات</div></div>';return;}
+  document.getElementById('grid').innerHTML=p.map(function(x){
+    var imgHtml=x.image_url?'<img src="'+esc(x.image_url)+'" loading="lazy" alt="'+esc(x.name)+'">'+'📦';
+    var outBadge=x.stock===0?'<div class="out-badge">نفذ</div>':'';
+    var stockWarn=x.stock>0&&x.stock<=5?'<div class="pstock">⚠️ آخر '+x.stock+' قطع</div>':'';
+    return '<div class="card" onclick="addC('+x.id+')" title="'+esc(x.name)+'">'
+      +'<div class="pimg">'+(x.image_url?'<img src="'+esc(x.image_url)+'" loading="lazy">'+'📦')+outBadge+'</div>'
+      +'<div class="pinfo">'
+      +'<div class="pname">'+esc(x.name)+'</div>'
+      +'<div class="pprice">'+x.price.toFixed(0)+' '+esc(CUR)+'</div>'
+      +stockWarn
+      +'</div></div>';
+  }).join('');
 }
-function fCat(c,btn){cat=c;document.querySelectorAll('.cat-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');render();}
+function fCat(c,btn){cat=c;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
 function filt(){sq=document.getElementById('si').value.trim();render();}
-function addC(id){var x=PRODS.find(function(p){return p.id===id;});if(!x||x.stock===0)return;var e=cart.find(function(c){return c.id===id;});if(e)e.qty++;else cart.push({id:x.id,name:x.name,price:x.price,qty:1});updateF();}
-function updateF(){var n=cart.reduce(function(s,c){return s+c.qty;},0);document.getElementById('cc').textContent=n;document.getElementById('ct').textContent=sub().toFixed(0)+' '+CUR;document.getElementById('cf').classList.toggle('show',n>0);}
+function addC(id){
+  const x=PRODS.find(p=>p.id===id);
+  if(!x)return;
+  if(x.stock===0){alert('عذراً، هذا المنتج نفذ من المخزون');return;}
+  const e=cart.find(c=>c.id===id);
+  if(e){if(e.qty>=x.stock){alert('وصلت للحد الأقصى المتاح');return;}e.qty++;}
+  else cart.push({id:x.id,name:x.name,price:x.price,qty:1,stock:x.stock});
+  updateF();
+  // تأثير بصري
+  const cards=document.querySelectorAll('.card');
+  cards.forEach(c=>{if(c.onclick&&c.onclick.toString().includes(id)){c.style.borderColor='var(--c3)';setTimeout(()=>c.style.borderColor='',600);}});
+}
+function updateF(){
+  const n=cart.reduce((s,c)=>s+c.qty,0);
+  document.getElementById('cc').textContent=n;
+  document.getElementById('ct').textContent=sub().toFixed(0);
+  document.getElementById('cf').classList.toggle('show',n>0);
+}
 function openCart(){
-  var el=document.getElementById('ci');
-  var html=cart.length?cart.map(function(c){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e2a40"><span>'+esc(c.name)+'</span><div style="display:flex;align-items:center;gap:8px"><button onclick="chQ('+c.id+',-1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #1e2a40;background:#161d2e;color:#e8edf5;cursor:pointer">&#x2212;</button><span>'+c.qty+'</span><button onclick="chQ('+c.id+',1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #1e2a40;background:#161d2e;color:#e8edf5;cursor:pointer">+</button><span style="color:#4f8ef7;font-weight:700">'+(c.price*c.qty).toFixed(0)+'</span></div></div>';}).join(''):'<p style="text-align:center;color:#6b7a99;padding:20px">&#x627;&#x644;&#x633;&#x644;&#x629; &#x641;&#x627;&#x631;&#x63A;&#x629;</p>';
-  el.innerHTML=html;
+  const el=document.getElementById('ci');
+  if(!cart.length){el.innerHTML='<div style="text-align:center;padding:24px;color:rgba(255,255,255,.3)">السلة فارغة</div>';}
+  else{
+    el.innerHTML=cart.map(function(c){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)">'
+        +'<span style="font-size:.85rem;flex:1">'+esc(c.name)+'</span>'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'
+        +'<button onclick="chQ('+c.id+',-1)" style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#e2e8f5;cursor:pointer;font-size:.9rem">&#x2212;</button>'
+        +'<span style="min-width:20px;text-align:center;font-weight:700">'+c.qty+'</span>'
+        +'<button onclick="chQ('+c.id+',1)" style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#e2e8f5;cursor:pointer;font-size:.9rem">+</button>'
+        +'<span style="color:var(--c1);font-weight:900;min-width:60px;text-align:left">'+(c.price*c.qty).toFixed(0)+'</span>'
+        +'</div></div>';
+    }).join('')
+    +'<div style="display:flex;justify-content:space-between;font-weight:900;padding:12px 0;font-size:1rem"><span>المجموع</span><span style="color:var(--c1)">'+sub().toFixed(0)+' '+esc(CUR)+'</span></div>';
+  }
   document.getElementById('co').classList.add('show');
   document.body.style.overflow='hidden';
 }
 function closeCo(){document.getElementById('co').classList.remove('show');document.body.style.overflow='';}
-function chQ(id,d){var e=cart.find(function(c){return c.id===id;});if(!e)return;e.qty=Math.max(0,e.qty+d);if(e.qty===0)cart=cart.filter(function(c){return c.id!==id;});updateF();openCart();}
+function chQ(id,d){
+  const e=cart.find(c=>c.id===id);
+  if(!e)return;
+  e.qty=Math.max(0,e.qty+d);
+  if(e.qty===0)cart=cart.filter(c=>c.id!==id);
+  updateF();openCart();
+}
 function openOrder(){
   if(!cart.length)return;
   closeCo();
-  var s=sub();
-  var items=cart.map(function(c){return '<div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:3px"><span>'+esc(c.name)+' x'+c.qty+'</span><span>'+(c.price*c.qty).toFixed(0)+' '+CUR+'</span></div>';}).join('');
-  document.getElementById('os').innerHTML='<div style="background:#161d2e;border-radius:10px;padding:10px">'+items+'<div style="display:flex;justify-content:space-between;font-weight:900;padding-top:7px;margin-top:4px;border-top:1px solid #1e2a40"><span>&#x627;&#x644;&#x625;&#x62C;&#x645;&#x627;&#x644;&#x64A;</span><span style="color:#4f8ef7">'+s.toFixed(0)+' '+CUR+'</span></div></div>';
+  const s=sub();
+  const itemsHtml=cart.map(function(c){
+    return '<div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:5px"><span>'+esc(c.name)+' \xD7'+c.qty+'</span><span style="color:var(--c1)">'+(c.price*c.qty).toFixed(0)+' '+esc(CUR)+'</span></div>';
+  }).join('');
+  document.getElementById('os').innerHTML='<div style="background:rgba(255,255,255,.04);border-radius:11px;padding:12px">'
+    +itemsHtml
+    +'<div style="display:flex;justify-content:space-between;font-weight:900;padding-top:9px;margin-top:6px;border-top:1px solid rgba(255,255,255,.08);font-size:.95rem"><span>الإجمالي</span><span style="color:var(--c1)">'+s.toFixed(0)+' '+esc(CUR)+'</span></div>'
+    +'</div>';
   document.getElementById('oo').classList.add('show');
   document.body.style.overflow='hidden';
 }
 function closeOo(){document.getElementById('oo').classList.remove('show');document.body.style.overflow='';}
 async function submitO(){
-  var name=document.getElementById('cn').value.trim(),phone=document.getElementById('cp').value.trim();
-  if(!name||!phone)return alert('&#x627;&#x644;&#x627;&#x633;&#x645; &#x648;&#x627;&#x644;&#x647;&#x627;&#x62A;&#x641; &#x645;&#x637;&#x644;&#x648;&#x628;&#x627;&#x646;');
+  const name=document.getElementById('cn').value.trim();
+  const phone=document.getElementById('cp').value.trim();
+  if(!name||!phone){alert('الاسم والهاتف مطلوبان');return;}
   if(!cart.length)return;
-  var btn=document.getElementById('sb');btn.disabled=true;btn.textContent='...';
+  const btn=document.getElementById('sb');
+  btn.disabled=true;btn.textContent='⏳ جاري إرسال الطلب...';
   try{
-    var r=await fetch('/api/marketplace/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_user_id:UID,customer_name:name,customer_phone:phone,customer_address:document.getElementById('ca').value.trim(),notes:document.getElementById('cno').value.trim(),items:cart.map(function(c){return {description:c.name+' x'+c.qty,quantity:c.qty,price:c.price};}),total:sub()})});
-    var d=await r.json();
+    const r=await fetch('/api/marketplace/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      store_user_id:UID,customer_name:name,customer_phone:phone,
+      customer_address:document.getElementById('ca').value.trim(),
+      notes:document.getElementById('cno').value.trim(),
+      items:cart.map(c=>({description:c.name+' x'+c.qty,quantity:c.qty,price:c.price})),
+      total:sub()
+    })});
+    const d=await r.json();
     if(d.success){
-      document.getElementById('oc').innerHTML='<div style="text-align:center;padding:30px"><div style="font-size:3rem;margin-bottom:12px">&#x1F389;</div><div style="font-size:1.2rem;font-weight:900;margin-bottom:8px">&#x62A;&#x645; &#x627;&#x633;&#x62A;&#x644;&#x627;&#x645; &#x637;&#x644;&#x628;&#x643;!</div><div style="color:#6b7a99;margin-bottom:20px">&#x631;&#x642;&#x645; &#x627;&#x644;&#x637;&#x644;&#x628;: <strong style="color:#4f8ef7">#'+(d.order&&d.order.id?d.order.id:'')+'</strong></div><button class="btn" onclick="closeOo();cart=[];updateF();render()">&#x645;&#x62A;&#x627;&#x628;&#x639;&#x629; &#x627;&#x644;&#x62A;&#x633;&#x648;&#x642;</button></div>';
+      document.getElementById('oc').innerHTML='<div style="text-align:center;padding:32px 16px">'
+        +'<div style="font-size:3.5rem;margin-bottom:14px">&#x1F389;</div>'
+        +'<div style="font-size:1.2rem;font-weight:900;margin-bottom:8px">تم استلام طلبك!</div>'
+        +'<div style="color:rgba(255,255,255,.5);margin-bottom:6px">رقم الطلب</div>'
+        +'<div style="font-size:1.8rem;font-weight:900;color:var(--c1);margin-bottom:20px">#'+(d.order&&d.order.id?d.order.id:'')+'</div>'
+        +'<div style="color:rgba(255,255,255,.4);font-size:.82rem;margin-bottom:24px">سيتواصل معك البائع قريباً لتأكيد الطلب</div>'
+        +'<button class="btn-main" onclick="closeOo();cart=[];updateF();render()">&#x1F6CD;&#xFE0F; متابعة التسوق</button>'
+        +'</div>';
       cart=[];updateF();
-    }else{alert(d.message||'failed');btn.disabled=false;btn.textContent='confirm';}
-  }catch(e){alert('error');btn.disabled=false;btn.textContent='confirm';}
+    }else{alert(d.message||'حدث خطأ');btn.disabled=false;btn.textContent='✅ تأكيد الطلب';}
+  }catch(e){alert('حدث خطأ في الاتصال');btn.disabled=false;btn.textContent='✅ تأكيد الطلب';}
 }
 render();
-</script></body></html>`);
-    }
-  } catch (e) { res.status(500).send('<h1>خطأ</h1>'); }
+</script>
+</body></html>`);
+  } catch (e) { res.status(500).send('<h1>خطأ في الخادم</h1>'); }
 });
 
 app.post('/api/marketplace/order', async (req, res) => {
@@ -3584,6 +4107,251 @@ app.post('/api/mike', authenticateToken, async (req, res) => {
       action_error: actionError
     });
 
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// IMAGE TOOLS — أدوات الصور
+// ============================================================
+
+// إزالة الخلفية عبر remove.bg
+app.post('/api/images/remove-bg', authenticateToken, async (req, res) => {
+  const { image_url, image_base64 } = req.body;
+  if (!image_url && !image_base64)
+    return res.status(400).json({ success: false, message: 'image_url أو image_base64 مطلوب' });
+
+  const REMOVE_BG_KEY = process.env.REMOVE_BG_API_KEY;
+  if (!REMOVE_BG_KEY)
+    return res.status(503).json({ success: false, message: 'REMOVE_BG_API_KEY غير مضبوط في المتغيرات' });
+
+  try {
+    let formData, contentType;
+
+    if (image_url) {
+      try { new URL(image_url); } catch { return res.status(400).json({ success: false, message: 'رابط غير صالح' }); }
+    }
+
+    // بناء multipart form
+    const boundary = '----FormBoundary' + Date.now();
+    const parts = [];
+
+    if (image_url) {
+      parts.push(
+        `--${boundary}\r\nContent-Disposition: form-data; name="image_url"\r\n\r\n${image_url}`
+      );
+    } else {
+      // base64 — نحوله لبيانات ثنائية
+      const base64Data = image_base64.replace(/^data:image\/\w+;base64,/, '');
+      const imgBuffer = Buffer.from(base64Data, 'base64');
+      parts.push(
+        `--${boundary}\r\nContent-Disposition: form-data; name="image_file"; filename="image.png"\r\nContent-Type: image/png\r\n\r\n`
+      );
+      formData = Buffer.concat([
+        Buffer.from(parts.join('\r\n') + '\r\n'),
+        imgBuffer,
+        Buffer.from(`\r\n--${boundary}--`)
+      ]);
+      contentType = `multipart/form-data; boundary=${boundary}`;
+    }
+
+    if (!formData) {
+      const body = parts.join('\r\n') + `\r\n--${boundary}--`;
+      formData = Buffer.from(body);
+      contentType = `multipart/form-data; boundary=${boundary}`;
+    }
+
+    const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+      method: 'POST',
+      headers: {
+        'X-Api-Key': REMOVE_BG_KEY,
+        'Content-Type': contentType,
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return res.status(response.status).json({ success: false, message: err.errors?.[0]?.title || 'فشل إزالة الخلفية' });
+    }
+
+    const imgBuffer = await response.arrayBuffer();
+    const base64Result = Buffer.from(imgBuffer).toString('base64');
+    const dataUrl = `data:image/png;base64,${base64Result}`;
+
+    // رفع النتيجة على Cloudinary إن كان مضبوطاً
+    const CLOUD = process.env.CLOUDINARY_CLOUD_NAME;
+    const KEY = process.env.CLOUDINARY_API_KEY;
+    const SECRET = process.env.CLOUDINARY_API_SECRET;
+
+    if (CLOUD && KEY && SECRET) {
+      try {
+        const crypto = require('crypto');
+        const timestamp = Math.floor(Date.now() / 1000);
+        const folder = `socialos/${req.user.id}/nobg`;
+        const sigStr = `folder=${folder}&timestamp=${timestamp}${SECRET}`;
+        const signature = crypto.createHash('sha1').update(sigStr).digest('hex');
+        const boundary2 = '----CloudBoundary' + Date.now();
+        const cloudBody = [
+          `--${boundary2}`, `Content-Disposition: form-data; name="file"`, '', dataUrl,
+          `--${boundary2}`, `Content-Disposition: form-data; name="api_key"`, '', KEY,
+          `--${boundary2}`, `Content-Disposition: form-data; name="timestamp"`, '', String(timestamp),
+          `--${boundary2}`, `Content-Disposition: form-data; name="signature"`, '', signature,
+          `--${boundary2}`, `Content-Disposition: form-data; name="folder"`, '', folder,
+          `--${boundary2}--`
+        ].join('\r\n');
+        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': `multipart/form-data; boundary=${boundary2}` },
+          body: cloudBody
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.secure_url) return res.json({ success: true, url: uploadData.secure_url, source: 'cloudinary' });
+      } catch (e) {}
+    }
+
+    // إرجاع base64 مباشرة إذا لم يكن Cloudinary مضبوطاً
+    res.json({ success: true, url: dataUrl, source: 'base64' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// توليد ديكور ذكي بالذكاء الاصطناعي
+app.post('/api/images/suggest-decor', authenticateToken, async (req, res) => {
+  const { product_type, store_style, color_scheme } = req.body;
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  try {
+    let biz = {};
+    if (pool) {
+      const bp = await pool.query('SELECT store_name, business_type, business_desc FROM business_profile WHERE user_id=$1', [req.user.id]);
+      biz = bp.rows[0] || {};
+      // جلب هوية المتجر
+      const id = await pool.query('SELECT primary_color, secondary_color, communication_style, font_name FROM store_identity WHERE user_id=$1', [req.user.id]);
+      if (id.rows[0]) Object.assign(biz, id.rows[0]);
+    }
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 600,
+        messages: [{
+          role: 'user',
+          content: `أنت مصمم جرافيك عربي محترف. اقترح ديكوراً لصورة منتج بعد إزالة الخلفية.
+
+المتجر: ${escapeHtml(biz.store_name||'')} — ${escapeHtml(biz.business_type||'')}
+نوع المنتج: ${escapeHtml(product_type||'منتج عام')}
+الألوان المفضلة: ${escapeHtml(biz.primary_color||color_scheme||'أزرق وبنفسجي')}
+أسلوب المتجر: ${escapeHtml(biz.communication_style||store_style||'عصري')}
+
+أرجع JSON فقط:
+{
+  "bg_type": "gradient|solid|pattern|blur",
+  "bg_colors": ["#لون1", "#لون2"],
+  "gradient_direction": "135deg",
+  "overlay_opacity": 0.15,
+  "shadow": { "color": "#000000", "blur": 20, "offsetX": 5, "offsetY": 10 },
+  "border": { "enabled": false, "color": "#ffffff", "width": 3, "radius": 20 },
+  "texts": [
+    { "text": "نص مقترح", "pos": "bottom", "size": 32, "color": "#ffffff", "bg": "gradient" }
+  ],
+  "description": "وصف قصير للديكور",
+  "style_name": "اسم الأسلوب"
+}`
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    let decor = aiData.choices?.[0]?.message?.content || '{}';
+    try { decor = JSON.parse(decor.replace(/```json|```/g, '').trim()); } catch (e) {
+      decor = {
+        bg_type: 'gradient',
+        bg_colors: [biz.primary_color||'#4f8ef7', biz.secondary_color||'#7c3aed'],
+        gradient_direction: '135deg',
+        overlay_opacity: 0.1,
+        shadow: { color: '#000000', blur: 20, offsetX: 5, offsetY: 10 },
+        border: { enabled: false, color: '#ffffff', width: 3, radius: 16 },
+        texts: [],
+        description: 'ديكور متدرج بألوان المتجر',
+        style_name: 'Classic Gradient'
+      };
+    }
+    res.json({ success: true, decor });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// DEPOSIT POLICY — سياسات العربون
+// ============================================================
+
+// جلب سياسة العربون
+app.get('/api/deposit/policy', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, policy: { deposit_policy: 'none', deposit_value: 0, deposit_note: '', deposit_required: false } });
+    const r = await pool.query('SELECT deposit_policy, deposit_value, deposit_note, deposit_required FROM business_profile WHERE user_id=$1', [req.user.id]);
+    const p = r.rows[0] || {};
+    res.json({ success: true, policy: {
+      deposit_policy: p.deposit_policy || 'none',
+      deposit_value: parseFloat(p.deposit_value) || 0,
+      deposit_note: p.deposit_note || '',
+      deposit_required: p.deposit_required || false
+    }});
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// حفظ سياسة العربون
+app.put('/api/deposit/policy', authenticateToken, async (req, res) => {
+  const { deposit_policy, deposit_value, deposit_note, deposit_required } = req.body;
+  const VALID_POLICIES = ['none', 'fixed', 'percent'];
+  if (!VALID_POLICIES.includes(deposit_policy)) return res.status(400).json({ success: false, message: 'نوع السياسة غير صالح' });
+  const val = parseFloat(deposit_value) || 0;
+  if (deposit_policy === 'percent' && (val < 0 || val > 100)) return res.status(400).json({ success: false, message: 'النسبة يجب أن تكون بين 0 و 100' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    await pool.query(`UPDATE business_profile SET deposit_policy=$1, deposit_value=$2, deposit_note=$3, deposit_required=$4 WHERE user_id=$5`,
+      [deposit_policy, val, escapeHtml(deposit_note||''), deposit_required||false, req.user.id]);
+    res.json({ success: true, message: 'تم حفظ سياسة العربون' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// حساب العربون لطلب معين
+app.post('/api/deposit/calculate', authenticateToken, async (req, res) => {
+  const { total } = req.body;
+  const orderTotal = parseFloat(total) || 0;
+  try {
+    if (!pool) return res.json({ success: true, deposit: 0, remaining: orderTotal, policy: 'none' });
+    const r = await pool.query('SELECT deposit_policy, deposit_value, deposit_note, deposit_required FROM business_profile WHERE user_id=$1', [req.user.id]);
+    const p = r.rows[0] || {};
+    let depositAmount = 0;
+    const policy = p.deposit_policy || 'none';
+    if (policy === 'fixed') depositAmount = Math.min(parseFloat(p.deposit_value)||0, orderTotal);
+    else if (policy === 'percent') depositAmount = orderTotal * (parseFloat(p.deposit_value)||0) / 100;
+    depositAmount = Math.round(depositAmount * 100) / 100;
+    res.json({
+      success: true,
+      policy,
+      deposit: depositAmount,
+      remaining: Math.max(0, orderTotal - depositAmount),
+      required: p.deposit_required || false,
+      note: p.deposit_note || ''
+    });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// تحديث حالة العربون لطلب محدد
+app.put('/api/orders/:id/deposit', authenticateToken, async (req, res) => {
+  const { deposit_paid, deposit_status } = req.body;
+  const VALID_STATUS = ['pending', 'paid', 'refunded', 'waived'];
+  const status = VALID_STATUS.includes(deposit_status) ? deposit_status : 'pending';
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT id FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+    await pool.query(`UPDATE orders SET deposit=$1 WHERE id=$2 AND user_id=$3`,
+      [parseFloat(deposit_paid)||0, req.params.id, req.user.id]);
+    await auditLog(req.user.id, 'update_deposit', 'order', req.params.id, `Deposit: ${deposit_paid} - ${status}`, req.ip);
+    res.json({ success: true, message: 'تم تحديث العربون' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
