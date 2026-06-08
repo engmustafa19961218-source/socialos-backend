@@ -538,7 +538,16 @@ tr:hover td{background:rgba(79,142,247,.02);}
 /* ─── IMAGE PICKER ─── */
 .img-picker{display:flex;gap:6px;align-items:center;}
 
-/* ─── MIKE MIC BUTTON ─── */
+/* ─── MOBILE NAV BUTTON ─── */
+.mob-nav-btn{
+  width:100%;padding:9px 14px;border-radius:10px;border:none;
+  background:transparent;color:var(--text2);
+  font-family:'Tajawal',sans-serif;font-size:.84rem;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;gap:10px;
+  transition:all .15s;margin-bottom:1px;
+}
+.mob-nav-btn:hover,.mob-nav-btn:active{background:var(--surface2);color:var(--text);}
+@keyframes slideInRight{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 .mike-mic{
   width:36px;height:36px;border-radius:10px;flex-shrink:0;
   background:var(--surface);border:1px solid var(--border);
@@ -805,20 +814,85 @@ tr:hover td{background:rgba(79,142,247,.02);}
     <div class="tright">
       <button class="nbtn" onclick="sp('mike',null)" style="background:linear-gradient(135deg,rgba(79,142,247,.2),rgba(124,58,237,.2));border-color:rgba(79,142,247,.3);color:var(--accent)">⚡</button>
       <button class="nbtn" onclick="sp('notifications',null)">🔔<span class="nbadge" id="nbc" style="display:none">0</span></button>
-      <div class="upill" onclick="openMobileMenu()"><div class="uav" id="uav2">?</div><span class="unm" id="unm2">...</span></div>
+      <button onclick="openMobileMenu()" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-family:'Tajawal',sans-serif;font-size:.78rem;font-weight:700;color:var(--text2)">
+        <div class="uav" id="uav2" style="width:22px;height:22px;font-size:.6rem">?</div>
+        <span style="font-size:.72rem" id="unm2">القائمة ☰</span>
+      </button>
     </div>
   </div>
 
-  <!-- MOBILE MENU -->
-  <div id="mobile-menu" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:350;backdrop-filter:blur(8px)" onclick="if(event.target===this)closeMobileMenu()">
-    <div style="position:absolute;top:0;right:0;bottom:0;width:280px;background:rgba(7,11,18,.98);border-left:1px solid var(--border);padding:20px 0;overflow-y:auto;animation:slideInRight .3s cubic-bezier(.16,1,.3,1)">
-      <div style="padding:0 16px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-weight:900;font-size:.9rem">القائمة</div>
-        <button onclick="closeMobileMenu()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;cursor:pointer;color:var(--text2)">✕</button>
+  <!-- MOBILE MENU — قائمة كاملة -->
+  <div id="mobile-menu" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:350;backdrop-filter:blur(8px)" onclick="if(event.target===this)closeMobileMenu()">
+    <div style="position:absolute;top:0;right:0;bottom:0;width:290px;background:#080c14;border-left:1px solid var(--border);overflow-y:auto;animation:slideInRight .3s cubic-bezier(.16,1,.3,1)">
+
+      <!-- Header -->
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#080c14;z-index:1">
+        <div style="display:flex;align-items:center;gap:9px">
+          <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.8rem">⚡</div>
+          <span style="font-weight:900;font-size:.9rem">SocialOS</span>
+        </div>
+        <button onclick="closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--text2);font-size:.85rem">✕</button>
       </div>
-      <div style="padding:10px 8px">
-        <div style="font-size:.68rem;color:var(--text2);font-weight:700;padding:8px 8px 4px;text-transform:uppercase;letter-spacing:.8px">الرئيسية</div>
-        ${['home:🏠:الرئيسية','board:🏛️:المجلس','notifications:🔔:الإشعارات'].map(x=>{const[p,i,l]=x.split(':');return`<button onclick="sp('${p}',null);closeMobileMenu()" style="width:100%;padding:9px 10px;border-radius:10px;border:none;background:transparent;color:var(--text2);font-family:'Tajawal',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:9px;text-align:right">${i}<span>${l}</span></button>`;}).join('')}
+
+      <div style="padding:8px">
+        <!-- Mike -->
+        <button onclick="sp('mike',null);closeMobileMenu()" style="width:100%;padding:11px 14px;border-radius:12px;border:1px solid rgba(79,142,247,.3);background:linear-gradient(135deg,rgba(79,142,247,.12),rgba(124,58,237,.12));color:var(--accent);font-family:'Tajawal',sans-serif;font-size:.88rem;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:10px">⚡<span>Mike — المساعد التنفيذي</span></button>
+
+        <!-- الرئيسية -->
+        <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:6px 10px 3px;text-transform:uppercase;letter-spacing:.8px">الرئيسية</div>
+        <button onclick="sp('home',null);closeMobileMenu()" class="mob-nav-btn">🏠<span>الرئيسية</span></button>
+        <button onclick="sp('board',null);closeMobileMenu()" class="mob-nav-btn">🏛️<span>المجلس</span></button>
+        <button onclick="sp('notifications',null);closeMobileMenu()" class="mob-nav-btn">🔔<span>الإشعارات</span></button>
+
+        <!-- المبيعات -->
+        <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">المبيعات</div>
+        <button onclick="sp('orders',null);closeMobileMenu()" class="mob-nav-btn">🛒<span>الطلبات</span></button>
+        <button onclick="sp('customers',null);closeMobileMenu()" class="mob-nav-btn">👥<span>العملاء</span></button>
+        <button onclick="sp('products',null);closeMobileMenu()" class="mob-nav-btn">📦<span>المنتجات</span></button>
+        <button onclick="sp('inventory',null);closeMobileMenu()" class="mob-nav-btn">📉<span>المخزون</span></button>
+
+        <!-- الذكاء -->
+        <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">الذكاء الاصطناعي</div>
+        <button onclick="sp('employee',null);closeMobileMenu()" class="mob-nav-btn">🧠<span>الموظف الرقمي</span></button>
+        <button onclick="sp('digital-team',null);closeMobileMenu()" class="mob-nav-btn">🤖<span>الفريق الرقمي</span></button>
+        <button onclick="sp('training',null);closeMobileMenu()" class="mob-nav-btn">🎓<span>التدريب</span></button>
+        <button onclick="sp('agent',null);closeMobileMenu()" class="mob-nav-btn">💬<span>المحادثة</span></button>
+        <button onclick="sp('knowledge',null);closeMobileMenu()" class="mob-nav-btn">📚<span>مركز المعرفة</span></button>
+        <button onclick="sp('decisions',null);closeMobileMenu()" class="mob-nav-btn">🗂️<span>سجل القرارات</span></button>
+
+        <!-- التحليلات -->
+        <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">التحليلات</div>
+        <button onclick="sp('analytics',null);closeMobileMenu()" class="mob-nav-btn">📊<span>التحليلات</span></button>
+        <button onclick="sp('analytics-adv',null);closeMobileMenu()" class="mob-nav-btn">📈<span>تحليلات متقدمة</span></button>
+
+        <!-- التسويق -->
+        <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">التسويق</div>
+        <button onclick="sp('coupons',null);closeMobileMenu()" class="mob-nav-btn">🎟️<span>الكوبونات</span></button>
+        <button onclick="sp('loyalty',null);closeMobileMenu()" class="mob-nav-btn">💎<span>نقاط الولاء</span></button>
+        <button onclick="sp('bulk-wa',null);closeMobileMenu()" class="mob-nav-btn">📢<span>حملات واتساب</span></button>
+        <button onclick="sp('ads',null);closeMobileMenu()" class="mob-nav-btn">📣<span>الإعلانات</span></button>
+        <button onclick="sp('posts',null);closeMobileMenu()" class="mob-nav-btn">📱<span>المنشورات</span></button>
+
+        <!-- المتجر -->
+        <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">المتجر</div>
+        <button onclick="sp('marketplace',null);closeMobileMenu()" class="mob-nav-btn">🏪<span>متجري العام</span></button>
+        <button onclick="sp('social',null);closeMobileMenu()" class="mob-nav-btn">🔗<span>ربط الحسابات</span></button>
+        <button onclick="sp('identity',null);closeMobileMenu()" class="mob-nav-btn">🎨<span>هوية المتجر</span></button>
+        <button onclick="sp('designer',null);closeMobileMenu()" class="mob-nav-btn">🖼️<span>مصمم الصور</span></button>
+
+        <!-- الإدارة -->
+        <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">الإدارة</div>
+        <button onclick="sp('approvals',null);closeMobileMenu()" class="mob-nav-btn">✅<span>الموافقات</span></button>
+        <button onclick="sp('team',null);closeMobileMenu()" class="mob-nav-btn">👨‍💼<span>الفريق</span></button>
+        <button onclick="sp('emergency',null);closeMobileMenu()" class="mob-nav-btn">🚨<span>وضع الطوارئ</span></button>
+        <button onclick="sp('backup',null);closeMobileMenu()" class="mob-nav-btn">💾<span>النسخ الاحتياطية</span></button>
+        <button onclick="sp('security',null);closeMobileMenu()" class="mob-nav-btn">🔐<span>الأمان</span></button>
+        <button onclick="sp('settings',null);closeMobileMenu()" class="mob-nav-btn">⚙️<span>الإعدادات</span></button>
+        <button onclick="sp('profile',null);closeMobileMenu()" class="mob-nav-btn">👤<span>الملف الشخصي</span></button>
+
+        <!-- خروج -->
+        <div style="height:1px;background:var(--border);margin:10px 0"></div>
+        <button onclick="logout()" style="width:100%;padding:9px 14px;border-radius:10px;border:none;background:rgba(240,64,96,.08);border:1px solid rgba(240,64,96,.2);color:var(--danger);font-family:'Tajawal',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:8px">🚪<span>تسجيل الخروج</span></button>
       </div>
     </div>
   </div>
