@@ -1914,20 +1914,49 @@ let cart=[],cat='',sq='';
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function sub(){return cart.reduce((s,c)=>s+c.price*c.qty,0);}
 function render(){
-  let p=PRODS;if(cat)p=p.filter(x=>x.category===cat);if(sq){const q=sq.toLowerCase();p=p.filter(x=>x.name.toLowerCase().includes(q)||x.description.toLowerCase().includes(q));}
-  document.getElementById('grid').innerHTML=p.length?p.map(x=>`<div class="card" onclick="addC(${x.id})"><div class="pimg">${x.image_url?'<img src="'+esc(x.image_url)+'" loading="lazy">':'📦'}</div><div class="pinfo"><div class="pname">${esc(x.name)}</div><div class="pprice">${x.price.toFixed(0)} ${CUR}</div></div></div>`).join(''):'<p style="color:#6b7a99;text-align:center;padding:40px;grid-column:1/-1">لا توجد منتجات</p>';
+  let p=PRODS;
+  if(cat)p=p.filter(x=>x.category===cat);
+  if(sq){const q=sq.toLowerCase();p=p.filter(x=>x.name.toLowerCase().includes(q)||x.description.toLowerCase().includes(q));}
+  var html=p.length?p.map(function(x){return '<div class="card" onclick="addC('+x.id+')"><div class="pimg">'+(x.image_url?'<img src="'+esc(x.image_url)+'" loading="lazy">':'&#x1F4E6;')+'</div><div class="pinfo"><div class="pname">'+esc(x.name)+'</div><div class="pprice">'+x.price.toFixed(0)+' '+CUR+'</div></div></div>';}).join(''):'<p style="color:#6b7a99;text-align:center;padding:40px;grid-column:1/-1">&#x644;&#x627; &#x62A;&#x648;&#x62C;&#x62F; &#x645;&#x646;&#x62A;&#x62C;&#x627;&#x62A;</p>';
+  document.getElementById('grid').innerHTML=html;
 }
-function fCat(c,btn){cat=c;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+function fCat(c,btn){cat=c;document.querySelectorAll('.cat-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');render();}
 function filt(){sq=document.getElementById('si').value.trim();render();}
-function addC(id){const x=PRODS.find(p=>p.id===id);if(!x||x.stock===0)return;const e=cart.find(c=>c.id===id);if(e)e.qty++;else cart.push({id:x.id,name:x.name,price:x.price,qty:1});updateF();}
-function updateF(){const n=cart.reduce((s,c)=>s+c.qty,0);document.getElementById('cc').textContent=n;document.getElementById('ct').textContent=sub().toFixed(0)+' '+CUR;document.getElementById('cf').classList.toggle('show',n>0);}
-function openCart(){const el=document.getElementById('ci');el.innerHTML=cart.length?cart.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e2a40"><span>${esc(c.name)}</span><div style="display:flex;align-items:center;gap:8px"><button onclick="chQ(${c.id},-1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #1e2a40;background:#161d2e;color:#e8edf5;cursor:pointer">−</button><span>${c.qty}</span><button onclick="chQ(${c.id},1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #1e2a40;background:#161d2e;color:#e8edf5;cursor:pointer">+</button><span style="color:#4f8ef7;font-weight:700">${(c.price*c.qty).toFixed(0)}</span></div></div>`).join(''):'<p style="text-align:center;color:#6b7a99;padding:20px">السلة فارغة</p>';document.getElementById('co').classList.add('show');document.body.style.overflow='hidden';}
+function addC(id){var x=PRODS.find(function(p){return p.id===id;});if(!x||x.stock===0)return;var e=cart.find(function(c){return c.id===id;});if(e)e.qty++;else cart.push({id:x.id,name:x.name,price:x.price,qty:1});updateF();}
+function updateF(){var n=cart.reduce(function(s,c){return s+c.qty;},0);document.getElementById('cc').textContent=n;document.getElementById('ct').textContent=sub().toFixed(0)+' '+CUR;document.getElementById('cf').classList.toggle('show',n>0);}
+function openCart(){
+  var el=document.getElementById('ci');
+  var html=cart.length?cart.map(function(c){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e2a40"><span>'+esc(c.name)+'</span><div style="display:flex;align-items:center;gap:8px"><button onclick="chQ('+c.id+',-1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #1e2a40;background:#161d2e;color:#e8edf5;cursor:pointer">&#x2212;</button><span>'+c.qty+'</span><button onclick="chQ('+c.id+',1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #1e2a40;background:#161d2e;color:#e8edf5;cursor:pointer">+</button><span style="color:#4f8ef7;font-weight:700">'+(c.price*c.qty).toFixed(0)+'</span></div></div>';}).join(''):'<p style="text-align:center;color:#6b7a99;padding:20px">&#x627;&#x644;&#x633;&#x644;&#x629; &#x641;&#x627;&#x631;&#x63A;&#x629;</p>';
+  el.innerHTML=html;
+  document.getElementById('co').classList.add('show');
+  document.body.style.overflow='hidden';
+}
 function closeCo(){document.getElementById('co').classList.remove('show');document.body.style.overflow='';}
-function chQ(id,d){const e=cart.find(c=>c.id===id);if(!e)return;e.qty=Math.max(0,e.qty+d);if(e.qty===0)cart=cart.filter(c=>c.id!==id);updateF();openCart();}
-function openOrder(){if(!cart.length)return;closeCo();const s=sub();document.getElementById('os').innerHTML='<div style="background:#161d2e;border-radius:10px;padding:10px">'+cart.map(c=>'<div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:3px"><span>'+esc(c.name)+' ×'+c.qty+'</span><span>'+(c.price*c.qty).toFixed(0)+' '+CUR+'</span></div>').join('')+'<div style="display:flex;justify-content:space-between;font-weight:900;padding-top:7px;margin-top:4px;border-top:1px solid #1e2a40"><span>الإجمالي</span><span style="color:#4f8ef7">'+s.toFixed(0)+' '+CUR+'</span></div></div>';document.getElementById('oo').classList.add('show');document.body.style.overflow='hidden';}
+function chQ(id,d){var e=cart.find(function(c){return c.id===id;});if(!e)return;e.qty=Math.max(0,e.qty+d);if(e.qty===0)cart=cart.filter(function(c){return c.id!==id;});updateF();openCart();}
+function openOrder(){
+  if(!cart.length)return;
+  closeCo();
+  var s=sub();
+  var items=cart.map(function(c){return '<div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:3px"><span>'+esc(c.name)+' x'+c.qty+'</span><span>'+(c.price*c.qty).toFixed(0)+' '+CUR+'</span></div>';}).join('');
+  document.getElementById('os').innerHTML='<div style="background:#161d2e;border-radius:10px;padding:10px">'+items+'<div style="display:flex;justify-content:space-between;font-weight:900;padding-top:7px;margin-top:4px;border-top:1px solid #1e2a40"><span>&#x627;&#x644;&#x625;&#x62C;&#x645;&#x627;&#x644;&#x64A;</span><span style="color:#4f8ef7">'+s.toFixed(0)+' '+CUR+'</span></div></div>';
+  document.getElementById('oo').classList.add('show');
+  document.body.style.overflow='hidden';
+}
 function closeOo(){document.getElementById('oo').classList.remove('show');document.body.style.overflow='';}
-async function submitO(){const name=document.getElementById('cn').value.trim(),phone=document.getElementById('cp').value.trim();if(!name||!phone)return alert('الاسم والهاتف مطلوبان');if(!cart.length)return;const btn=document.getElementById('sb');btn.disabled=true;btn.textContent='⏳ جاري الإرسال...';
-try{const r=await fetch('/api/marketplace/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_user_id:UID,customer_name:name,customer_phone:phone,customer_address:document.getElementById('ca').value.trim(),notes:document.getElementById('cno').value.trim(),items:cart.map(c=>({description:c.name+' ×'+c.qty,quantity:c.qty,price:c.price})),total:sub()})});const d=await r.json();if(d.success){document.getElementById('oc').innerHTML='<div style="text-align:center;padding:30px"><div style="font-size:3rem;margin-bottom:12px">🎉</div><div style="font-size:1.2rem;font-weight:900;margin-bottom:8px">تم استلام طلبك!</div><div style="color:#6b7a99;margin-bottom:20px">رقم الطلب: <strong style="color:#4f8ef7">#'+(d.order?.id||'—')+'</strong></div><button class="btn" onclick="closeOo();cart=[];updateF();render()">🛍️ متابعة التسوق</button></div>';cart=[];updateF();}else{alert(d.message||'فشل');btn.disabled=false;btn.textContent='✅ تأكيد الطلب';}}catch(e){alert('تعذر الاتصال');btn.disabled=false;btn.textContent='✅ تأكيد الطلب';}}
+async function submitO(){
+  var name=document.getElementById('cn').value.trim(),phone=document.getElementById('cp').value.trim();
+  if(!name||!phone)return alert('&#x627;&#x644;&#x627;&#x633;&#x645; &#x648;&#x627;&#x644;&#x647;&#x627;&#x62A;&#x641; &#x645;&#x637;&#x644;&#x648;&#x628;&#x627;&#x646;');
+  if(!cart.length)return;
+  var btn=document.getElementById('sb');btn.disabled=true;btn.textContent='...';
+  try{
+    var r=await fetch('/api/marketplace/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_user_id:UID,customer_name:name,customer_phone:phone,customer_address:document.getElementById('ca').value.trim(),notes:document.getElementById('cno').value.trim(),items:cart.map(function(c){return {description:c.name+' x'+c.qty,quantity:c.qty,price:c.price};}),total:sub()})});
+    var d=await r.json();
+    if(d.success){
+      document.getElementById('oc').innerHTML='<div style="text-align:center;padding:30px"><div style="font-size:3rem;margin-bottom:12px">&#x1F389;</div><div style="font-size:1.2rem;font-weight:900;margin-bottom:8px">&#x62A;&#x645; &#x627;&#x633;&#x62A;&#x644;&#x627;&#x645; &#x637;&#x644;&#x628;&#x643;!</div><div style="color:#6b7a99;margin-bottom:20px">&#x631;&#x642;&#x645; &#x627;&#x644;&#x637;&#x644;&#x628;: <strong style="color:#4f8ef7">#'+(d.order&&d.order.id?d.order.id:'')+'</strong></div><button class="btn" onclick="closeOo();cart=[];updateF();render()">&#x645;&#x62A;&#x627;&#x628;&#x639;&#x629; &#x627;&#x644;&#x62A;&#x633;&#x648;&#x642;</button></div>';
+      cart=[];updateF();
+    }else{alert(d.message||'failed');btn.disabled=false;btn.textContent='confirm';}
+  }catch(e){alert('error');btn.disabled=false;btn.textContent='confirm';}
+}
 render();
 </script></body></html>`);
     }
@@ -2434,4 +2463,3 @@ app.get('/api/config', (req, res) => {
 // ============================================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SocialOS v2.0 running on port ${PORT}`));
-
