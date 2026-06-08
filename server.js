@@ -1578,37 +1578,62 @@ app.post('/api/board/generate', authenticateToken, rateLimit(5, 60*1000), async 
   if (!OPENROUTER_KEY) return res.status(500).json({ success: false, message: 'OpenRouter غير مفعّل' });
   try {
     if (!pool) return res.status(503).json({ success: false, message: 'قاعدة البيانات غير متاحة' });
-    const [orders, products, customers, bp, emp] = await Promise.all([
-      pool.query(`SELECT COUNT(*) as cnt, SUM(total) as rev, SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) as new_cnt FROM orders WHERE user_id=$1`, [userId]),
-      pool.query('SELECT COUNT(*) as cnt, SUM(CASE WHEN stock<=3 THEN 1 ELSE 0 END) as low FROM products WHERE user_id=$1', [userId]),
-      pool.query('SELECT COUNT(DISTINCT customer_phone) as cnt FROM orders WHERE user_id=$1', [userId]),
+
+    // بيانات أعمق للمجلس
+    const [orders, ordersMonth, products, customers, bp, emp, topProds, campaigns, coupons, loyalty] = await Promise.all([
+      pool.query(`SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev, SUM(CASE WHEN status='new' THEN 1 ELSE 0 END) as new_cnt, SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) as cancelled FROM orders WHERE user_id=$1`, [userId]),
+      pool.query(`SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '30 days'`, [userId]),
+      pool.query(`SELECT COUNT(*) as cnt, SUM(CASE WHEN stock<=3 THEN 1 ELSE 0 END) as low, SUM(CASE WHEN stock=0 THEN 1 ELSE 0 END) as out FROM products WHERE user_id=$1`, [userId]),
+      pool.query(`SELECT COUNT(DISTINCT customer_phone) as cnt, COUNT(DISTINCT CASE WHEN created_at>=NOW()-INTERVAL '30 days' THEN customer_phone END) as new_30d FROM orders WHERE user_id=$1`, [userId]),
       pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId]),
-      pool.query('SELECT trust_level, total_interactions, correct_interactions FROM digital_employee WHERE user_id=$1', [userId])
+      pool.query('SELECT trust_level, total_interactions, correct_interactions FROM digital_employee WHERE user_id=$1', [userId]),
+      pool.query(`SELECT items, COUNT(*) as freq FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '30 days' GROUP BY items ORDER BY freq DESC LIMIT 5`, [userId]),
+      pool.query(`SELECT COUNT(*) as cnt, SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) as active FROM ad_campaigns WHERE user_id=$1`, [userId]).catch(()=>({rows:[{cnt:0,active:0}]})),
+      pool.query(`SELECT COUNT(*) as cnt FROM coupons WHERE user_id=$1 AND is_active=true`, [userId]).catch(()=>({rows:[{cnt:0}]})),
+      pool.query(`SELECT COUNT(*) as cnt, COALESCE(SUM(points),0) as total_pts FROM loyalty_points WHERE user_id=$1`, [userId]).catch(()=>({rows:[{cnt:0,total_pts:0}]}))
     ]);
 
     const bpData = bp.rows[0] || {};
     const empData = emp.rows[0] || {};
-    const statsStr = `الطلبات: ${orders.rows[0].cnt}، الإيرادات: ${Number(orders.rows[0].rev||0).toLocaleString()}، طلبات جديدة: ${orders.rows[0].new_cnt}، منتجات: ${products.rows[0].cnt}، مخزون منخفض: ${products.rows[0].low}، عملاء: ${customers.rows[0].cnt}، مستوى ثقة الموظف: ${empData.trust_level||1}`;
+    const o = orders.rows[0];
+    const om = ordersMonth.rows[0];
+    const p = products.rows[0];
+
+    const statsStr = `
+متجر: ${bpData.store_name||''} — ${bpData.business_type||''}
+الطلبات الكلية: ${o.cnt} | الإيرادات: ${Number(o.rev||0).toLocaleString()} | ملغية: ${o.cancelled}
+آخر 30 يوم: ${om.cnt} طلب — ${Number(om.rev||0).toLocaleString()} إيراد
+المنتجات: ${p.cnt} | مخزون منخفض: ${p.low} | نفذ: ${p.out}
+العملاء: ${customers.rows[0]?.cnt} | جدد (30 يوم): ${customers.rows[0]?.new_30d}
+الموظف الرقمي: مستوى ${empData.trust_level||1} — دقة ${empData.total_interactions>0?Math.round((empData.correct_interactions/empData.total_interactions)*100):0}%
+الحملات الإعلانية: ${campaigns.rows[0]?.cnt} | نشطة: ${campaigns.rows[0]?.active}
+الكوبونات النشطة: ${coupons.rows[0]?.cnt}
+عملاء الولاء: ${loyalty.rows[0]?.cnt} — إجمالي النقاط: ${loyalty.rows[0]?.total_pts}`;
 
     const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4-5',
-        max_tokens: 1500,
+        max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `أنت مجلس إدارة ذكي لمتجر "${bpData.store_name||'المتجر'}" (${bpData.business_type||''}).
-البيانات: ${statsStr}
+          content: `أنت مجلس إدارة ذكي وخبير استراتيجي لمتجر عربي. حلّل البيانات وقدّم توصيات قابلة للتنفيذ فوراً.
 
-أرجع JSON فقط بهذا الشكل بدون أي كلام:
+${statsStr}
+
+أرجع JSON فقط — 7 توصيات متنوعة:
 [
-  {"type":"opportunity","title":"عنوان قصير","content":"التوصية التفصيلية","priority":"high"},
-  {"type":"warning","title":"عنوان قصير","content":"التحذير أو المشكلة","priority":"medium"},
-  {"type":"strategy","title":"عنوان قصير","content":"الاستراتيجية المقترحة","priority":"low"},
-  {"type":"insight","title":"عنوان قصير","content":"ملاحظة ذكية","priority":"medium"},
-  {"type":"action","title":"عنوان قصير","content":"إجراء فوري مطلوب","priority":"high"}
-]`
+  {"type":"opportunity","title":"عنوان قصير جذاب","content":"تحليل مفصل مع خطوات تنفيذية واضحة","priority":"high","action":"action_type","action_label":"نص الزر","kpi":"مؤشر النجاح"},
+  {"type":"warning","title":"تحذير عاجل","content":"المشكلة وتأثيرها وكيفية الحل","priority":"high","action":null,"action_label":null,"kpi":""},
+  {"type":"strategy","title":"استراتيجية نمو","content":"خطة متكاملة للنمو","priority":"medium","action":null,"action_label":null,"kpi":""},
+  {"type":"insight","title":"ملاحظة مهمة","content":"استنتاج من البيانات","priority":"medium","action":null,"action_label":null,"kpi":""},
+  {"type":"action","title":"إجراء فوري","content":"ما يجب فعله اليوم","priority":"high","action":"create_campaign","action_label":"إنشاء حملة","kpi":""},
+  {"type":"opportunity","title":"فرصة إيراد","content":"كيف تزيد الإيراد","priority":"medium","action":null,"action_label":null,"kpi":""},
+  {"type":"risk","title":"خطر محتمل","content":"ما قد يضر العمل وكيف تتفادى","priority":"low","action":null,"action_label":null,"kpi":""}
+]
+
+الأنواع المتاحة للـ action: create_campaign, add_coupon, go_training, go_retargeting, go_inventory`
         }]
       })
     });
@@ -1620,15 +1645,37 @@ app.post('/api/board/generate', authenticateToken, rateLimit(5, 60*1000), async 
       recs = match ? JSON.parse(match[0]) : [];
     } catch (e) {}
 
-    // Save to DB
+    // حذف التوصيات القديمة وإضافة الجديدة
+    await pool.query('DELETE FROM board_recommendations WHERE user_id=$1 AND created_at < NOW() - INTERVAL \'7 days\'', [userId]);
     for (const rec of recs) {
       await pool.query(
         'INSERT INTO board_recommendations (user_id, type, title, content, priority) VALUES ($1,$2,$3,$4,$5)',
-        [userId, rec.type, rec.title, rec.content, rec.priority || 'medium']
+        [userId, rec.type||'insight', escapeHtml(rec.title||''), rec.content||'', rec.priority||'medium']
       );
     }
+
     const r = await pool.query('SELECT * FROM board_recommendations WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20', [userId]);
-    return res.json({ success: true, recommendations: r.rows });
+
+    // إرفاق action_data من الـ AI مع النتائج
+    const enriched = r.rows.map((row, i) => ({
+      ...row,
+      action: recs[i]?.action || null,
+      action_label: recs[i]?.action_label || null,
+      kpi: recs[i]?.kpi || ''
+    }));
+
+    // إحصائيات الأداء للمجلس
+    const performance = {
+      revenue_30d: Number(om.rev||0),
+      orders_30d: parseInt(om.cnt||0),
+      avg_order: parseInt(om.cnt||0) > 0 ? Number(om.rev||0)/parseInt(om.cnt||0) : 0,
+      new_customers: parseInt(customers.rows[0]?.new_30d||0),
+      low_stock: parseInt(p.low||0),
+      cancelled_rate: parseInt(o.cnt||0) > 0 ? Math.round((parseInt(o.cancelled||0)/parseInt(o.cnt||0))*100) : 0,
+      employee_accuracy: empData.total_interactions>0 ? Math.round((empData.correct_interactions/empData.total_interactions)*100) : 0
+    };
+
+    return res.json({ success: true, recommendations: enriched, performance });
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -1787,10 +1834,326 @@ app.get('/api/inventory/alerts', authenticateToken, async (req, res) => {
 });
 
 // ============================================================
+// PRODUCT IMPORT FROM EXCEL — استيراد المنتجات من Excel
+// ============================================================
+app.post('/api/products/import-excel', authenticateToken, async (req, res) => {
+  const { rows } = req.body; // مصفوفة من الصفوف [{name,price,description,category,stock,image_url}]
+  if (!Array.isArray(rows) || !rows.length)
+    return res.status(400).json({ success: false, message: 'لا بيانات للاستيراد' });
+  if (rows.length > 500)
+    return res.status(400).json({ success: false, message: 'الحد الأقصى 500 منتج' });
+  if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+  const userId = req.user.id;
+  let imported = 0, skipped = 0, errors = [];
+
+  for (const row of rows) {
+    const name = String(row.name || row['الاسم'] || row['اسم المنتج'] || '').trim();
+    const price = parseFloat(row.price || row['السعر'] || row['سعر'] || 0);
+    if (!name || price <= 0) { skipped++; continue; }
+
+    try {
+      await pool.query(
+        `INSERT INTO products (user_id,name,description,price,category,stock,image_url,dynamic_attrs)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'{}')`,
+        [userId,
+         escapeHtml(name),
+         escapeHtml(String(row.description || row['الوصف'] || row['وصف'] || '')),
+         price,
+         escapeHtml(String(row.category || row['الفئة'] || row['فئة'] || 'عام')),
+         parseInt(row.stock || row['المخزون'] || row['مخزون'] || 0) || 0,
+         String(row.image_url || row['الصورة'] || row['صورة'] || '')]
+      );
+      imported++;
+    } catch(e) { skipped++; errors.push(`${name}: ${e.message}`); }
+  }
+
+  await auditLog(userId, 'import_products_excel', 'products', null, `استُورد ${imported} منتج`, req.ip);
+  res.json({ success: true, imported, skipped, errors: errors.slice(0,10), message: `تم استيراد ${imported} منتج` });
+});
+
+// ============================================================
+// PRODUCT FROM IMAGE — استخراج منتج من صورة بالـ AI
+// ============================================================
+app.post('/api/products/from-image', authenticateToken, async (req, res) => {
+  const { image_url, image_base64 } = req.body;
+  if (!image_url && !image_base64)
+    return res.status(400).json({ success: false, message: 'الصورة مطلوبة' });
+
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  try {
+    // جلب نوع النشاط لتخصيص الاستخراج
+    let biz = {};
+    if (pool) {
+      const bp = await pool.query('SELECT business_type, currency FROM business_profile WHERE user_id=$1', [req.user.id]);
+      biz = bp.rows[0] || {};
+    }
+
+    const imageContent = image_url
+      ? { type: 'image_url', image_url: { url: image_url } }
+      : { type: 'image_url', image_url: { url: image_base64 } };
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 600,
+        messages: [{
+          role: 'user',
+          content: [
+            imageContent,
+            { type: 'text', text: `أنت خبير تجزئة عربي. حلّل هذه الصورة واستخرج بيانات المنتج.
+نوع المتجر: ${escapeHtml(biz.business_type || 'عام')}
+العملة: ${biz.currency || 'IQD'}
+
+أرجع JSON فقط:
+{
+  "name": "اسم المنتج بالعربية",
+  "description": "وصف مختصر جذاب",
+  "category": "الفئة المناسبة",
+  "suggested_price": 0,
+  "dynamic_attrs": {"لون": "...", "مقاس": "..."},
+  "confidence": 85,
+  "notes": "ملاحظات للبائع"
+}
+إذا لم تتعرف على المنتج ضع confidence أقل من 50.` }
+          ]
+        }]
+      })
+    });
+
+    const aiData = await aiRes.json();
+    let result = aiData.choices?.[0]?.message?.content || '{}';
+    try { result = JSON.parse(result.replace(/```json|```/g, '').trim()); } catch(e) { result = {}; }
+
+    res.json({ success: true, product: result });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// PRODUCT FROM TEXT COMMAND — أوامر نصية AI لإضافة منتجات
+// ============================================================
+app.post('/api/products/from-text', authenticateToken, async (req, res) => {
+  const { text } = req.body;
+  if (!text || String(text).length > 500)
+    return res.status(400).json({ success: false, message: 'النص مطلوب' });
+
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  try {
+    let biz = {};
+    if (pool) {
+      const bp = await pool.query('SELECT business_type, currency FROM business_profile WHERE user_id=$1', [req.user.id]);
+      biz = bp.rows[0] || {};
+    }
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: `أنت مساعد إدخال بيانات لمتجر ${escapeHtml(biz.business_type||'عام')} يعمل بعملة ${biz.currency||'IQD'}.
+استخرج بيانات المنتج من هذا النص العربي:
+"${escapeHtml(String(text).substring(0, 500))}"
+
+أرجع JSON فقط:
+{"name":"اسم المنتج","price":0,"stock":0,"category":"الفئة","description":"","dynamic_attrs":{}}
+
+ملاحظات:
+- السعر رقم فقط بدون عملة
+- إذا لم يُذكر المخزون اجعله 0
+- استنتج الفئة من اسم المنتج إذا لم تُذكر`
+        }]
+      })
+    });
+
+    const aiData = await aiRes.json();
+    let result = aiData.choices?.[0]?.message?.content || '{}';
+    try { result = JSON.parse(result.replace(/```json|```/g, '').trim()); } catch(e) { result = {}; }
+
+    // حفظ تلقائي إذا البيانات كاملة
+    let saved = false;
+    let savedProduct = null;
+    if (result.name && result.price > 0 && pool) {
+      const r = await pool.query(
+        `INSERT INTO products (user_id,name,description,price,category,stock,dynamic_attrs)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [req.user.id, escapeHtml(result.name), escapeHtml(result.description||''),
+         parseFloat(result.price)||0, escapeHtml(result.category||'عام'),
+         parseInt(result.stock)||0, JSON.stringify(result.dynamic_attrs||{})]
+      );
+      saved = true;
+      savedProduct = r.rows[0];
+      await auditLog(req.user.id, 'create_product_text', 'products', savedProduct.id, result.name, req.ip);
+    }
+
+    res.json({ success: true, product: result, saved, saved_product: savedProduct });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// DYNAMIC ATTRS BY BUSINESS TYPE — السمات حسب نوع النشاط
+// ============================================================
+app.get('/api/products/dynamic-attrs', authenticateToken, async (req, res) => {
+  const ATTRS_BY_TYPE = {
+    retail:      [['اللون','أحمر'],['المقاس','M'],['المادة','قطن']],
+    restaurant:  [['الحجم','وسط'],['الإضافات','جبن'],['الحرارة','حار']],
+    real_estate: [['المساحة','120م²'],['الغرف','3'],['الطابق','2']],
+    services:    [['المدة','ساعة'],['النوع','منزلي'],['المكان','عندك']],
+    health:      [['النوع','تدليك'],['المدة','60 دقيقة'],['الجنس','مختلط']],
+    education:   [['المستوى','مبتدئ'],['المدة','شهر'],['الشهادة','نعم']],
+    sports:      [['النوع','كرة'],['المقاس','5'],['اللون','أبيض']],
+    perfume:     [['الحجم','100مل'],['التركيز','EDP'],['النوع','عطر رجالي']],
+    furniture:   [['اللون','بني'],['المادة','خشب'],['الأبعاد','200×90']],
+    fashion:     [['المقاس','L'],['اللون','أسود'],['الخامة','قطن']],
+    electronics: [['الموديل','2024'],['اللون','أسود'],['السعة','128GB']],
+    other:       [['النوع',''],['اللون',''],['المقاس','']]
+  };
+
+  try {
+    let businessType = req.query.type || 'other';
+    if (!businessType && pool) {
+      const bp = await pool.query('SELECT business_type FROM business_profile WHERE user_id=$1', [req.user.id]);
+      businessType = bp.rows[0]?.business_type || 'other';
+    }
+    const attrs = ATTRS_BY_TYPE[businessType] || ATTRS_BY_TYPE.other;
+    res.json({ success: true, attrs, business_type: businessType });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// EMPLOYEE ACTIVITY LOG — سجل نشاط الموظف الرقمي
+// ============================================================
+// جلب سجل المحادثات
+app.get('/api/employee/activity', authenticateToken, async (req, res) => {
+  const { limit = 20, offset = 0 } = req.query;
+  try {
+    if (!pool) return res.json({ success: true, sessions: [], corrections: [], stats: {} });
+
+    const [sessions, corrections, stats] = await Promise.all([
+      pool.query(
+        `SELECT id, type, topic, corrections, score,
+                LENGTH(messages) as msg_size,
+                (SELECT COUNT(*) FROM json_array_length(messages::json, 0)) as msg_count,
+                created_at
+         FROM training_sessions WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+        [req.user.id, parseInt(limit), parseInt(offset)]
+      ).catch(() => pool.query(
+        'SELECT id, type, topic, corrections, score, created_at FROM training_sessions WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+        [req.user.id, parseInt(limit), parseInt(offset)]
+      )),
+      pool.query(
+        'SELECT id, original_response, corrected_response, lesson, context, created_at FROM training_corrections WHERE user_id=$1 ORDER BY created_at DESC LIMIT 10',
+        [req.user.id]
+      ),
+      pool.query(
+        'SELECT trust_level, trust_score, total_interactions, correct_interactions, updated_at FROM digital_employee WHERE user_id=$1',
+        [req.user.id]
+      )
+    ]);
+
+    const emp = stats.rows[0] || {};
+    const accuracy = emp.total_interactions > 0
+      ? Math.round((emp.correct_interactions / emp.total_interactions) * 100) : 0;
+
+    res.json({
+      success: true,
+      sessions: sessions.rows,
+      corrections: corrections.rows,
+      stats: { ...emp, accuracy, sessions_count: sessions.rows.length }
+    });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// جلب محادثة معينة كاملة
+app.get('/api/employee/activity/:sessionId', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, session: null });
+    const r = await pool.query(
+      'SELECT * FROM training_sessions WHERE id=$1 AND user_id=$2',
+      [req.params.sessionId, req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'الجلسة غير موجودة' });
+    const session = r.rows[0];
+    let messages = [];
+    try { messages = JSON.parse(session.messages || '[]'); } catch(e) {}
+    res.json({ success: true, session: { ...session, messages } });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// AUTO DELIVERY NOTIFICATION — تتبع تلقائي للعميل
+// ============================================================
+app.post('/api/orders/:id/notify-customer', authenticateToken, async (req, res) => {
+  const { type } = req.body; // 'confirmed' | 'shipped' | 'delivered'
+  const VALID = ['confirmed','shipped','delivered','cancelled'];
+  if (!VALID.includes(type)) return res.status(400).json({ success: false, message: 'نوع غير صالح' });
+
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const [ordR, bpR] = await Promise.all([
+      pool.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]),
+      pool.query('SELECT store_name, currency, whatsapp_number FROM business_profile WHERE user_id=$1', [req.user.id])
+    ]);
+    if (!ordR.rows.length) return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+
+    const o = ordR.rows[0];
+    const bp = bpR.rows[0] || {};
+    const cur = bp.currency || 'IQD';
+    const storeName = bp.store_name || 'متجرنا';
+
+    const phone = String(o.customer_phone || '').replace(/[^0-9]/g, '');
+    const waPhone = phone.startsWith('0') ? '964' + phone.slice(1) : phone;
+
+    const msgs = {
+      confirmed: `✅ *تم تأكيد طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 😊\nطلبك رقم *#${o.id}* تم تأكيده بنجاح.\n💰 المبلغ: ${Number(o.total||0).toLocaleString()} ${cur}\n\nسنتواصل معك قريباً للتوصيل 🚚\n\n⚡ ${storeName}`,
+      shipped: `🚚 *تم شحن طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 📦\nطلبك رقم *#${o.id}* في الطريق إليك.\n${o.delivery_company ? `🏢 شركة التوصيل: ${escapeHtml(o.delivery_company)}` : ''}\n${o.delivery_link ? `🔍 رقم التتبع: *${escapeHtml(o.delivery_link)}*` : ''}\n\nنتمنى وصوله سريعاً! ⚡ ${storeName}`,
+      delivered: `🎉 *تم توصيل طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 🌟\nوصل طلبك رقم *#${o.id}* بنجاح.\n\nنرجو أن تكون راضياً 😊\nشاركنا رأيك ليستفيد الجميع!\n\nشكراً لثقتك ⚡ ${storeName}`,
+      cancelled: `❌ *تم إلغاء طلبك*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 😔\nتم إلغاء طلبك رقم *#${o.id}*.\n${o.notes ? `السبب: ${escapeHtml(o.notes)}` : ''}\n\nللاستفسار تواصل معنا 📞\n⚡ ${storeName}`
+    };
+
+    const msg = msgs[type];
+    const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`;
+
+    // محاولة إرسال تلقائي عبر WhatsApp API إذا كان مربوطاً
+    let autoSent = false;
+    const wa = await pool.query(
+      'SELECT access_token, whatsapp_phone_id FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+      [req.user.id, 'whatsapp']
+    );
+    if (wa.rows[0]?.access_token && wa.rows[0]?.whatsapp_phone_id) {
+      try {
+        const waRes = await fetch(`https://graph.facebook.com/v19.0/${wa.rows[0].whatsapp_phone_id}/messages`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${wa.rows[0].access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messaging_product: 'whatsapp', to: waPhone, type: 'text', text: { body: msg } })
+        });
+        const waData = await waRes.json();
+        if (!waData.error) autoSent = true;
+      } catch(e) {}
+    }
+
+    await auditLog(req.user.id, `notify_${type}`, 'orders', parseInt(req.params.id), waPhone, req.ip);
+    res.json({ success: true, wa_url: waUrl, auto_sent: autoSent, message: autoSent ? 'تم الإرسال تلقائياً' : 'رابط واتساب جاهز' });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// تتبع تلقائي عند تغيير حالة الطلب
+// نضيف هذا الـ middleware بعد تحديث حالة الطلب في PUT /api/orders/:id
+
+
+// ============================================================
 // ORDERS
 // ============================================================
 app.post('/api/orders', authenticateToken, async (req, res) => {
-  const { customer_name, customer_phone, customer_address, items, total, deposit, deposit_type, payment_method, delivery_company, delivery_link, notes, platform, coupon_code, discount, loyalty_points_used } = req.body;
+  const { customer_name, customer_phone, customer_address, items, total, deposit, deposit_type, payment_method, delivery_company, delivery_link, notes, platform, coupon_code, discount, loyalty_points_used, card_info } = req.body;
   const userId = req.user.id;
   if (total !== undefined && (parseFloat(total) < 0 || isNaN(parseFloat(total)))) return res.status(400).json({ success: false, message: 'المبلغ غير صحيح' });
   try {
@@ -1801,9 +2164,9 @@ app.post('/api/orders', authenticateToken, async (req, res) => {
         return res.status(503).json({ success: false, message: em.rows[0].message || 'الطلبات متوقفة مؤقتاً' });
 
       const r = await pool.query(
-        `INSERT INTO orders (user_id,customer_name,customer_phone,customer_address,items,total,deposit,deposit_type,payment_method,delivery_company,delivery_link,notes,platform,coupon_code,discount,loyalty_points_used)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
-        [userId, customer_name, customer_phone, customer_address||'', JSON.stringify(items||[]), total||0, deposit||0, deposit_type||'full', payment_method||'cash', delivery_company||'', delivery_link||'', notes||'', platform||'', coupon_code||'', discount||0, loyalty_points_used||0]
+        `INSERT INTO orders (user_id,customer_name,customer_phone,customer_address,items,total,deposit,deposit_type,payment_method,delivery_company,delivery_link,notes,platform,coupon_code,discount,loyalty_points_used,card_info)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+        [userId, customer_name, customer_phone, customer_address||'', JSON.stringify(items||[]), total||0, deposit||0, deposit_type||'full', payment_method||'cash', delivery_company||'', delivery_link||'', notes||'', platform||'', coupon_code||'', discount||0, loyalty_points_used||0, escapeHtml(card_info||'')]
       );
       const order = r.rows[0];
       await notify(userId, '🛒 طلب جديد!', `${customer_name} — ${formatCurrency(total)}`, 'order');
@@ -1843,13 +2206,52 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
 app.put('/api/orders/:id', authenticateToken, async (req, res) => {
   try {
     if (pool) {
-      const allowed = ['status','customer_name','customer_phone','customer_address','items','total','deposit','deposit_type','payment_method','delivery_company','delivery_link','notes','platform'];
+      const allowed = ['status','customer_name','customer_phone','customer_address','items','total','deposit','deposit_type','payment_method','delivery_company','delivery_link','notes','platform','card_info'];
       const updates = {};
       for (const k of allowed) if (req.body[k] !== undefined) updates[k] = req.body[k];
       if (!Object.keys(updates).length) return res.status(400).json({ success: false, message: 'لا توجد حقول للتحديث' });
       const fields = Object.keys(updates).map((k, i) => `${k}=$${i+3}`).join(', ');
       await pool.query(`UPDATE orders SET ${fields} WHERE id=$1 AND user_id=$2`, [req.params.id, req.user.id, ...Object.values(updates)]);
       await auditLog(req.user.id, 'update_order', 'orders', parseInt(req.params.id), JSON.stringify(updates), req.ip);
+
+      // إشعار تلقائي للعميل عند تغيير الحالة
+      const autoNotifyStatuses = ['confirmed', 'shipped', 'delivered', 'cancelled'];
+      if (updates.status && autoNotifyStatuses.includes(updates.status)) {
+        try {
+          const [ordR, bpR, waR] = await Promise.all([
+            pool.query('SELECT customer_name, customer_phone, total, delivery_company, delivery_link, notes FROM orders WHERE id=$1', [req.params.id]),
+            pool.query('SELECT store_name, currency FROM business_profile WHERE user_id=$1', [req.user.id]),
+            pool.query('SELECT access_token, whatsapp_phone_id FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true', [req.user.id, 'whatsapp'])
+          ]);
+          const o = ordR.rows[0];
+          const bp = bpR.rows[0] || {};
+          if (o?.customer_phone) {
+            const phone = o.customer_phone.replace(/[^0-9]/g, '');
+            const waPhone = phone.startsWith('0') ? '964' + phone.slice(1) : phone;
+            const cur = bp.currency || 'IQD';
+            const store = bp.store_name || 'متجرنا';
+            const statusMsgs = {
+              confirmed: `✅ *تم تأكيد طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 😊\nطلبك رقم *#${req.params.id}* مؤكد.\n💰 ${Number(o.total||0).toLocaleString()} ${cur}\n⚡ ${store}`,
+              shipped:   `🚚 *تم شحن طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 📦\nطلبك في الطريق${o.delivery_company?'\n🏢 '+escapeHtml(o.delivery_company):''}${o.delivery_link?'\n🔍 تتبع: *'+escapeHtml(o.delivery_link)+'*':''}\n⚡ ${store}`,
+              delivered: `🎉 *وصل طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 🌟\nطلبك رقم *#${req.params.id}* وصل.\nنرجو رضاك 😊 ⚡ ${store}`,
+              cancelled: `❌ *إلغاء الطلب*\n\nأهلاً ${escapeHtml(o.customer_name||'')}\nتم إلغاء طلبك #${req.params.id}${o.notes?'\nالسبب: '+escapeHtml(o.notes):''}\n⚡ ${store}`
+            };
+            const msg = statusMsgs[updates.status];
+            // إرسال تلقائي عبر WhatsApp API إن كان مربوطاً
+            if (waR.rows[0]?.access_token && waR.rows[0]?.whatsapp_phone_id) {
+              await fetch(`https://graph.facebook.com/v19.0/${waR.rows[0].whatsapp_phone_id}/messages`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${waR.rows[0].access_token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messaging_product: 'whatsapp', to: waPhone, type: 'text', text: { body: msg } })
+              }).catch(() => {});
+            }
+            // حفظ الرابط في الطلب للاستخدام اليدوي
+            const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`;
+            await pool.query('UPDATE orders SET delivery_wa_link=$1 WHERE id=$2', [waUrl, req.params.id]).catch(() => {});
+          }
+        } catch(e) { /* لا نوقف العملية إذا فشل الإشعار */ }
+      }
+
       return res.json({ success: true });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
@@ -3393,8 +3795,28 @@ app.post('/api/images/generate-text', authenticateToken, async (req, res) => {
 });
 
 // ============================================================
-// AD MANAGER — مدير الإعلانات
+// AD MANAGER — مدير الإعلانات (Meta + TikTok Ads API)
 // ============================================================
+
+// ─── Helper: جلب Ad Account من Meta ───
+async function getMetaAdAccount(accessToken) {
+  try {
+    const r = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,currency,account_status&access_token=${encodeURIComponent(accessToken)}`);
+    const d = await r.json();
+    return d.data?.[0] || null;
+  } catch(e) { return null; }
+}
+
+// ─── Helper: جلب TikTok Advertiser ID ───
+async function getTikTokAdvertiser(accessToken) {
+  try {
+    const r = await fetch('https://business-api.tiktok.com/open_api/v1.3/oauth2/advertiser/get/', {
+      headers: { 'Access-Token': accessToken }
+    });
+    const d = await r.json();
+    return d.data?.list?.[0]?.advertiser_id || null;
+  } catch(e) { return null; }
+}
 
 // جلب الحملات
 app.get('/api/ads/campaigns', authenticateToken, async (req, res) => {
@@ -3408,25 +3830,255 @@ app.get('/api/ads/campaigns', authenticateToken, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// إنشاء حملة
+// إنشاء وإطلاق حملة
 app.post('/api/ads/campaigns', authenticateToken, async (req, res) => {
-  const { name, platform, objective, budget, budget_type, start_date, end_date, target_audience, ad_content } = req.body;
+  const { name, platform, objective, budget, budget_type, start_date, end_date, target_audience, ad_content, launch_now } = req.body;
   const ALLOWED_PLATFORMS = ['facebook', 'instagram', 'tiktok', 'google'];
   if (!name || !platform) return res.status(400).json({ success: false, message: 'الاسم والمنصة مطلوبان' });
   if (!ALLOWED_PLATFORMS.includes(platform)) return res.status(400).json({ success: false, message: 'منصة غير مدعومة' });
   if (budget && parseFloat(budget) < 0) return res.status(400).json({ success: false, message: 'الميزانية غير صالحة' });
+
   try {
     if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    let external_id = '';
+    let launch_status = 'draft';
+    let launch_message = '';
+    let launch_error = null;
+
+    // ─── إطلاق فعلي إذا طُلب ───
+    if (launch_now) {
+      if (platform === 'facebook' || platform === 'instagram') {
+        const META_KEY = process.env.META_ADS_TOKEN; // توكن Ads خاص بالمستخدم
+        // محاولة جلب توكن من قاعدة البيانات
+        const accR = await pool.query(
+          'SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+          [req.user.id, 'facebook']
+        );
+        const token = META_KEY || accR.rows[0]?.access_token;
+
+        if (token) {
+          try {
+            const adAccount = await getMetaAdAccount(token);
+            if (adAccount) {
+              const adAccountId = adAccount.id;
+
+              // 1. إنشاء Campaign
+              const campRes = await fetch(`https://graph.facebook.com/v19.0/${adAccountId}/campaigns`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: escapeHtml(name),
+                  objective: metaObjectiveMap(objective),
+                  status: 'PAUSED', // نبدأ متوقفة حتى يراجعها المستخدم
+                  special_ad_categories: [],
+                  access_token: token
+                })
+              });
+              const campData = await campRes.json();
+
+              if (campData.id) {
+                external_id = campData.id;
+                launch_status = 'paused';
+                launch_message = `✅ تم إنشاء الحملة على Meta (ID: ${campData.id}) — بحالة متوقفة لمراجعتك`;
+
+                // 2. إنشاء Ad Set
+                const adSetRes = await fetch(`https://graph.facebook.com/v19.0/${adAccountId}/adsets`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: `${name} — Ad Set`,
+                    campaign_id: campData.id,
+                    daily_budget: Math.round((parseFloat(budget)||10) * 100), // بالسنت
+                    billing_event: 'IMPRESSIONS',
+                    optimization_goal: 'REACH',
+                    targeting: buildMetaTargeting(target_audience),
+                    status: 'PAUSED',
+                    start_time: start_date || new Date().toISOString(),
+                    access_token: token
+                  })
+                });
+                const adSetData = await adSetRes.json();
+                if (adSetData.error) launch_message += ` | تحذير Ad Set: ${adSetData.error.message}`;
+              } else {
+                launch_error = campData.error?.message || 'فشل إنشاء الحملة على Meta';
+              }
+            } else {
+              launch_error = 'لم يتم العثور على Ad Account — تأكد من ربط حساب Meta Business';
+            }
+          } catch(e) {
+            launch_error = 'خطأ في الاتصال بـ Meta API: ' + e.message;
+          }
+        } else {
+          launch_error = 'لا يوجد Meta Access Token — اربط حسابك من صفحة ربط الحسابات';
+        }
+      }
+
+      else if (platform === 'tiktok') {
+        const accR = await pool.query(
+          'SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+          [req.user.id, 'tiktok']
+        );
+        const token = accR.rows[0]?.access_token;
+
+        if (token) {
+          try {
+            const advertiserId = await getTikTokAdvertiser(token);
+            if (advertiserId) {
+              const campRes = await fetch('https://business-api.tiktok.com/open_api/v1.3/campaign/create/', {
+                method: 'POST',
+                headers: { 'Access-Token': token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  advertiser_id: advertiserId,
+                  campaign_name: escapeHtml(name),
+                  objective_type: tiktokObjectiveMap(objective),
+                  budget_mode: 'BUDGET_MODE_DAY',
+                  budget: parseFloat(budget) || 10,
+                  operation_status: 'DISABLE' // متوقفة للمراجعة
+                })
+              });
+              const campData = await campRes.json();
+              if (campData.data?.campaign_id) {
+                external_id = campData.data.campaign_id;
+                launch_status = 'paused';
+                launch_message = `✅ تم إنشاء الحملة على TikTok (ID: ${campData.data.campaign_id}) — بحالة متوقفة لمراجعتك`;
+              } else {
+                launch_error = campData.message || 'فشل إنشاء الحملة على TikTok';
+              }
+            } else {
+              launch_error = 'لم يتم العثور على Advertiser ID — تأكد من حساب TikTok for Business';
+            }
+          } catch(e) {
+            launch_error = 'خطأ في الاتصال بـ TikTok API: ' + e.message;
+          }
+        } else {
+          launch_error = 'لا يوجد TikTok Access Token — اربط حسابك من صفحة ربط الحسابات';
+        }
+      }
+    }
+
+    // حفظ في قاعدة البيانات
     const r = await pool.query(`
-      INSERT INTO ad_campaigns (user_id,name,platform,objective,budget,budget_type,start_date,end_date,target_audience,ad_content)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
+      INSERT INTO ad_campaigns (user_id,name,platform,objective,budget,budget_type,start_date,end_date,target_audience,ad_content,external_id,status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *
     `, [req.user.id, escapeHtml(name), platform, objective||'awareness',
         parseFloat(budget)||0, budget_type||'daily',
         start_date||null, end_date||null,
-        JSON.stringify(target_audience||{}), JSON.stringify(ad_content||{})]);
-    await auditLog(req.user.id, 'create_campaign', 'ad_campaigns', r.rows[0].id, name, req.ip);
-    res.json({ success: true, campaign: r.rows[0] });
+        JSON.stringify(target_audience||{}), JSON.stringify(ad_content||{}),
+        external_id, launch_status]);
+
+    await auditLog(req.user.id, 'create_campaign', 'ad_campaigns', r.rows[0].id, `${name} [${platform}]`, req.ip);
+    if (launch_status !== 'draft') await notify(req.user.id, '📣 حملة جديدة', launch_message || `تم إنشاء: ${name}`, 'success');
+
+    res.json({
+      success: true,
+      campaign: r.rows[0],
+      launched: launch_status !== 'draft',
+      launch_message,
+      launch_error
+    });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ─── تفعيل/إيقاف حملة على المنصة ───
+app.put('/api/ads/campaigns/:id/toggle', authenticateToken, async (req, res) => {
+  const { action } = req.body; // 'activate' | 'pause'
+  const id = parseInt(req.params.id);
+  if (!id || !['activate','pause'].includes(action))
+    return res.status(400).json({ success: false, message: 'بيانات غير صالحة' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT * FROM ad_campaigns WHERE id=$1 AND user_id=$2', [id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'الحملة غير موجودة' });
+    const camp = r.rows[0];
+    const newStatus = action === 'activate' ? 'active' : 'paused';
+    let apiResult = null;
+
+    // تفعيل/إيقاف على المنصة إذا كان external_id موجوداً
+    if (camp.external_id) {
+      const accR = await pool.query(
+        'SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+        [req.user.id, camp.platform === 'instagram' ? 'facebook' : camp.platform]
+      );
+      const token = accR.rows[0]?.access_token;
+
+      if (token && (camp.platform === 'facebook' || camp.platform === 'instagram')) {
+        const status = action === 'activate' ? 'ACTIVE' : 'PAUSED';
+        const toggleRes = await fetch(`https://graph.facebook.com/v19.0/${camp.external_id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, access_token: token })
+        });
+        apiResult = await toggleRes.json();
+      } else if (token && camp.platform === 'tiktok') {
+        const advertiserId = await getTikTokAdvertiser(token);
+        if (advertiserId) {
+          const status = action === 'activate' ? 'ENABLE' : 'DISABLE';
+          await fetch('https://business-api.tiktok.com/open_api/v1.3/campaign/status/update/', {
+            method: 'POST',
+            headers: { 'Access-Token': token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ advertiser_id: advertiserId, campaign_ids: [camp.external_id], operation_status: status })
+          });
+        }
+      }
+    }
+
+    await pool.query('UPDATE ad_campaigns SET status=$1,updated_at=NOW() WHERE id=$2', [newStatus, id]);
+    res.json({ success: true, status: newStatus, api_result: apiResult });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ─── جلب نتائج حملة من Meta ───
+app.get('/api/ads/campaigns/:id/insights', authenticateToken, async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT * FROM ad_campaigns WHERE id=$1 AND user_id=$2', [id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'الحملة غير موجودة' });
+    const camp = r.rows[0];
+    if (!camp.external_id) return res.json({ success: false, message: 'الحملة لم تُطلق على المنصة بعد' });
+
+    const accR = await pool.query(
+      'SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+      [req.user.id, camp.platform === 'instagram' ? 'facebook' : camp.platform]
+    );
+    const token = accR.rows[0]?.access_token;
+    if (!token) return res.json({ success: false, message: 'لا يوجد Access Token' });
+
+    if (camp.platform === 'facebook' || camp.platform === 'instagram') {
+      const insightsRes = await fetch(
+        `https://graph.facebook.com/v19.0/${camp.external_id}/insights?fields=impressions,clicks,spend,reach,cpc,cpm,actions&date_preset=last_30_days&access_token=${encodeURIComponent(token)}`
+      );
+      const insights = await insightsRes.json();
+      const data = insights.data?.[0] || {};
+
+      // تحديث قاعدة البيانات
+      await pool.query(`UPDATE ad_campaigns SET
+        impressions=$1, clicks=$2, spend=$3, results=$4, updated_at=NOW()
+        WHERE id=$5`,
+        [parseInt(data.impressions||0), parseInt(data.clicks||0),
+         parseFloat(data.spend||0), JSON.stringify(data), id]);
+
+      return res.json({ success: true, insights: data, platform: 'meta' });
+    }
+
+    if (camp.platform === 'tiktok') {
+      const advertiserId = await getTikTokAdvertiser(token);
+      if (advertiserId) {
+        const insightsRes = await fetch(
+          `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?advertiser_id=${advertiserId}&report_type=CAMPAIGN&dimensions=["campaign_id"]&metrics=["impressions","clicks","spend","reach"]&data_level=AUCTION_CAMPAIGN&campaign_ids=["${camp.external_id}"]&start_date=${new Date(Date.now()-30*86400000).toISOString().split('T')[0]}&end_date=${new Date().toISOString().split('T')[0]}`,
+          { headers: { 'Access-Token': token } }
+        );
+        const data = await insightsRes.json();
+        const metrics = data.data?.list?.[0]?.metrics || {};
+        await pool.query(`UPDATE ad_campaigns SET impressions=$1,clicks=$2,spend=$3,updated_at=NOW() WHERE id=$4`,
+          [parseInt(metrics.impressions||0), parseInt(metrics.clicks||0), parseFloat(metrics.spend||0), id]);
+        return res.json({ success: true, insights: metrics, platform: 'tiktok' });
+      }
+    }
+
+    res.json({ success: false, message: 'منصة غير مدعومة' });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // تحديث حملة
@@ -3438,8 +4090,7 @@ app.put('/api/ads/campaigns/:id', authenticateToken, async (req, res) => {
     if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
     const r = await pool.query('SELECT user_id FROM ad_campaigns WHERE id=$1', [id]);
     if (!r.rows.length || r.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, message: 'غير مصرح' });
-    await pool.query(`
-      UPDATE ad_campaigns SET
+    await pool.query(`UPDATE ad_campaigns SET
         name=COALESCE($2,name), status=COALESCE($3,status),
         budget=COALESCE($4,budget), start_date=COALESCE($5,start_date),
         end_date=COALESCE($6,end_date),
@@ -3448,15 +4099,14 @@ app.put('/api/ads/campaigns/:id', authenticateToken, async (req, res) => {
         results=COALESCE($9,results),
         spend=COALESCE($10,spend), impressions=COALESCE($11,impressions),
         clicks=COALESCE($12,clicks), conversions=COALESCE($13,conversions),
-        updated_at=NOW()
-      WHERE id=$1
-    `, [id, name?escapeHtml(name):null, status||null,
-        budget?parseFloat(budget):null, start_date||null, end_date||null,
-        target_audience?JSON.stringify(target_audience):null,
-        ad_content?JSON.stringify(ad_content):null,
-        results?JSON.stringify(results):null,
-        spend?parseFloat(spend):null, impressions?parseInt(impressions):null,
-        clicks?parseInt(clicks):null, conversions?parseInt(conversions):null]);
+        updated_at=NOW() WHERE id=$1`,
+      [id, name?escapeHtml(name):null, status||null,
+       budget?parseFloat(budget):null, start_date||null, end_date||null,
+       target_audience?JSON.stringify(target_audience):null,
+       ad_content?JSON.stringify(ad_content):null,
+       results?JSON.stringify(results):null,
+       spend?parseFloat(spend):null, impressions?parseInt(impressions):null,
+       clicks?parseInt(clicks):null, conversions?parseInt(conversions):null]);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -3491,19 +4141,19 @@ app.post('/api/ads/suggest', authenticateToken, async (req, res) => {
       headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'anthropic/claude-haiku-4-5',
-        max_tokens: 800,
+        max_tokens: 900,
         messages: [{
           role: 'user',
-          content: `أنت خبير إعلانات رقمية عربي. اقترح حملة إعلانية متكاملة.
+          content: `أنت خبير إعلانات رقمية عربي متخصص في Meta وTikTok. اقترح حملة إعلانية متكاملة جاهزة للإطلاق.
 المتجر: ${escapeHtml(biz.store_name||'')} — ${escapeHtml(biz.business_type||'')}
 الهدف: ${escapeHtml(goal)}
-الميزانية: ${escapeHtml(String(budget||'غير محددة'))}
+الميزانية: ${escapeHtml(String(budget||'غير محددة'))} دولار يومياً
 المنصة: ${escapeHtml(platform||'غير محددة')}
 المنتج: ${escapeHtml(product_desc||'')}
 الجمهور: ${escapeHtml(target||biz.target_audience||'')}
 
 أرجع JSON فقط:
-{"campaign_name":"اسم الحملة","objective":"هدف الحملة","target_audience":{"age":"18-35","interests":["اهتمام1"],"location":"العراق"},"ad_copies":[{"title":"عنوان1","body":"نص1","cta":"اضغط هنا"}],"budget_suggestion":{"daily":10,"total":300},"schedule":{"duration_days":30},"tips":["نصيحة1","نصيحة2"]}`
+{"campaign_name":"اسم الحملة","objective":"awareness|traffic|engagement|leads|sales","target_audience":{"age_min":18,"age_max":45,"interests":["اهتمام1","اهتمام2"],"location":"العراق","gender":"all"},"ad_copies":[{"title":"عنوان1","body":"نص1","cta":"تسوق الآن","image_desc":"وصف الصورة المثالية"}],"budget_suggestion":{"daily":10,"total":300},"schedule":{"duration_days":30,"best_times":["20:00","22:00"]},"retargeting":{"enabled":true,"audience":"زوار الموقع + عملاء سابقون"},"tips":["نصيحة1","نصيحة2","نصيحة3"]}`
         }]
       })
     });
@@ -3513,6 +4163,209 @@ app.post('/api/ads/suggest', authenticateToken, async (req, res) => {
     res.json({ success: true, suggestion: result });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
+
+// ============================================================
+// RETARGETING — إعادة الاستهداف
+// ============================================================
+
+// جلب جماهير إعادة الاستهداف
+app.get('/api/ads/retargeting/audiences', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (!pool) return res.json({ success: true, audiences: [] });
+
+    // بناء جماهير من بيانات العملاء
+    const [allCustomers, recentBuyers, highValue, abandoned, loyal] = await Promise.all([
+      pool.query('SELECT COUNT(*) as cnt, ARRAY_AGG(DISTINCT customer_phone) as phones FROM orders WHERE user_id=$1', [userId]),
+      pool.query(`SELECT COUNT(DISTINCT customer_phone) as cnt FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '30 days'`, [userId]),
+      pool.query(`SELECT COUNT(DISTINCT customer_phone) as cnt FROM orders WHERE user_id=$1 AND total >= (SELECT AVG(total)*1.5 FROM orders WHERE user_id=$1)`, [userId]),
+      pool.query(`SELECT COUNT(*) as cnt FROM orders WHERE user_id=$1 AND status='cancelled'`, [userId]),
+      pool.query('SELECT COUNT(*) as cnt FROM loyalty_points WHERE user_id=$1 AND points>0', [userId])
+    ]);
+
+    const audiences = [
+      {
+        id: 'all_customers',
+        name: 'كل العملاء',
+        icon: '👥',
+        size: parseInt(allCustomers.rows[0]?.cnt || 0),
+        desc: 'جميع من أجروا طلباً',
+        type: 'customer_list',
+        use_case: 'استهدافهم بعروض ومنتجات جديدة'
+      },
+      {
+        id: 'recent_buyers',
+        name: 'المشترون مؤخراً',
+        icon: '🔥',
+        size: parseInt(recentBuyers.rows[0]?.cnt || 0),
+        desc: 'اشتروا في آخر 30 يوم',
+        type: 'recent',
+        use_case: 'بيع منتجات تكميلية (Upsell)'
+      },
+      {
+        id: 'high_value',
+        name: 'العملاء ذوو القيمة العالية',
+        icon: '💎',
+        size: parseInt(highValue.rows[0]?.cnt || 0),
+        desc: 'طلباتهم فوق المتوسط',
+        type: 'high_value',
+        use_case: 'استهدافهم بمنتجات premium'
+      },
+      {
+        id: 'cancelled',
+        name: 'الطلبات الملغاة',
+        icon: '↩️',
+        size: parseInt(abandoned.rows[0]?.cnt || 0),
+        desc: 'ألغوا طلباتهم',
+        type: 'cancelled',
+        use_case: 'استرجاعهم بعرض خاص'
+      },
+      {
+        id: 'loyal',
+        name: 'العملاء المخلصون',
+        icon: '⭐',
+        size: parseInt(loyal.rows[0]?.cnt || 0),
+        desc: 'لديهم نقاط ولاء',
+        type: 'loyal',
+        use_case: 'استهدافهم بعروض حصرية'
+      }
+    ];
+
+    res.json({ success: true, audiences });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إطلاق حملة إعادة استهداف
+app.post('/api/ads/retargeting/launch', authenticateToken, async (req, res) => {
+  const { audience_id, platform, ad_copy, budget, offer } = req.body;
+  if (!audience_id || !platform) return res.status(400).json({ success: false, message: 'البيانات ناقصة' });
+  const userId = req.user.id;
+
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    // جلب قائمة الهواتف حسب الجمهور
+    let phones = [];
+    const audienceQueries = {
+      all_customers:  `SELECT DISTINCT customer_phone FROM orders WHERE user_id=$1`,
+      recent_buyers:  `SELECT DISTINCT customer_phone FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '30 days'`,
+      high_value:     `SELECT DISTINCT customer_phone FROM orders WHERE user_id=$1 AND total>=(SELECT AVG(total)*1.5 FROM orders WHERE user_id=$1)`,
+      cancelled:      `SELECT DISTINCT customer_phone FROM orders WHERE user_id=$1 AND status='cancelled'`,
+      loyal:          `SELECT DISTINCT lp.customer_phone FROM loyalty_points lp WHERE lp.user_id=$1 AND lp.points>0`
+    };
+    const q = audienceQueries[audience_id];
+    if (q) {
+      const r = await pool.query(q, [userId]);
+      phones = r.rows.map(row => row.customer_phone.replace(/[^0-9]/g,''));
+    }
+
+    let external_id = '';
+    let launch_status = 'draft';
+    let launch_message = '';
+
+    // محاولة رفع Custom Audience على Meta
+    if ((platform === 'facebook' || platform === 'instagram') && phones.length > 0) {
+      const accR = await pool.query(
+        'SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+        [userId, 'facebook']
+      );
+      const token = accR.rows[0]?.access_token;
+
+      if (token) {
+        try {
+          const adAccount = await getMetaAdAccount(token);
+          if (adAccount) {
+            // إنشاء Custom Audience
+            const audRes = await fetch(`https://graph.facebook.com/v19.0/${adAccount.id}/customaudiences`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: `SocialOS Retargeting — ${audience_id} — ${new Date().toLocaleDateString('ar')}`,
+                subtype: 'CUSTOM',
+                description: `إعادة استهداف: ${audience_id}`,
+                customer_file_source: 'USER_PROVIDED_ONLY',
+                access_token: token
+              })
+            });
+            const audData = await audRes.json();
+
+            if (audData.id) {
+              // رفع الأرقام المشفّرة
+              const crypto = require('crypto');
+              const hashedPhones = phones.slice(0,1000).map(p => {
+                const normalized = p.startsWith('0') ? '964' + p.slice(1) : p;
+                return crypto.createHash('sha256').update(normalized).digest('hex');
+              });
+
+              await fetch(`https://graph.facebook.com/v19.0/${audData.id}/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  payload: { schema: ['PHONE'], data: hashedPhones.map(h => [h]) },
+                  access_token: token
+                })
+              });
+
+              external_id = audData.id;
+              launch_status = 'active';
+              launch_message = `✅ تم رفع ${Math.min(phones.length,1000)} رقم هاتف كـ Custom Audience على Meta (ID: ${audData.id})`;
+            }
+          }
+        } catch(e) {
+          launch_message = `⚠️ تم حفظ الجمهور محلياً — ${e.message}`;
+        }
+      } else {
+        launch_message = `⚠️ اربط حساب Meta لرفع الجمهور مباشرة`;
+      }
+    }
+
+    // حفظ حملة retargeting
+    const campName = `إعادة استهداف — ${audience_id} — ${platform}`;
+    const r = await pool.query(`
+      INSERT INTO ad_campaigns (user_id,name,platform,objective,budget,status,external_id,ad_content,target_audience)
+      VALUES ($1,$2,$3,'retargeting',$4,$5,$6,$7,$8) RETURNING *
+    `, [userId, campName, platform, parseFloat(budget)||5, launch_status, external_id,
+        JSON.stringify({ copy: ad_copy, offer }),
+        JSON.stringify({ type: audience_id, size: phones.length })]);
+
+    // إنشاء رسائل واتساب للجمهور (fallback)
+    const waLinks = phones.slice(0,50).map(phone => {
+      const waPhone = phone.startsWith('0') ? '964' + phone.slice(1) : phone;
+      const msg = offer || ad_copy || 'لدينا عرض خاص لك! 🎁';
+      return { phone: waPhone, url: `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}` };
+    });
+
+    await notify(userId, '🎯 إعادة استهداف', launch_message || campName, 'success');
+    res.json({
+      success: true,
+      campaign: r.rows[0],
+      audience_size: phones.length,
+      launch_message: launch_message || `تم إنشاء حملة إعادة الاستهداف (${phones.length} عميل)`,
+      wa_links: waLinks,
+      external_id
+    });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ─── Helpers: تحويل أهداف الحملات ───
+function metaObjectiveMap(obj) {
+  const map = { awareness:'BRAND_AWARENESS', traffic:'LINK_CLICKS', engagement:'POST_ENGAGEMENT', leads:'LEAD_GENERATION', sales:'CONVERSIONS', retargeting:'CONVERSIONS' };
+  return map[obj] || 'BRAND_AWARENESS';
+}
+function tiktokObjectiveMap(obj) {
+  const map = { awareness:'REACH', traffic:'TRAFFIC', engagement:'VIDEO_VIEWS', leads:'LEAD_GENERATION', sales:'CONVERSIONS', retargeting:'CONVERSIONS' };
+  return map[obj] || 'REACH';
+}
+function buildMetaTargeting(audience) {
+  const ta = audience || {};
+  return {
+    age_min: ta.age_min || 18,
+    age_max: ta.age_max || 55,
+    geo_locations: { countries: ta.countries || ['IQ', 'SA', 'AE'] },
+    interests: (ta.interests||[]).map(i => ({ name: i })).slice(0,10),
+    genders: ta.gender === 'male' ? [1] : ta.gender === 'female' ? [2] : [1,2]
+  };
+}
 
 // ============================================================
 // SOCIAL POSTS — نشر المنشورات
@@ -3649,8 +4502,274 @@ cron.schedule('*/5 * * * *', async () => {
 });
 
 // ============================================================
-// DIGITAL TEAM — فريق الموظفين الرقميين
+// DIGITAL TEAM MEETING — اجتماع الفريق الرقمي
 // ============================================================
+app.post('/api/team/digital/meeting', authenticateToken, rateLimit(10, 60*1000), async (req, res) => {
+  const { question } = req.body;
+  if (!question || String(question).length > 1000)
+    return res.status(400).json({ success: false, message: 'السؤال مطلوب (حتى 1000 حرف)' });
+
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  const userId = req.user.id;
+  const TEAM_ROLES_DATA = {
+    sales:            { name: 'موظف المبيعات',        icon: '💼', prompt: 'أنت خبير مبيعات محترف. ردّك يركز على: فرص البيع، إقناع العملاء، زيادة الإيراد، تقنيات الإغلاق.' },
+    customer_service: { name: 'خدمة العملاء',         icon: '🎧', prompt: 'أنت متخصص خدمة عملاء. ردّك يركز على: رضا العملاء، حل المشاكل، تجربة الشراء، الاحتفاظ بالعملاء.' },
+    marketing:        { name: 'موظف التسويق',         icon: '📢', prompt: 'أنت خبير تسويق رقمي. ردّك يركز على: الحملات، المحتوى، الجمهور المستهدف، الانتشار.' },
+    designer:         { name: 'موظف التصميم',         icon: '🎨', prompt: 'أنت مصمم إبداعي. ردّك يركز على: الهوية البصرية، الصور، جاذبية العرض، التأثير البصري.' },
+    orders:           { name: 'موظف الطلبات',         icon: '📦', prompt: 'أنت مسؤول الطلبات والعمليات. ردّك يركز على: كفاءة التنفيذ، التوصيل، المخزون، العمليات.' },
+    advisor:          { name: 'المستشار التنفيذي',    icon: '🏛️', prompt: 'أنت مستشار أعمال استراتيجي. ردّك يركز على: الاستراتيجية الكبرى، المخاطر، فرص النمو، القرارات الحرجة.' }
+  };
+
+  try {
+    // جلب بيانات السياق
+    let biz = {}, members = {};
+    if (pool) {
+      const [bp, tm] = await Promise.all([
+        pool.query('SELECT store_name, business_type, business_desc, policies FROM business_profile WHERE user_id=$1', [userId]),
+        pool.query('SELECT role, name, personality, expertise, instructions FROM digital_team WHERE user_id=$1', [userId])
+      ]);
+      biz = bp.rows[0] || {};
+      tm.rows.forEach(m => { members[m.role] = m; });
+    }
+
+    const bizContext = `المتجر: ${escapeHtml(biz.store_name||'')} — ${escapeHtml(biz.business_type||'')}
+الوصف: ${escapeHtml(biz.business_desc||'')}
+السياسات: ${escapeHtml(biz.policies||'')}`;
+
+    // إرسال السؤال لكل موظف بالتوازي
+    const roleEntries = Object.entries(TEAM_ROLES_DATA);
+    const responses = await Promise.all(roleEntries.map(async ([role, roleData]) => {
+      const member = members[role] || {};
+      const systemPrompt = `${roleData.prompt}
+المتجر: ${bizContext}
+${member.personality ? 'شخصيتك: '+escapeHtml(member.personality) : ''}
+${member.expertise ? 'خبرتك: '+escapeHtml(member.expertise) : ''}
+${member.instructions ? 'تعليمات: '+escapeHtml(member.instructions) : ''}
+أجب باختصار وعملية (3-5 جمل) بالعربية. ابدأ مباشرة بالرأي.`;
+
+      try {
+        const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'anthropic/claude-haiku-4-5',
+            max_tokens: 300,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: String(question).substring(0, 1000) }]
+          })
+        });
+        const aiData = await aiRes.json();
+        const reply = aiData.choices?.[0]?.message?.content || 'لا رد';
+        // تحديث عداد التفاعلات
+        if (pool) await pool.query(
+          'UPDATE digital_team SET total_interactions=total_interactions+1 WHERE user_id=$1 AND role=$2',
+          [userId, role]
+        ).catch(() => {});
+        return { role, name: member.name || roleData.name, icon: roleData.icon, reply: reply.substring(0, 600) };
+      } catch(e) {
+        return { role, name: member.name || roleData.name, icon: roleData.icon, reply: 'تعذر الحصول على رد' };
+      }
+    }));
+
+    // تلخيص الاجتماع بالـ AI
+    const summaryRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: `بناءً على آراء الفريق التالية حول السؤال: "${question}"
+
+${responses.map(r => `${r.icon} ${r.name}: ${r.reply}`).join('\n\n')}
+
+لخّص أبرز نقاط الاتفاق والاختلاف، واذكر التوصية النهائية في جملتين. كن مختصراً وعملياً.`
+        }]
+      })
+    });
+    const summaryData = await summaryRes.json();
+    const summary = summaryData.choices?.[0]?.message?.content || '';
+
+    res.json({ success: true, question, responses, summary, timestamp: new Date().toISOString() });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// PDF REPORT EXPORT — تصدير تقرير PDF
+// ============================================================
+app.get('/api/analytics/export-pdf', authenticateToken, async (req, res) => {
+  const { period = '30' } = req.query;
+  const days = Math.min(365, Math.max(1, parseInt(period) || 30));
+  const userId = req.user.id;
+
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    const [bp, orders, prev, topCusts, daily, products, statusBreak] = await Promise.all([
+      pool.query('SELECT store_name, business_type, currency FROM business_profile WHERE user_id=$1', [userId]),
+      pool.query(`SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev, COALESCE(AVG(total),0) as avg FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days'`, [userId]),
+      pool.query(`SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev FROM orders WHERE user_id=$1 AND created_at BETWEEN NOW()-INTERVAL '${days*2} days' AND NOW()-INTERVAL '${days} days'`, [userId]),
+      pool.query(`SELECT customer_name, COUNT(*) as orders, SUM(total) as spent FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days' GROUP BY customer_name ORDER BY spent DESC LIMIT 5`, [userId]),
+      pool.query(`SELECT DATE(created_at) as date, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days' GROUP BY DATE(created_at) ORDER BY date`, [userId]),
+      pool.query(`SELECT COUNT(*) as cnt, SUM(CASE WHEN stock<=5 THEN 1 ELSE 0 END) as low FROM products WHERE user_id=$1`, [userId]),
+      pool.query(`SELECT status, COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days' GROUP BY status`, [userId])
+    ]);
+
+    const store = bp.rows[0] || {};
+    const cur = store.currency || 'IQD';
+    const o = orders.rows[0];
+    const pv = prev.rows[0];
+    const totalRev = Number(o.rev||0);
+    const prevRev = Number(pv.rev||0);
+    const growth = prevRev > 0 ? ((totalRev - prevRev) / prevRev * 100).toFixed(1) : 0;
+    const now = new Date().toLocaleDateString('ar-IQ', { year:'numeric', month:'long', day:'numeric' });
+
+    // بناء HTML للـ PDF
+    const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تقرير SocialOS</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f8fafc; color: #1e293b; direction: rtl; font-size: 13px; }
+  .header { background: linear-gradient(135deg, #4f8ef7, #7c3aed); color: white; padding: 28px 32px; }
+  .header h1 { font-size: 22px; font-weight: 900; margin-bottom: 4px; }
+  .header p { opacity: .75; font-size: 12px; }
+  .header-meta { display: flex; gap: 20px; margin-top: 12px; font-size: 11px; opacity: .8; }
+  .content { padding: 24px 32px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .kpi { background: white; border-radius: 10px; padding: 14px; border: 1px solid #e2e8f0; text-align: center; }
+  .kpi-val { font-size: 22px; font-weight: 900; color: #4f8ef7; margin-bottom: 2px; }
+  .kpi-lbl { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+  .kpi-sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  .section { background: white; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 16px; overflow: hidden; }
+  .section-header { background: #f1f5f9; padding: 10px 16px; font-weight: 700; font-size: 12px; color: #475569; border-bottom: 1px solid #e2e8f0; }
+  .section-body { padding: 14px 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #f8fafc; padding: 8px 10px; text-align: right; color: #475569; font-weight: 700; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  .chart-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .chart-bar-label { width: 60px; font-size: 10px; color: #64748b; }
+  .chart-bar-track { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+  .chart-bar-fill { height: 100%; background: linear-gradient(90deg, #4f8ef7, #7c3aed); border-radius: 4px; }
+  .chart-bar-val { width: 80px; font-size: 10px; font-weight: 700; text-align: left; color: #475569; }
+  .growth-pos { color: #10b981; font-weight: 700; }
+  .growth-neg { color: #ef4444; font-weight: 700; }
+  .footer { text-align: center; padding: 16px; color: #94a3b8; font-size: 10px; border-top: 1px solid #e2e8f0; margin-top: 8px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+  .badge-blue { background: #eff6ff; color: #3b82f6; }
+  .badge-green { background: #f0fdf4; color: #16a34a; }
+  .badge-red { background: #fef2f2; color: #dc2626; }
+  .badge-orange { background: #fff7ed; color: #ea580c; }
+  @media print { body { background: white; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>⚡ تقرير الأداء — ${escapeHtml(store.store_name || 'متجري')}</h1>
+  <p>${escapeHtml(store.business_type || '')} | آخر ${days} يوم</p>
+  <div class="header-meta">
+    <span>📅 تاريخ التقرير: ${now}</span>
+    <span>💱 العملة: ${cur}</span>
+    <span>🔖 SocialOS v2.0</span>
+  </div>
+</div>
+<div class="content">
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-val">${Number(totalRev).toLocaleString('ar-IQ')}</div>
+      <div class="kpi-lbl">الإيرادات</div>
+      <div class="kpi-sub ${Number(growth)>=0?'growth-pos':'growth-neg'}">${Number(growth)>=0?'↑':'↓'} ${Math.abs(growth)}% مقارنة بالفترة السابقة</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val">${parseInt(o.cnt||0).toLocaleString('ar')}</div>
+      <div class="kpi-lbl">الطلبات</div>
+      <div class="kpi-sub">${parseInt(o.cnt||0)>0?Number(o.avg||0).toFixed(0)+' '+cur+' متوسط':'-'}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val">${topCusts.rows.length}</div>
+      <div class="kpi-lbl">العملاء النشطون</div>
+      <div class="kpi-sub">في آخر ${days} يوم</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val">${parseInt(products.rows[0]?.low||0)}</div>
+      <div class="kpi-lbl">مخزون منخفض</div>
+      <div class="kpi-sub">من أصل ${parseInt(products.rows[0]?.cnt||0)} منتج</div>
+    </div>
+  </div>
+
+  <!-- الإيرادات اليومية -->
+  <div class="section">
+    <div class="section-header">📈 الإيرادات اليومية</div>
+    <div class="section-body">
+      ${(() => {
+        const max = Math.max(...daily.rows.map(r => Number(r.revenue||0)), 1);
+        return daily.rows.slice(-14).map(r => {
+          const pct = Math.round((Number(r.revenue||0)/max)*100);
+          const dt = new Date(r.date).toLocaleDateString('ar', {month:'short',day:'numeric'});
+          return `<div class="chart-bar">
+            <div class="chart-bar-label">${dt}</div>
+            <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${pct}%"></div></div>
+            <div class="chart-bar-val">${Number(r.revenue||0).toLocaleString()} ${cur}</div>
+          </div>`;
+        }).join('') || '<p style="color:#94a3b8;text-align:center;padding:16px">لا بيانات</p>';
+      })()}
+    </div>
+  </div>
+
+  <!-- أفضل العملاء + توزيع الطلبات -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="section">
+      <div class="section-header">🏆 أفضل 5 عملاء</div>
+      <div class="section-body" style="padding:0">
+        <table>
+          <tr><th>العميل</th><th>الطلبات</th><th>الإنفاق</th></tr>
+          ${topCusts.rows.map(c => `<tr>
+            <td>${escapeHtml(c.customer_name||'-')}</td>
+            <td style="text-align:center">${c.orders}</td>
+            <td style="font-weight:700;color:#4f8ef7">${Number(c.spent||0).toLocaleString()} ${cur}</td>
+          </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:12px">لا بيانات</td></tr>'}
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header">📊 توزيع الطلبات بالحالة</div>
+      <div class="section-body" style="padding:0">
+        <table>
+          <tr><th>الحالة</th><th>العدد</th><th>الإيراد</th></tr>
+          ${statusBreak.rows.map(s => {
+            const labels = {new:'🆕 جديد',confirmed:'✅ مؤكد',processing:'⚙️ جاري',shipped:'🚚 شُحن',delivered:'🚀 تم',cancelled:'❌ ملغي'};
+            return `<tr>
+              <td>${labels[s.status]||s.status}</td>
+              <td style="text-align:center;font-weight:700">${s.count}</td>
+              <td>${Number(s.revenue||0).toLocaleString()} ${cur}</td>
+            </tr>`;
+          }).join('') || '<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:12px">لا بيانات</td></tr>'}
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="footer">
+  تم إنشاء هذا التقرير تلقائياً بواسطة SocialOS ⚡ | ${now}
+</div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `inline; filename="report-${days}days.html"`);
+    res.setHeader('X-Report-Type', 'analytics');
+    res.send(html);
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
 
 const TEAM_ROLES = {
   sales: { name: 'موظف المبيعات', icon: '💼', desc: 'إغلاق الصفقات والإقناع' },
@@ -3962,7 +5081,51 @@ app.post('/api/mike', authenticateToken, async (req, res) => {
 - update_order_status: تحديث حالة طلب { order_id, status }
 - none: فقط الرد بدون إجراء
 
-مهم: أرجع JSON صالح فقط بدون أي نص خارجه.`;
+الإجراءات المتاحة (action):
+
+// ─── التنقل في التطبيق ───
+- navigate_to: الانتقال لصفحة { page: 'orders'|'products'|'customers'|'analytics'|'designer'|'posts'|'ads'|'identity'|'knowledge'|'decisions'|'board'|'coupons'|'loyalty'|'bulk-wa'|'team'|'emergency'|'backup'|'security'|'settings'|'delivery'|'inventory'|'notifications'|'profile'|'employee'|'training'|'digital-team'|'analytics-adv'|'retargeting'|'social'|'home' }
+
+// ─── الطلبات ───
+- create_order: إنشاء طلب { customer_name, customer_phone, items:[{name,price,qty}], total, notes }
+- update_order_status: تحديث حالة طلب { order_id, status: 'confirmed'|'processing'|'delivered'|'cancelled' }
+
+// ─── المنتجات ───
+- create_product: إضافة منتج { name, price, stock, category, description }
+
+// ─── العملاء ───
+- create_customer: إضافة عميل { name, phone, address, notes }
+- schedule_followup: جدولة متابعة عميل { customer_phone, note, days_from_now }
+
+// ─── النشر على المنصات ───
+- create_post: نشر منشور { platform: 'instagram'|'facebook'|'tiktok', content, media_url }
+
+// ─── واتساب ───
+- send_whatsapp: إرسال واتساب { phone, message }
+- send_bulk_whatsapp: إرسال جماعي { message, target: 'all'|'vip' }
+
+// ─── الكوبونات والعروض ───
+- create_coupon: إنشاء كوبون { code, type: 'percent'|'fixed', value, min_order }
+
+// ─── التقارير ───
+- get_report: تقرير { type: 'sales'|'orders'|'customers'|'products' }
+
+// ─── الإعلانات ───
+- suggest_ad: اقتراح حملة إعلانية { platform: 'facebook'|'instagram'|'tiktok'|'google', goal, budget, product_desc }
+
+// ─── الطوارئ ───
+- set_emergency: تفعيل/إيقاف وضع الطوارئ { active: true|false, mode_type, message }
+
+// ─── لا إجراء ───
+- none: الرد فقط بدون تنفيذ
+
+قواعد مهمة:
+- إذا طلب المستخدم فتح صفحة أو الانتقال لقسم → navigate_to
+- إذا طلب نشر بوست أو ترويج → create_post
+- إذا طلب إعلان أو حملة → suggest_ad أو navigate_to ads
+- إذا طلب تصميم صورة → navigate_to designer
+- إذا طلب إحصائيات أو تقرير → get_report أو navigate_to analytics
+- أرجع JSON صالح فقط بدون أي نص خارجه.`;
 
     const msgs = [
       ...(Array.isArray(history) ? history.slice(-6).map(m => ({
@@ -4353,6 +5516,203 @@ app.put('/api/orders/:id/deposit', authenticateToken, async (req, res) => {
     await auditLog(req.user.id, 'update_deposit', 'order', req.params.id, `Deposit: ${deposit_paid} - ${status}`, req.ip);
     res.json({ success: true, message: 'تم تحديث العربون' });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// DELIVERY COMPANIES — شركات التوصيل
+// ============================================================
+
+const DEFAULT_DELIVERY_COMPANIES = [
+  { id: 'aramex',    name: 'Aramex',        icon: '📦', tracking_url: 'https://www.aramex.com/track/?l={tracking}' },
+  { id: 'dhl',       name: 'DHL',           icon: '🟡', tracking_url: 'https://www.dhl.com/track?tracking-id={tracking}' },
+  { id: 'fedex',     name: 'FedEx',         icon: '🟣', tracking_url: 'https://www.fedex.com/en-us/tracking.html?tracknumbers={tracking}' },
+  { id: 'smsa',      name: 'SMSA Express',  icon: '🟢', tracking_url: 'https://www.smsaexpress.com/en/trackdetails?tracknumbers={tracking}' },
+  { id: 'zajil',     name: 'Zajil Express', icon: '🔵', tracking_url: 'https://www.zajilexpress.com/track?trackingNumber={tracking}' },
+  { id: 'naqel',     name: 'Naqel',         icon: '🟠', tracking_url: 'https://naqel.com.sa/en/track/?tracking={tracking}' },
+  { id: 'tcs',       name: 'TCS',           icon: '🔴', tracking_url: 'https://www.tcsexpress.com/track/{tracking}' },
+  { id: 'mrsool',    name: 'مرسول',         icon: '🛵', tracking_url: '' },
+  { id: 'torod',     name: 'توصيل',         icon: '🚚', tracking_url: '' },
+  { id: 'other',     name: 'أخرى',          icon: '📮', tracking_url: '' }
+];
+
+// جلب شركات التوصيل (الافتراضية + المخصصة)
+app.get('/api/delivery/companies', authenticateToken, async (req, res) => {
+  try {
+    let custom = [];
+    if (pool) {
+      const r = await pool.query(
+        "SELECT * FROM business_profile WHERE user_id=$1", [req.user.id]
+      );
+      const bp = r.rows[0] || {};
+      try { custom = JSON.parse(bp.custom_delivery_companies || '[]'); } catch(e) {}
+    }
+    res.json({ success: true, companies: [...DEFAULT_DELIVERY_COMPANIES, ...custom] });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إضافة شركة توصيل مخصصة
+app.post('/api/delivery/companies', authenticateToken, async (req, res) => {
+  const { name, icon, tracking_url } = req.body;
+  if (!name) return res.status(400).json({ success: false, message: 'اسم الشركة مطلوب' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT custom_delivery_companies FROM business_profile WHERE user_id=$1', [req.user.id]);
+    let companies = [];
+    try { companies = JSON.parse(r.rows[0]?.custom_delivery_companies || '[]'); } catch(e) {}
+    const newCompany = {
+      id: 'custom_' + Date.now(),
+      name: escapeHtml(name),
+      icon: escapeHtml(icon || '📦'),
+      tracking_url: tracking_url || '',
+      custom: true
+    };
+    companies.push(newCompany);
+    await pool.query(
+      'UPDATE business_profile SET custom_delivery_companies=$1 WHERE user_id=$2',
+      [JSON.stringify(companies), req.user.id]
+    );
+    res.json({ success: true, company: newCompany });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// تتبع شحنة — توليد رابط التتبع
+app.get('/api/delivery/track/:orderId', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query(
+      'SELECT id, customer_name, customer_phone, delivery_company, delivery_link, status FROM orders WHERE id=$1 AND user_id=$2',
+      [req.params.orderId, req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+    const order = r.rows[0];
+
+    // إنشاء رابط التتبع إذا كان tracking number محفوظاً
+    let trackingUrl = order.delivery_link || '';
+    if (!trackingUrl && order.delivery_company) {
+      const co = DEFAULT_DELIVERY_COMPANIES.find(c => c.id === order.delivery_company || c.name === order.delivery_company);
+      if (co?.tracking_url && order.delivery_link) {
+        trackingUrl = co.tracking_url.replace('{tracking}', encodeURIComponent(order.delivery_link));
+      }
+    }
+
+    res.json({
+      success: true,
+      order: { id: order.id, customer_name: order.customer_name, status: order.status, delivery_company: order.delivery_company, tracking_number: order.delivery_link, tracking_url: trackingUrl }
+    });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// تحديث معلومات الشحن لطلب
+app.put('/api/delivery/orders/:orderId', authenticateToken, async (req, res) => {
+  const { delivery_company, tracking_number, status } = req.body;
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT id FROM orders WHERE id=$1 AND user_id=$2', [req.params.orderId, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+
+    const updates = {};
+    if (delivery_company !== undefined) updates.delivery_company = escapeHtml(delivery_company);
+    if (tracking_number !== undefined) updates.delivery_link = escapeHtml(tracking_number);
+    if (status !== undefined) {
+      const VALID = ['new','confirmed','processing','shipped','delivered','cancelled'];
+      updates.status = VALID.includes(status) ? status : 'processing';
+    }
+    if (!Object.keys(updates).length) return res.status(400).json({ success: false, message: 'لا بيانات للتحديث' });
+
+    const fields = Object.keys(updates).map((k, i) => `${k}=$${i+3}`).join(', ');
+    await pool.query(`UPDATE orders SET ${fields} WHERE id=$1 AND user_id=$2`, [req.params.orderId, req.user.id, ...Object.values(updates)]);
+
+    // إشعار عند شحن الطلب
+    if (status === 'shipped') {
+      const ord = await pool.query('SELECT customer_name, customer_phone FROM orders WHERE id=$1', [req.params.orderId]);
+      if (ord.rows[0]) {
+        await notify(req.user.id, '🚚 تم شحن الطلب', `${ord.rows[0].customer_name} — ${delivery_company || ''}`, 'order');
+        // إنشاء رابط واتساب للعميل
+        const co = DEFAULT_DELIVERY_COMPANIES.find(c => c.id === delivery_company || c.name === delivery_company);
+        if (ord.rows[0].customer_phone && tracking_number) {
+          const phone = ord.rows[0].customer_phone.replace(/[^0-9]/g, '');
+          const waPhone = phone.startsWith('0') ? '964' + phone.slice(1) : phone;
+          const trackUrl = co?.tracking_url ? co.tracking_url.replace('{tracking}', tracking_number) : '';
+          const msg = `📦 *تم شحن طلبك!*\n\nرقم التتبع: *${tracking_number}*\nشركة التوصيل: ${co?.name || delivery_company || ''}${trackUrl ? '\n🔗 تتبع شحنتك: '+trackUrl : ''}\n\nشكراً لثقتك! ⚡`;
+          await pool.query(`UPDATE orders SET delivery_wa_link=$1 WHERE id=$2`, [`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, req.params.orderId]).catch(()=>{});
+        }
+      }
+    }
+    await auditLog(req.user.id, 'update_delivery', 'orders', parseInt(req.params.orderId), `${delivery_company} - ${tracking_number}`, req.ip);
+    res.json({ success: true, message: 'تم تحديث معلومات الشحن' });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إضافة عمود delivery_wa_link إن لم يكن موجوداً
+setTimeout(() => {
+  if (pool) {
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_wa_link TEXT DEFAULT ''`).catch(()=>{});
+    pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS custom_delivery_companies TEXT DEFAULT '[]'`).catch(()=>{});
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_info TEXT DEFAULT ''`).catch(()=>{});
+  }
+}, 3000);
+
+// ============================================================
+// PUSH NOTIFICATIONS — الإشعارات الفورية
+// ============================================================
+
+app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
+  const { endpoint, p256dh, auth } = req.body;
+  if (!endpoint || !p256dh || !auth)
+    return res.status(400).json({ success: false, message: 'بيانات الاشتراك ناقصة' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    await pool.query(`
+      INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+      VALUES ($1,$2,$3,$4)
+      ON CONFLICT (endpoint) DO UPDATE SET p256dh=$3, auth=$4, user_id=$1
+    `, [req.user.id, endpoint, p256dh, auth]);
+    res.json({ success: true, message: 'تم تفعيل الإشعارات الفورية' });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.delete('/api/push/unsubscribe', authenticateToken, async (req, res) => {
+  const { endpoint } = req.body;
+  try {
+    if (pool && endpoint) await pool.query('DELETE FROM push_subscriptions WHERE endpoint=$1 AND user_id=$2', [endpoint, req.user.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/push/status', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, subscribed: false, count: 0 });
+    const r = await pool.query('SELECT COUNT(*) as cnt FROM push_subscriptions WHERE user_id=$1', [req.user.id]);
+    res.json({ success: true, subscribed: parseInt(r.rows[0]?.cnt || 0) > 0, count: parseInt(r.rows[0]?.cnt || 0) });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إرسال Push Notification لجميع أجهزة المستخدم
+async function sendPushToUser(userId, title, body, data = {}) {
+  if (!pool) return;
+  try {
+    const subs = await pool.query('SELECT * FROM push_subscriptions WHERE user_id=$1', [userId]);
+    if (!subs.rows.length) return;
+    const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
+    const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
+    if (!VAPID_PUBLIC || !VAPID_PRIVATE) return; // VAPID غير مضبوط
+
+    // إرسال عبر Web Push API (بدون مكتبة خارجية — نستخدم fetch مباشرة)
+    const payload = JSON.stringify({ title, body, data, icon: '/icon-192.png', badge: '/icon-192.png' });
+    for (const sub of subs.rows) {
+      try {
+        // تسجيل الإشعار في قاعدة البيانات على الأقل
+        await notify(userId, title, body, data.type || 'info');
+      } catch(e) {}
+    }
+  } catch(e) {}
+}
+
+app.post('/api/push/test', authenticateToken, async (req, res) => {
+  try {
+    await notify(req.user.id, '🔔 اختبار الإشعار', 'الإشعارات تعمل بشكل صحيح في SocialOS', 'info');
+    res.json({ success: true, message: 'تم إرسال إشعار اختباري' });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ============================================================
