@@ -111,12 +111,22 @@ try {
       id SERIAL PRIMARY KEY,
       name VARCHAR(255),
       email VARCHAR(255) UNIQUE,
+      phone VARCHAR(20) UNIQUE,
       password TEXT,
       avatar_url TEXT DEFAULT '',
       plan VARCHAR(50) DEFAULT 'trial',
       plan_expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '7 days'),
       role VARCHAR(50) DEFAULT 'owner',
       owner_id INTEGER,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    // Password Reset Codes
+    `CREATE TABLE IF NOT EXISTS reset_codes (
+      id SERIAL PRIMARY KEY,
+      identifier VARCHAR(255),
+      code VARCHAR(10),
+      expires_at TIMESTAMP,
+      used BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
     // Business Profile — فهم طبيعة العمل
@@ -375,6 +385,37 @@ try {
       auth TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    // Store Identity — هوية المتجر
+    `CREATE TABLE IF NOT EXISTS store_identity (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE,
+      logo_url TEXT DEFAULT '',
+      cover_url TEXT DEFAULT '',
+      primary_color VARCHAR(20) DEFAULT '#4f8ef7',
+      secondary_color VARCHAR(20) DEFAULT '#7c3aed',
+      accent_color VARCHAR(20) DEFAULT '#00d4aa',
+      font_name VARCHAR(100) DEFAULT 'Tajawal',
+      communication_style VARCHAR(100) DEFAULT 'ودي وقريب',
+      watermark_enabled BOOLEAN DEFAULT FALSE,
+      watermark_position VARCHAR(50) DEFAULT 'bottom-right',
+      watermark_opacity DECIMAL(3,2) DEFAULT 0.8,
+      social_template TEXT DEFAULT '{}',
+      updated_at TIMESTAMP DEFAULT NOW()
+    )`,
+    // Image Projects — مشاريع تصميم الصور
+    `CREATE TABLE IF NOT EXISTS image_projects (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      title VARCHAR(255) DEFAULT '',
+      type VARCHAR(50) DEFAULT 'product',
+      original_url TEXT DEFAULT '',
+      result_url TEXT DEFAULT '',
+      prompt TEXT DEFAULT '',
+      status VARCHAR(50) DEFAULT 'pending',
+      provider VARCHAR(50) DEFAULT 'cloudinary',
+      metadata TEXT DEFAULT '{}',
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
     // Social Accounts — ربط حسابات التواصل الاجتماعي
     `CREATE TABLE IF NOT EXISTS social_accounts (
       id SERIAL PRIMARY KEY,
@@ -397,6 +438,85 @@ try {
       connected_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(user_id, platform)
+    )`,
+    // Ad Campaigns — الحملات الإعلانية
+    `CREATE TABLE IF NOT EXISTS ad_campaigns (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      name VARCHAR(255) NOT NULL,
+      platform VARCHAR(50) NOT NULL,
+      objective VARCHAR(100) DEFAULT 'awareness',
+      status VARCHAR(50) DEFAULT 'draft',
+      budget DECIMAL(10,2) DEFAULT 0,
+      budget_type VARCHAR(20) DEFAULT 'daily',
+      start_date DATE,
+      end_date DATE,
+      target_audience TEXT DEFAULT '{}',
+      ad_content TEXT DEFAULT '{}',
+      external_id VARCHAR(255) DEFAULT '',
+      results TEXT DEFAULT '{}',
+      spend DECIMAL(10,2) DEFAULT 0,
+      impressions INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      conversions INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )`,
+    // Social Posts — المنشورات
+    `CREATE TABLE IF NOT EXISTS social_posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      platform VARCHAR(50) NOT NULL,
+      content TEXT DEFAULT '',
+      media_url TEXT DEFAULT '',
+      media_type VARCHAR(50) DEFAULT 'image',
+      status VARCHAR(50) DEFAULT 'draft',
+      scheduled_at TIMESTAMP,
+      published_at TIMESTAMP,
+      external_id VARCHAR(255) DEFAULT '',
+      likes INTEGER DEFAULT 0,
+      comments INTEGER DEFAULT 0,
+      shares INTEGER DEFAULT 0,
+      reach INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    // Digital Team — فريق الموظفين الرقميين
+    `CREATE TABLE IF NOT EXISTS digital_team (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      role VARCHAR(50) NOT NULL,
+      name VARCHAR(255) DEFAULT '',
+      personality TEXT DEFAULT '',
+      expertise TEXT DEFAULT '',
+      instructions TEXT DEFAULT '',
+      is_active BOOLEAN DEFAULT TRUE,
+      total_interactions INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, role)
+    )`,
+    // Advanced Analytics — التحليلات المتقدمة
+    `CREATE TABLE IF NOT EXISTS analytics_reports (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      type VARCHAR(50) DEFAULT 'weekly',
+      period_start DATE,
+      period_end DATE,
+      data TEXT DEFAULT '{}',
+      ai_insights TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    // Sales Forecast — توقع المبيعات
+    `CREATE TABLE IF NOT EXISTS sales_forecasts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      forecast_date DATE,
+      predicted_revenue DECIMAL(10,2) DEFAULT 0,
+      predicted_orders INTEGER DEFAULT 0,
+      confidence DECIMAL(5,2) DEFAULT 0,
+      factors TEXT DEFAULT '{}',
+      actual_revenue DECIMAL(10,2),
+      created_at TIMESTAMP DEFAULT NOW()
     )`
   ];
 
@@ -410,6 +530,8 @@ try {
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_id INTEGER`
     ];
     alters.forEach(q => pool.query(q).catch(() => {}));
+    // إضافة عمود phone للمستخدمين القدامى
+    pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20) UNIQUE`).catch(() => {});
   }, 2000);
 
 } catch (e) {
@@ -442,54 +564,76 @@ async function notify(userId, title, message, type = 'info') {
 // AUTH
 // ============================================================
 app.post('/api/auth/register', authLimiter, async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ success: false, message: 'جميع الحقول مطلوبة' });
+  const { name, email, phone, password } = req.body;
+  if (!name || !password) return res.status(400).json({ success: false, message: 'الاسم وكلمة المرور مطلوبان' });
+  if (!email && !phone) return res.status(400).json({ success: false, message: 'البريد الإلكتروني أو رقم الهاتف مطلوب' });
   if (password.length < 6) return res.status(400).json({ success: false, message: 'كلمة المرور 6 أحرف على الأقل' });
+
+  // تنظيف رقم الهاتف
+  const cleanPhone = phone ? String(phone).replace(/[^\d+]/g, '') : null;
+  if (cleanPhone && cleanPhone.length < 7) return res.status(400).json({ success: false, message: 'رقم الهاتف غير صالح' });
+
   try {
     const hashed = await bcrypt.hash(password, 10);
     if (pool) {
+      // التحقق من عدم التكرار
+      if (email) {
+        const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email]);
+        if (existing.rows.length) return res.status(400).json({ success: false, message: 'البريد مستخدم مسبقاً' });
+      }
+      if (cleanPhone) {
+        const existing = await pool.query('SELECT id FROM users WHERE phone=$1', [cleanPhone]);
+        if (existing.rows.length) return res.status(400).json({ success: false, message: 'رقم الهاتف مستخدم مسبقاً' });
+      }
       const r = await pool.query(
-        'INSERT INTO users (name, email, password) VALUES ($1,$2,$3) RETURNING id, name, email, plan, role',
-        [name, email, hashed]
+        'INSERT INTO users (name, email, phone, password) VALUES ($1,$2,$3,$4) RETURNING id, name, email, phone, plan, role',
+        [name, email||null, cleanPhone||null, hashed]
       );
       const user = r.rows[0];
-      // Create empty business profile & digital employee
       await pool.query('INSERT INTO business_profile (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
       await pool.query('INSERT INTO digital_employee (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [user.id]);
-      const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, plan: user.plan, role: user.role }, token });
+      const token = jwt.sign({ id: user.id, email: user.email||user.phone, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, plan: user.plan, role: user.role }, token });
     }
   } catch (e) {
-    return res.status(400).json({ success: false, message: e.message.includes('unique') ? 'البريد مستخدم مسبقاً' : e.message });
+    return res.status(400).json({ success: false, message: e.message.includes('unique') ? 'البريد أو الهاتف مستخدم مسبقاً' : e.message });
   }
 });
 
 app.post('/api/auth/login', authLimiter, async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ success: false, message: 'جميع الحقول مطلوبة' });
+  const { email, phone, password } = req.body;
+  const identifier = email || phone;
+  if (!identifier || !password) return res.status(400).json({ success: false, message: 'البريد/الهاتف وكلمة المرور مطلوبان' });
+  const cleanPhone = phone ? String(phone).replace(/[^\d+]/g, '') : null;
   const ip = req.ip || '';
   try {
     if (pool) {
-      // Check main users table
-      let result = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
-      // Also check team members
-      if (result.rows.length === 0) {
-        const teamResult = await pool.query('SELECT * FROM team_members WHERE email=$1', [email]);
-        if (teamResult.rows.length > 0) {
-          const member = teamResult.rows[0];
-          const match = await bcrypt.compare(password, member.password);
-          if (!match) { trackFailedLogin(ip); return res.status(401).json({ success: false, message: 'بيانات غير صحيحة' }); }
-          const token = jwt.sign({ id: member.id, email: member.email, role: member.role, owner_id: member.owner_id }, JWT_SECRET, { expiresIn: '7d' });
-          return res.json({ success: true, user: { id: member.id, name: member.name, email: member.email, role: member.role, owner_id: member.owner_id }, token });
+      // البحث بالبريد أو الهاتف
+      let result;
+      if (email) {
+        result = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+        // تحقق من team members أيضاً
+        if (!result.rows.length) {
+          const teamResult = await pool.query('SELECT * FROM team_members WHERE email=$1', [email]);
+          if (teamResult.rows.length > 0) {
+            const member = teamResult.rows[0];
+            const match = await bcrypt.compare(password, member.password);
+            if (!match) { trackFailedLogin(ip); return res.status(401).json({ success: false, message: 'بيانات غير صحيحة' }); }
+            const token = jwt.sign({ id: member.id, email: member.email, role: member.role, owner_id: member.owner_id }, JWT_SECRET, { expiresIn: '7d' });
+            return res.json({ success: true, user: { id: member.id, name: member.name, email: member.email, role: member.role, owner_id: member.owner_id }, token });
+          }
         }
+      } else {
+        result = await pool.query('SELECT * FROM users WHERE phone=$1', [cleanPhone]);
       }
-      if (result.rows.length === 0) { trackFailedLogin(ip); return res.status(401).json({ success: false, message: 'بيانات غير صحيحة' }); }
+
+      if (!result.rows.length) { trackFailedLogin(ip); return res.status(401).json({ success: false, message: 'بيانات غير صحيحة' }); }
       const user = result.rows[0];
       const match = await bcrypt.compare(password, user.password);
       if (!match) { trackFailedLogin(ip); return res.status(401).json({ success: false, message: 'بيانات غير صحيحة' }); }
       await auditLog(user.id, 'login', 'auth', null, 'تسجيل دخول ناجح', ip);
-      const token = jwt.sign({ id: user.id, email: user.email, role: user.role || 'owner' }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, plan: user.plan, role: user.role || 'owner', avatar_url: user.avatar_url }, token });
+      const token = jwt.sign({ id: user.id, email: user.email||user.phone, role: user.role || 'owner' }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, plan: user.plan, role: user.role || 'owner', avatar_url: user.avatar_url } , token });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
 });
@@ -533,6 +677,106 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
 });
+
+// نسيت كلمة المرور — طلب كود
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+  const { identifier } = req.body; // email أو phone
+  if (!identifier) return res.status(400).json({ success: false, message: 'البريد أو الهاتف مطلوب' });
+
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    // البحث عن المستخدم
+    const cleanPhone = /^\d+$/.test(identifier.replace(/[+\s]/g,'')) ? identifier.replace(/[^\d+]/g,'') : null;
+    let user;
+    if (cleanPhone) {
+      const r = await pool.query('SELECT id, name, phone FROM users WHERE phone=$1', [cleanPhone]);
+      user = r.rows[0];
+    } else {
+      const r = await pool.query('SELECT id, name, email FROM users WHERE email=$1', [identifier]);
+      user = r.rows[0];
+    }
+
+    if (!user) {
+      // نرجع نجاح لحماية الخصوصية
+      return res.json({ success: true, message: 'إذا كان الحساب موجوداً ستصله رسالة' });
+    }
+
+    // توليد كود 6 أرقام
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 دقيقة
+
+    // حذف الكودات القديمة
+    await pool.query('DELETE FROM reset_codes WHERE identifier=$1', [identifier]);
+
+    // حفظ الكود
+    await pool.query(
+      'INSERT INTO reset_codes (identifier, code, expires_at) VALUES ($1,$2,$3)',
+      [identifier, code, expiresAt]
+    );
+
+    // في بيئة الإنتاج يُرسل عبر SMS أو email
+    // حالياً نعيده مباشرة للتطوير (يمكن إزالته لاحقاً)
+    console.log(`Reset code for ${identifier}: ${code}`);
+
+    return res.json({
+      success: true,
+      message: 'تم إرسال كود إعادة التعيين',
+      // في التطوير فقط — احذفه في الإنتاج
+      dev_code: process.env.NODE_ENV === 'development' ? code : undefined
+    });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// التحقق من الكود وتعيين كلمة مرور جديدة
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+  const { identifier, code, new_password } = req.body;
+  if (!identifier || !code || !new_password)
+    return res.status(400).json({ success: false, message: 'جميع الحقول مطلوبة' });
+  if (new_password.length < 6)
+    return res.status(400).json({ success: false, message: 'كلمة المرور 6 أحرف على الأقل' });
+
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    // التحقق من الكود
+    const r = await pool.query(
+      'SELECT * FROM reset_codes WHERE identifier=$1 AND code=$2 AND used=false AND expires_at > NOW()',
+      [identifier, String(code).trim()]
+    );
+
+    if (!r.rows.length)
+      return res.status(400).json({ success: false, message: 'الكود غير صحيح أو منتهي الصلاحية' });
+
+    // البحث عن المستخدم
+    const cleanPhone = /^\d+$/.test(identifier.replace(/[+\s]/g,'')) ? identifier.replace(/[^\d+]/g,'') : null;
+    let userId;
+    if (cleanPhone) {
+      const u = await pool.query('SELECT id FROM users WHERE phone=$1', [cleanPhone]);
+      userId = u.rows[0]?.id;
+    } else {
+      const u = await pool.query('SELECT id FROM users WHERE email=$1', [identifier]);
+      userId = u.rows[0]?.id;
+    }
+
+    if (!userId) return res.status(404).json({ success: false, message: 'المستخدم غير موجود' });
+
+    // تحديث كلمة المرور
+    const hashed = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password=$1 WHERE id=$2', [hashed, userId]);
+
+    // تعليم الكود كمستخدم
+    await pool.query('UPDATE reset_codes SET used=true WHERE identifier=$1 AND code=$2', [identifier, code]);
+
+    await auditLog(userId, 'reset_password', 'auth', null, 'إعادة تعيين كلمة المرور', req.ip);
+    res.json({ success: true, message: 'تم تعيين كلمة المرور الجديدة بنجاح' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// cleanup reset codes كل ساعة
+setInterval(() => {
+  if (pool) pool.query('DELETE FROM reset_codes WHERE expires_at < NOW() OR used=true').catch(() => {});
+}, 60 * 60 * 1000);
 
 app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
   const { current_password, new_password } = req.body;
@@ -2437,6 +2681,910 @@ app.post('/api/social/whatsapp/webhook', async (req, res) => {
     const userId = r.rows[0].user_id;
     await notify(userId, '💬 رسالة واتساب جديدة', `من ${from}: ${String(text).substring(0,100)}`, 'whatsapp');
   } catch (e) { console.error('WA webhook error:', e.message); }
+});
+
+// ============================================================
+// STORE IDENTITY — هوية المتجر
+// ============================================================
+
+app.get('/api/identity', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, identity: {} });
+    const r = await pool.query('SELECT * FROM store_identity WHERE user_id=$1', [req.user.id]);
+    res.json({ success: true, identity: r.rows[0] || {} });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.put('/api/identity', authenticateToken, async (req, res) => {
+  const {
+    logo_url, cover_url, primary_color, secondary_color, accent_color,
+    font_name, communication_style, watermark_enabled, watermark_position,
+    watermark_opacity, social_template
+  } = req.body;
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    await pool.query(`
+      INSERT INTO store_identity
+        (user_id, logo_url, cover_url, primary_color, secondary_color, accent_color,
+         font_name, communication_style, watermark_enabled, watermark_position, watermark_opacity, social_template, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+      ON CONFLICT (user_id) DO UPDATE SET
+        logo_url=COALESCE(NULLIF($2,''), store_identity.logo_url),
+        cover_url=COALESCE(NULLIF($3,''), store_identity.cover_url),
+        primary_color=COALESCE(NULLIF($4,''), store_identity.primary_color),
+        secondary_color=COALESCE(NULLIF($5,''), store_identity.secondary_color),
+        accent_color=COALESCE(NULLIF($6,''), store_identity.accent_color),
+        font_name=COALESCE(NULLIF($7,''), store_identity.font_name),
+        communication_style=COALESCE(NULLIF($8,''), store_identity.communication_style),
+        watermark_enabled=COALESCE($9, store_identity.watermark_enabled),
+        watermark_position=COALESCE(NULLIF($10,''), store_identity.watermark_position),
+        watermark_opacity=COALESCE($11, store_identity.watermark_opacity),
+        social_template=COALESCE(NULLIF($12,'{}'), store_identity.social_template),
+        updated_at=NOW()
+    `, [req.user.id, logo_url||'', cover_url||'', primary_color||'', secondary_color||'',
+        accent_color||'', font_name||'', communication_style||'',
+        watermark_enabled, watermark_position||'', watermark_opacity||null,
+        social_template ? JSON.stringify(social_template) : '{}']);
+    await auditLog(req.user.id, 'update_identity', 'store_identity', null, '', req.ip);
+    const r = await pool.query('SELECT * FROM store_identity WHERE user_id=$1', [req.user.id]);
+    res.json({ success: true, identity: r.rows[0] });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// IMAGE DESIGNER — مصمم الصور الذكي
+// ============================================================
+
+// جلب مشاريع الصور
+app.get('/api/images/projects', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, projects: [] });
+    const r = await pool.query(
+      'SELECT * FROM image_projects WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50',
+      [req.user.id]
+    );
+    res.json({ success: true, projects: r.rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// حفظ مشروع صورة
+app.post('/api/images/projects', authenticateToken, async (req, res) => {
+  const { title, type, original_url, result_url, prompt, status, provider, metadata } = req.body;
+  if (!original_url) return res.status(400).json({ success: false, message: 'original_url مطلوب' });
+  // التحقق من الروابط
+  try { new URL(original_url); } catch { return res.status(400).json({ success: false, message: 'رابط غير صالح' }); }
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query(
+      `INSERT INTO image_projects (user_id, title, type, original_url, result_url, prompt, status, provider, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [req.user.id, escapeHtml(title||''), type||'product', original_url,
+       result_url||'', escapeHtml(prompt||''), status||'done',
+       provider||'cloudinary', JSON.stringify(metadata||{})]
+    );
+    res.json({ success: true, project: r.rows[0] });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// حذف مشروع صورة
+app.delete('/api/images/projects/:id', authenticateToken, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ success: false, message: 'ID غير صالح' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT user_id FROM image_projects WHERE id=$1', [id]);
+    if (!r.rows.length || r.rows[0].user_id !== req.user.id)
+      return res.status(403).json({ success: false, message: 'غير مصرح' });
+    await pool.query('DELETE FROM image_projects WHERE id=$1', [id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// معالجة الصورة بالذكاء الاصطناعي
+app.post('/api/images/process', authenticateToken, async (req, res) => {
+  const { image_url, action, prompt, style } = req.body;
+  if (!image_url || !action)
+    return res.status(400).json({ success: false, message: 'image_url و action مطلوبان' });
+  try { new URL(image_url); } catch { return res.status(400).json({ success: false, message: 'رابط غير صالح' }); }
+
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY)
+    return res.status(503).json({ success: false, message: 'OPENROUTER_API_KEY غير مضبوط' });
+
+  const actions = {
+    describe: 'صف هذه الصورة بالتفصيل بالعربية: المنتج، الألوان، التصميم، وكيف يمكن تحسينها للإعلانات',
+    improve: 'اقترح 5 تحسينات محددة لهذه الصورة لجعلها أكثر جاذبية في التسويق العربي',
+    caption: 'اكتب 3 تعليقات إعلانية جذابة بالعربية لهذه الصورة مناسبة لـ Instagram وTikTok',
+    hashtags: 'اقترح 20 هاشتاق عربي وإنجليزي مناسبة لهذه الصورة للتسويق على منصات التواصل',
+    ad_copy: 'اكتب نص إعلاني كامل بالعربية لهذه الصورة: عنوان جذاب، وصف مقنع، ودعوة للعمل',
+    custom: escapeHtml(prompt || 'صف هذه الصورة')
+  };
+
+  const userPrompt = actions[action] || actions.describe;
+
+  try {
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 800,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: image_url } },
+            { type: 'text', text: userPrompt }
+          ]
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    const result = aiData.choices?.[0]?.message?.content || '';
+    if (!result) return res.status(500).json({ success: false, message: 'لم يرد الذكاء الاصطناعي' });
+    res.json({ success: true, result, action });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// توليد نص إعلاني للمنتج
+app.post('/api/images/generate-text', authenticateToken, async (req, res) => {
+  const { product_name, product_desc, platform, style, tone } = req.body;
+  if (!product_name) return res.status(400).json({ success: false, message: 'اسم المنتج مطلوب' });
+
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  const platformGuide = {
+    instagram: 'Instagram: نص قصير جذاب مع إيموجي وهاشتاقات',
+    tiktok: 'TikTok: نص سريع ومثير للشباب مع هاشتاقات ترند',
+    facebook: 'Facebook: نص مفصل ومقنع مع دعوة واضحة للعمل',
+    whatsapp: 'واتساب: رسالة ترويجية ودية وشخصية'
+  };
+
+  try {
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 600,
+        messages: [{
+          role: 'user',
+          content: `أنت خبير تسويق رقمي عربي. اكتب محتوى إعلاني لـ ${platformGuide[platform]||'منصات التواصل'}.
+المنتج: ${escapeHtml(product_name)}
+الوصف: ${escapeHtml(product_desc||'')}
+الأسلوب: ${escapeHtml(tone||'جذاب ومقنع')}
+
+أرجع JSON فقط بهذا الشكل:
+{"title":"عنوان جذاب","body":"النص الرئيسي","cta":"دعوة للعمل","hashtags":["هاشتاق1","هاشتاق2"],"emojis":"إيموجي مناسبة"}`
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    let result = aiData.choices?.[0]?.message?.content || '';
+    try {
+      result = result.replace(/```json|```/g, '').trim();
+      result = JSON.parse(result);
+    } catch (e) { result = { title: '', body: result, cta: '', hashtags: [], emojis: '' }; }
+    res.json({ success: true, content: result });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// AD MANAGER — مدير الإعلانات
+// ============================================================
+
+// جلب الحملات
+app.get('/api/ads/campaigns', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, campaigns: [] });
+    const r = await pool.query(
+      'SELECT * FROM ad_campaigns WHERE user_id=$1 ORDER BY created_at DESC',
+      [req.user.id]
+    );
+    res.json({ success: true, campaigns: r.rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إنشاء حملة
+app.post('/api/ads/campaigns', authenticateToken, async (req, res) => {
+  const { name, platform, objective, budget, budget_type, start_date, end_date, target_audience, ad_content } = req.body;
+  const ALLOWED_PLATFORMS = ['facebook', 'instagram', 'tiktok', 'google'];
+  if (!name || !platform) return res.status(400).json({ success: false, message: 'الاسم والمنصة مطلوبان' });
+  if (!ALLOWED_PLATFORMS.includes(platform)) return res.status(400).json({ success: false, message: 'منصة غير مدعومة' });
+  if (budget && parseFloat(budget) < 0) return res.status(400).json({ success: false, message: 'الميزانية غير صالحة' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query(`
+      INSERT INTO ad_campaigns (user_id,name,platform,objective,budget,budget_type,start_date,end_date,target_audience,ad_content)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
+    `, [req.user.id, escapeHtml(name), platform, objective||'awareness',
+        parseFloat(budget)||0, budget_type||'daily',
+        start_date||null, end_date||null,
+        JSON.stringify(target_audience||{}), JSON.stringify(ad_content||{})]);
+    await auditLog(req.user.id, 'create_campaign', 'ad_campaigns', r.rows[0].id, name, req.ip);
+    res.json({ success: true, campaign: r.rows[0] });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// تحديث حملة
+app.put('/api/ads/campaigns/:id', authenticateToken, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ success: false, message: 'ID غير صالح' });
+  const { name, status, budget, start_date, end_date, target_audience, ad_content, results, spend, impressions, clicks, conversions } = req.body;
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT user_id FROM ad_campaigns WHERE id=$1', [id]);
+    if (!r.rows.length || r.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, message: 'غير مصرح' });
+    await pool.query(`
+      UPDATE ad_campaigns SET
+        name=COALESCE($2,name), status=COALESCE($3,status),
+        budget=COALESCE($4,budget), start_date=COALESCE($5,start_date),
+        end_date=COALESCE($6,end_date),
+        target_audience=COALESCE($7,target_audience),
+        ad_content=COALESCE($8,ad_content),
+        results=COALESCE($9,results),
+        spend=COALESCE($10,spend), impressions=COALESCE($11,impressions),
+        clicks=COALESCE($12,clicks), conversions=COALESCE($13,conversions),
+        updated_at=NOW()
+      WHERE id=$1
+    `, [id, name?escapeHtml(name):null, status||null,
+        budget?parseFloat(budget):null, start_date||null, end_date||null,
+        target_audience?JSON.stringify(target_audience):null,
+        ad_content?JSON.stringify(ad_content):null,
+        results?JSON.stringify(results):null,
+        spend?parseFloat(spend):null, impressions?parseInt(impressions):null,
+        clicks?parseInt(clicks):null, conversions?parseInt(conversions):null]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// حذف حملة
+app.delete('/api/ads/campaigns/:id', authenticateToken, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ success: false, message: 'ID غير صالح' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT user_id FROM ad_campaigns WHERE id=$1', [id]);
+    if (!r.rows.length || r.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, message: 'غير مصرح' });
+    await pool.query('DELETE FROM ad_campaigns WHERE id=$1', [id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// اقتراح حملة بالذكاء الاصطناعي
+app.post('/api/ads/suggest', authenticateToken, async (req, res) => {
+  const { goal, budget, platform, product_desc, target } = req.body;
+  if (!goal) return res.status(400).json({ success: false, message: 'الهدف مطلوب' });
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+  try {
+    let biz = {};
+    if (pool) {
+      const bp = await pool.query('SELECT store_name, business_type, business_desc, target_audience FROM business_profile WHERE user_id=$1', [req.user.id]);
+      biz = bp.rows[0] || {};
+    }
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 800,
+        messages: [{
+          role: 'user',
+          content: `أنت خبير إعلانات رقمية عربي. اقترح حملة إعلانية متكاملة.
+المتجر: ${escapeHtml(biz.store_name||'')} — ${escapeHtml(biz.business_type||'')}
+الهدف: ${escapeHtml(goal)}
+الميزانية: ${escapeHtml(String(budget||'غير محددة'))}
+المنصة: ${escapeHtml(platform||'غير محددة')}
+المنتج: ${escapeHtml(product_desc||'')}
+الجمهور: ${escapeHtml(target||biz.target_audience||'')}
+
+أرجع JSON فقط:
+{"campaign_name":"اسم الحملة","objective":"هدف الحملة","target_audience":{"age":"18-35","interests":["اهتمام1"],"location":"العراق"},"ad_copies":[{"title":"عنوان1","body":"نص1","cta":"اضغط هنا"}],"budget_suggestion":{"daily":10,"total":300},"schedule":{"duration_days":30},"tips":["نصيحة1","نصيحة2"]}`
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    let result = aiData.choices?.[0]?.message?.content || '';
+    try { result = JSON.parse(result.replace(/```json|```/g, '').trim()); } catch (e) { result = { tips: [result] }; }
+    res.json({ success: true, suggestion: result });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// SOCIAL POSTS — نشر المنشورات
+// ============================================================
+
+// جلب المنشورات
+app.get('/api/posts', authenticateToken, async (req, res) => {
+  const platform = req.query.platform;
+  try {
+    if (!pool) return res.json({ success: true, posts: [] });
+    let q = 'SELECT * FROM social_posts WHERE user_id=$1';
+    const params = [req.user.id];
+    if (platform) { q += ' AND platform=$2'; params.push(platform); }
+    q += ' ORDER BY created_at DESC LIMIT 50';
+    const r = await pool.query(q, params);
+    res.json({ success: true, posts: r.rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إنشاء منشور / جدولة
+app.post('/api/posts', authenticateToken, async (req, res) => {
+  const { platform, content, media_url, media_type, scheduled_at } = req.body;
+  const ALLOWED_PLATFORMS = ['instagram', 'facebook', 'tiktok'];
+  if (!platform || !content) return res.status(400).json({ success: false, message: 'المنصة والمحتوى مطلوبان' });
+  if (!ALLOWED_PLATFORMS.includes(platform)) return res.status(400).json({ success: false, message: 'منصة غير مدعومة' });
+  if (String(content).length > 2200) return res.status(400).json({ success: false, message: 'المحتوى طويل جداً (2200 حرف كحد أقصى)' });
+  if (media_url) { try { new URL(media_url); } catch { return res.status(400).json({ success: false, message: 'رابط الوسائط غير صالح' }); } }
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    // إذا طلب نشر فوري — نشر عبر API المنصة
+    if (!scheduled_at) {
+      const acc = await pool.query(
+        'SELECT access_token, page_id FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+        [req.user.id, platform]
+      );
+
+      let externalId = '';
+      if (acc.rows.length && acc.rows[0].access_token) {
+        const { access_token, page_id } = acc.rows[0];
+        try {
+          if (platform === 'facebook' && page_id) {
+            const fbRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/feed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: String(content).substring(0, 2200), access_token })
+            });
+            const fbData = await fbRes.json();
+            externalId = fbData.id || '';
+          } else if (platform === 'instagram' && page_id) {
+            // Instagram Graph API — نشر صورة
+            if (media_url) {
+              const containerRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/media`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_url: media_url, caption: String(content).substring(0, 2200), access_token })
+              });
+              const container = await containerRes.json();
+              if (container.id) {
+                const publishRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/media_publish`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ creation_id: container.id, access_token })
+                });
+                const pub = await publishRes.json();
+                externalId = pub.id || '';
+              }
+            }
+          }
+        } catch (e) { console.error('Publish error:', e.message); }
+      }
+
+      const r = await pool.query(`
+        INSERT INTO social_posts (user_id,platform,content,media_url,media_type,status,published_at,external_id)
+        VALUES ($1,$2,$3,$4,$5,'published',NOW(),$6) RETURNING *
+      `, [req.user.id, platform, escapeHtml(String(content)), media_url||'', media_type||'image', externalId]);
+      await notify(req.user.id, '📱 تم النشر', `تم نشر منشور على ${platform}`, 'success');
+      return res.json({ success: true, post: r.rows[0], published: !!externalId });
+    }
+
+    // جدولة المنشور
+    const r = await pool.query(`
+      INSERT INTO social_posts (user_id,platform,content,media_url,media_type,status,scheduled_at)
+      VALUES ($1,$2,$3,$4,$5,'scheduled',$6) RETURNING *
+    `, [req.user.id, platform, escapeHtml(String(content)), media_url||'', media_type||'image', scheduled_at]);
+    res.json({ success: true, post: r.rows[0], scheduled: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// حذف منشور
+app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ success: false, message: 'ID غير صالح' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const r = await pool.query('SELECT user_id FROM social_posts WHERE id=$1', [id]);
+    if (!r.rows.length || r.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, message: 'غير مصرح' });
+    await pool.query('DELETE FROM social_posts WHERE id=$1', [id]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Cron — نشر المنشورات المجدولة
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    if (!pool) return;
+    const posts = await pool.query(
+      "SELECT sp.*, sa.access_token, sa.page_id FROM social_posts sp LEFT JOIN social_accounts sa ON sa.user_id=sp.user_id AND sa.platform=sp.platform AND sa.is_connected=true WHERE sp.status='scheduled' AND sp.scheduled_at<=NOW() LIMIT 10"
+    );
+    for (const post of posts.rows) {
+      try {
+        let externalId = '';
+        if (post.access_token && post.page_id) {
+          if (post.platform === 'facebook') {
+            const res = await fetch(`https://graph.facebook.com/v19.0/${post.page_id}/feed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: post.content, access_token: post.access_token })
+            });
+            const d = await res.json();
+            externalId = d.id || '';
+          }
+        }
+        await pool.query(
+          "UPDATE social_posts SET status='published', published_at=NOW(), external_id=$2 WHERE id=$1",
+          [post.id, externalId]
+        );
+        await notify(post.user_id, '📱 نُشر تلقائياً', `منشور ${post.platform} نُشر بنجاح`, 'success');
+      } catch (e) {
+        await pool.query("UPDATE social_posts SET status='failed' WHERE id=$1", [post.id]);
+      }
+    }
+  } catch (e) { console.error('Post scheduler error:', e.message); }
+});
+
+// ============================================================
+// DIGITAL TEAM — فريق الموظفين الرقميين
+// ============================================================
+
+const TEAM_ROLES = {
+  sales: { name: 'موظف المبيعات', icon: '💼', desc: 'إغلاق الصفقات والإقناع' },
+  customer_service: { name: 'خدمة العملاء', icon: '🎧', desc: 'الشكاوى والدعم' },
+  marketing: { name: 'موظف التسويق', icon: '📢', desc: 'الإعلانات والحملات' },
+  designer: { name: 'موظف التصميم', icon: '🎨', desc: 'الصور والإعلانات' },
+  orders: { name: 'موظف الطلبات', icon: '📦', desc: 'الطلبات والعربون والشحن' },
+  advisor: { name: 'المستشار التنفيذي', icon: '🏛️', desc: 'التحليلات والتوصيات' }
+};
+
+app.get('/api/team/digital', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, members: [] });
+    const r = await pool.query('SELECT * FROM digital_team WHERE user_id=$1 ORDER BY role', [req.user.id]);
+    // أضف الأدوار الناقصة
+    const existing = r.rows.map(m => m.role);
+    const all = Object.entries(TEAM_ROLES).map(([role, info]) => {
+      const found = r.rows.find(m => m.role === role);
+      return found || { user_id: req.user.id, role, name: info.name, personality: '', expertise: '', instructions: '', is_active: false, total_interactions: 0 };
+    });
+    res.json({ success: true, members: all });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.put('/api/team/digital/:role', authenticateToken, async (req, res) => {
+  const { role } = req.params;
+  if (!TEAM_ROLES[role]) return res.status(400).json({ success: false, message: 'دور غير صالح' });
+  const { name, personality, expertise, instructions, is_active } = req.body;
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    await pool.query(`
+      INSERT INTO digital_team (user_id, role, name, personality, expertise, instructions, is_active, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+      ON CONFLICT (user_id, role) DO UPDATE SET
+        name=$3, personality=$4, expertise=$5, instructions=$6,
+        is_active=$7, updated_at=NOW()
+    `, [req.user.id, role, escapeHtml(name||TEAM_ROLES[role].name),
+        escapeHtml(personality||''), escapeHtml(expertise||''),
+        escapeHtml(instructions||''), is_active !== undefined ? is_active : true]);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// محادثة مع موظف رقمي متخصص
+app.post('/api/team/digital/:role/chat', authenticateToken, async (req, res) => {
+  const { role } = req.params;
+  if (!TEAM_ROLES[role]) return res.status(400).json({ success: false, message: 'دور غير صالح' });
+  const { message, history } = req.body;
+  if (!message || String(message).length > 2000) return res.status(400).json({ success: false, message: 'الرسالة غير صالحة' });
+
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  try {
+    let member = { name: TEAM_ROLES[role].name, personality: '', expertise: '', instructions: '' };
+    let biz = {};
+    if (pool) {
+      const [tm, bp] = await Promise.all([
+        pool.query('SELECT * FROM digital_team WHERE user_id=$1 AND role=$2', [req.user.id, role]),
+        pool.query('SELECT store_name, business_type, business_desc, policies FROM business_profile WHERE user_id=$1', [req.user.id])
+      ]);
+      if (tm.rows.length) member = tm.rows[0];
+      biz = bp.rows[0] || {};
+      await pool.query('UPDATE digital_team SET total_interactions=total_interactions+1 WHERE user_id=$1 AND role=$2', [req.user.id, role]);
+    }
+
+    const rolePrompts = {
+      sales: 'أنت موظف مبيعات محترف. هدفك إغلاق الصفقات وإقناع العملاء بالشراء.',
+      customer_service: 'أنت موظف خدمة عملاء متميز. هدفك حل المشاكل وإرضاء العملاء.',
+      marketing: 'أنت خبير تسويق رقمي. هدفك وضع استراتيجيات وحملات تسويقية فعالة.',
+      designer: 'أنت مصمم إبداعي. هدفك اقتراح أفكار تصميمية جذابة للمحتوى.',
+      orders: 'أنت مسؤول الطلبات والشحن. هدفك تنظيم الطلبات وضمان التوصيل.',
+      advisor: 'أنت مستشار تنفيذي خبير. هدفك تقديم توصيات استراتيجية لتنمية العمل.'
+    };
+
+    const systemPrompt = `${rolePrompts[role]}
+المتجر: ${escapeHtml(biz.store_name||'')} — ${escapeHtml(biz.business_type||'')}
+${biz.business_desc ? 'الوصف: '+escapeHtml(biz.business_desc) : ''}
+${biz.policies ? 'السياسات: '+escapeHtml(biz.policies) : ''}
+${member.personality ? 'شخصيتك: '+escapeHtml(member.personality) : ''}
+${member.expertise ? 'خبرتك: '+escapeHtml(member.expertise) : ''}
+${member.instructions ? 'تعليمات خاصة: '+escapeHtml(member.instructions) : ''}
+تحدث بالعربية دائماً. كن عملياً ومحدداً.`;
+
+    const msgs = [
+      ...(Array.isArray(history) ? history.slice(-8).map(m => ({ role: m.role, content: String(m.content).substring(0, 500) })) : []),
+      { role: 'user', content: String(message).substring(0, 2000) }
+    ];
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'anthropic/claude-haiku-4-5', max_tokens: 600, system: systemPrompt, messages: msgs })
+    });
+    const aiData = await aiRes.json();
+    const reply = aiData.choices?.[0]?.message?.content || 'عذراً، لم أتمكن من الرد';
+    res.json({ success: true, reply: reply.substring(0, 2000) });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// ADVANCED ANALYTICS — التحليلات المتقدمة
+// ============================================================
+
+app.get('/api/analytics/advanced', authenticateToken, async (req, res) => {
+  const { period = '30', compare = 'false' } = req.query;
+  const days = Math.min(365, Math.max(1, parseInt(period) || 30));
+  const userId = req.user.id;
+  try {
+    if (!pool) return res.json({ success: true, data: {} });
+
+    const [current, previous, topProds, custBehavior, dailyTrend] = await Promise.all([
+      // الفترة الحالية
+      pool.query(`SELECT COUNT(*) as orders, COALESCE(SUM(total),0) as revenue, COALESCE(AVG(total),0) as avg_order
+        FROM orders WHERE user_id=$1 AND created_at >= NOW()-INTERVAL '${days} days'`, [userId]),
+      // الفترة السابقة للمقارنة
+      pool.query(`SELECT COUNT(*) as orders, COALESCE(SUM(total),0) as revenue
+        FROM orders WHERE user_id=$1 AND created_at BETWEEN NOW()-INTERVAL '${days*2} days' AND NOW()-INTERVAL '${days} days'`, [userId]),
+      // أفضل المنتجات
+      pool.query(`SELECT items, COUNT(*) as freq FROM orders WHERE user_id=$1 AND created_at >= NOW()-INTERVAL '${days} days' GROUP BY items LIMIT 10`, [userId]),
+      // سلوك العملاء
+      pool.query(`SELECT customer_phone, customer_name, COUNT(*) as orders, SUM(total) as spent,
+        MAX(created_at) as last_order, MIN(created_at) as first_order
+        FROM orders WHERE user_id=$1 AND created_at >= NOW()-INTERVAL '${days} days'
+        GROUP BY customer_phone, customer_name ORDER BY spent DESC LIMIT 10`, [userId]),
+      // الاتجاه اليومي
+      pool.query(`SELECT DATE(created_at) as day, COUNT(*) as orders, SUM(total) as revenue
+        FROM orders WHERE user_id=$1 AND created_at >= NOW()-INTERVAL '${days} days'
+        GROUP BY DATE(created_at) ORDER BY day`, [userId])
+    ]);
+
+    const cur = current.rows[0];
+    const prev = previous.rows[0];
+    const revenueGrowth = prev.revenue > 0 ? ((cur.revenue - prev.revenue) / prev.revenue * 100).toFixed(1) : 0;
+    const ordersGrowth = prev.orders > 0 ? ((cur.orders - prev.orders) / prev.orders * 100).toFixed(1) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        current: { orders: parseInt(cur.orders), revenue: parseFloat(cur.revenue), avg_order: parseFloat(cur.avg_order) },
+        previous: { orders: parseInt(prev.orders), revenue: parseFloat(prev.revenue) },
+        growth: { revenue: parseFloat(revenueGrowth), orders: parseFloat(ordersGrowth) },
+        top_customers: custBehavior.rows,
+        daily_trend: dailyTrend.rows,
+        period: days
+      }
+    });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// توقع المبيعات بالذكاء الاصطناعي
+app.post('/api/analytics/forecast', authenticateToken, async (req, res) => {
+  const { days = 30 } = req.body;
+  const userId = req.user.id;
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    const [history, products, biz] = await Promise.all([
+      pool.query(`SELECT DATE(created_at) as day, COUNT(*) as orders, SUM(total) as revenue
+        FROM orders WHERE user_id=$1 AND created_at >= NOW()-INTERVAL '90 days'
+        GROUP BY DATE(created_at) ORDER BY day`, [userId]),
+      pool.query('SELECT COUNT(*) as total, SUM(CASE WHEN stock<=3 THEN 1 ELSE 0 END) as low_stock FROM products WHERE user_id=$1', [userId]),
+      pool.query('SELECT store_name, business_type FROM business_profile WHERE user_id=$1', [userId])
+    ]);
+
+    const totalRevenue = history.rows.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
+    const avgDaily = history.rows.length > 0 ? (totalRevenue / 90).toFixed(2) : 0;
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 700,
+        messages: [{
+          role: 'user',
+          content: `أنت خبير تحليل بيانات. بناءً على بيانات المتجر، قدم توقعاً للـ ${days} يوم القادمة.
+
+المتجر: ${escapeHtml(biz.rows[0]?.store_name||'')} — ${escapeHtml(biz.rows[0]?.business_type||'')}
+متوسط الإيراد اليومي (90 يوم): ${avgDaily}
+عدد أيام البيانات: ${history.rows.length}
+إجمالي المنتجات: ${products.rows[0]?.total||0}
+منتجات مخزونها منخفض: ${products.rows[0]?.low_stock||0}
+آخر 5 أيام: ${JSON.stringify(history.rows.slice(-5))}
+
+أرجع JSON فقط:
+{"predicted_revenue":0,"predicted_orders":0,"confidence":85,"trend":"صاعد/هابط/مستقر","insights":["ملاحظة1","ملاحظة2","ملاحظة3"],"recommendations":["توصية1","توصية2"],"risks":["خطر1"]}`
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    let forecast = aiData.choices?.[0]?.message?.content || '{}';
+    try { forecast = JSON.parse(forecast.replace(/```json|```/g, '').trim()); } catch (e) { forecast = {}; }
+
+    // حفظ التوقع
+    await pool.query(
+      'INSERT INTO sales_forecasts (user_id, forecast_date, predicted_revenue, predicted_orders, confidence, factors) VALUES ($1, NOW()::date, $2, $3, $4, $5)',
+      [userId, forecast.predicted_revenue||0, forecast.predicted_orders||0, forecast.confidence||0, JSON.stringify(forecast)]
+    ).catch(() => {});
+
+    res.json({ success: true, forecast, avg_daily: avgDaily, data_points: history.rows.length });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// تصدير التقرير
+app.get('/api/analytics/export', authenticateToken, async (req, res) => {
+  const { period = '30', format = 'csv' } = req.query;
+  const days = Math.min(365, Math.max(1, parseInt(period) || 30));
+  const userId = req.user.id;
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const orders = await pool.query(
+      `SELECT id, customer_name, customer_phone, total, status, platform, created_at
+       FROM orders WHERE user_id=$1 AND created_at >= NOW()-INTERVAL '${days} days' ORDER BY created_at DESC`,
+      [userId]
+    );
+    if (format === 'csv') {
+      const headers = 'رقم الطلب,اسم العميل,الهاتف,المبلغ,الحالة,المصدر,التاريخ';
+      const rows = orders.rows.map(o =>
+        `${o.id},"${escapeHtml(o.customer_name||'')}","${escapeHtml(o.customer_phone||'')}",${o.total},"${escapeHtml(o.status||'')}","${escapeHtml(o.platform||'')}","${new Date(o.created_at).toLocaleDateString('ar')}"`
+      );
+      const csv = '\uFEFF' + headers + '\n' + rows.join('\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="orders-${days}days.csv"`);
+      return res.send(csv);
+    }
+    res.json({ success: true, orders: orders.rows });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// MIKE — المساعد التنفيذي الذكي
+// ============================================================
+
+app.post('/api/mike', authenticateToken, async (req, res) => {
+  const { message, history } = req.body;
+  if (!message || String(message).length > 2000)
+    return res.status(400).json({ success: false, message: 'الرسالة غير صالحة' });
+
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  const userId = req.user.id;
+
+  try {
+    // جلب بيانات السياق
+    let context = {};
+    if (pool) {
+      const [biz, stats, prods, custs, orders] = await Promise.all([
+        pool.query('SELECT store_name, business_type, currency, whatsapp_number FROM business_profile WHERE user_id=$1', [userId]),
+        pool.query('SELECT COUNT(*) as orders FROM orders WHERE user_id=$1', [userId]),
+        pool.query('SELECT id, name, price, stock, category FROM products WHERE user_id=$1 AND is_available=true LIMIT 20', [userId]),
+        pool.query('SELECT id, name, phone FROM customers WHERE user_id=$1 ORDER BY created_at DESC LIMIT 10', [userId]),
+        pool.query('SELECT id, customer_name, total, status FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 5', [userId])
+      ]);
+      context = {
+        store: biz.rows[0] || {},
+        total_orders: stats.rows[0]?.orders || 0,
+        products: prods.rows,
+        recent_customers: custs.rows,
+        recent_orders: orders.rows
+      };
+    }
+
+    const systemPrompt = `أنت Mike، المساعد التنفيذي الذكي لـ SocialOS.
+أنت مرتبط بجميع أنظمة المتجر وتستطيع تنفيذ الأوامر مباشرة.
+
+معلومات المتجر:
+- الاسم: ${escapeHtml(context.store?.store_name || '')}
+- النوع: ${escapeHtml(context.store?.business_type || '')}
+- العملة: ${context.store?.currency || 'IQD'}
+- واتساب: ${context.store?.whatsapp_number || ''}
+- إجمالي الطلبات: ${context.total_orders}
+
+المنتجات المتاحة: ${JSON.stringify(context.products || [])}
+آخر العملاء: ${JSON.stringify(context.recent_customers || [])}
+آخر الطلبات: ${JSON.stringify(context.recent_orders || [])}
+
+صلاحياتك:
+- إنشاء طلبات، منتجات، عملاء
+- نشر منشورات على المنصات
+- إرسال رسائل واتساب
+- جلب التقارير والإحصائيات
+- إنشاء كوبونات
+- أي عملية في النظام
+
+عند تلقي أمر، قم بـ:
+1. فهم الأمر بالكامل
+2. تحديد الإجراء المطلوب
+3. الرد بـ JSON بهذا الشكل:
+
+{
+  "reply": "ردك الطبيعي بالعربية للمستخدم",
+  "action": "اسم الإجراء أو null إذا لا يوجد",
+  "action_data": { بيانات الإجراء },
+  "needs_confirm": false
+}
+
+الإجراءات المتاحة:
+- create_order: إنشاء طلب { customer_name, customer_phone, items, total }
+- create_product: إضافة منتج { name, price, stock, category, description }
+- create_customer: إضافة عميل { name, phone, address }
+- create_post: نشر منشور { platform, content, media_url }
+- send_whatsapp: إرسال واتساب { phone, message }
+- create_coupon: إنشاء كوبون { code, type, value }
+- get_report: جلب تقرير { type: 'sales'|'orders'|'customers' }
+- update_order_status: تحديث حالة طلب { order_id, status }
+- none: فقط الرد بدون إجراء
+
+مهم: أرجع JSON صالح فقط بدون أي نص خارجه.`;
+
+    const msgs = [
+      ...(Array.isArray(history) ? history.slice(-6).map(m => ({
+        role: m.role,
+        content: String(m.content).substring(0, 500)
+      })) : []),
+      { role: 'user', content: String(message).substring(0, 2000) }
+    ];
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: msgs
+      })
+    });
+    const aiData = await aiRes.json();
+    let raw = aiData.choices?.[0]?.message?.content || '{}';
+
+    let parsed = {};
+    try {
+      parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch (e) {
+      parsed = { reply: raw, action: null };
+    }
+
+    const reply = String(parsed.reply || 'تم').substring(0, 2000);
+    const action = parsed.action || null;
+    const actionData = parsed.action_data || {};
+    let actionResult = null;
+    let actionError = null;
+
+    // تنفيذ الإجراء
+    if (action && action !== 'none' && pool) {
+      try {
+        if (action === 'create_order') {
+          const r = await pool.query(
+            'INSERT INTO orders (user_id,customer_name,customer_phone,items,total,status,platform) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+            [userId, escapeHtml(actionData.customer_name||''), actionData.customer_phone||'',
+             JSON.stringify(actionData.items||[]), parseFloat(actionData.total)||0, 'new', 'mike']
+          );
+          actionResult = { type: 'order', id: r.rows[0].id, message: `تم إنشاء الطلب #${r.rows[0].id}` };
+          await notify(userId, '🛒 طلب جديد من Mike', `${actionData.customer_name} — ${actionData.total}`, 'order');
+        }
+
+        else if (action === 'create_product') {
+          const price = parseFloat(actionData.price);
+          if (!price || price <= 0) throw new Error('السعر غير صالح');
+          const r = await pool.query(
+            'INSERT INTO products (user_id,name,description,price,stock,category,is_available) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING id',
+            [userId, escapeHtml(actionData.name||'منتج جديد'), escapeHtml(actionData.description||''),
+             price, parseInt(actionData.stock)||0, escapeHtml(actionData.category||'عام')]
+          );
+          actionResult = { type: 'product', id: r.rows[0].id, message: `تم إضافة المنتج #${r.rows[0].id}` };
+        }
+
+        else if (action === 'create_customer') {
+          const r = await pool.query(
+            'INSERT INTO customers (user_id,name,phone,address) VALUES ($1,$2,$3,$4) RETURNING id',
+            [userId, escapeHtml(actionData.name||''), actionData.phone||'', escapeHtml(actionData.address||'')]
+          );
+          actionResult = { type: 'customer', id: r.rows[0].id, message: `تم إضافة العميل #${r.rows[0].id}` };
+        }
+
+        else if (action === 'create_post') {
+          const ALLOWED_PLATFORMS = ['instagram', 'facebook', 'tiktok'];
+          const platform = ALLOWED_PLATFORMS.includes(actionData.platform) ? actionData.platform : 'instagram';
+          const content = String(actionData.content||'').substring(0, 2200);
+          const r = await pool.query(
+            'INSERT INTO social_posts (user_id,platform,content,media_url,status) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+            [userId, platform, escapeHtml(content), actionData.media_url||'', 'published']
+          );
+          actionResult = { type: 'post', id: r.rows[0].id, message: `تم نشر المنشور على ${platform}` };
+        }
+
+        else if (action === 'send_whatsapp') {
+          const phone = String(actionData.phone||'').replace(/[^\d]/g,'');
+          if (phone.length >= 7) {
+            const acc = await pool.query(
+              'SELECT access_token, whatsapp_phone_id FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+              [userId, 'whatsapp']
+            );
+            if (acc.rows.length && acc.rows[0].access_token && acc.rows[0].whatsapp_phone_id) {
+              const waRes = await fetch(`https://graph.facebook.com/v19.0/${acc.rows[0].whatsapp_phone_id}/messages`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${acc.rows[0].access_token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messaging_product:'whatsapp', to: phone, type:'text', text:{ body: String(actionData.message||'').substring(0,4096) } })
+              });
+              const waData = await waRes.json();
+              actionResult = { type: 'whatsapp', message: waData.error ? 'تعذر الإرسال: '+waData.error.message : `تم إرسال الرسالة لـ ${phone}` };
+            } else {
+              actionResult = { type: 'whatsapp', message: 'واتساب غير مربوط — اذهب لصفحة ربط الحسابات' };
+            }
+          }
+        }
+
+        else if (action === 'create_coupon') {
+          const r = await pool.query(
+            'INSERT INTO coupons (user_id,code,type,value,is_active) VALUES ($1,$2,$3,$4,true) RETURNING id',
+            [userId, escapeHtml(String(actionData.code||'MIKE'+Date.now()).toUpperCase()),
+             actionData.type||'percent', parseFloat(actionData.value)||10]
+          );
+          actionResult = { type: 'coupon', id: r.rows[0].id, message: `تم إنشاء الكوبون: ${actionData.code}` };
+        }
+
+        else if (action === 'update_order_status') {
+          const ALLOWED_STATUS = ['new','confirmed','processing','delivered','cancelled'];
+          const status = ALLOWED_STATUS.includes(actionData.status) ? actionData.status : 'confirmed';
+          await pool.query(
+            'UPDATE orders SET status=$1 WHERE id=$2 AND user_id=$3',
+            [status, parseInt(actionData.order_id)||0, userId]
+          );
+          actionResult = { type: 'order_update', message: `تم تحديث حالة الطلب #${actionData.order_id} إلى ${status}` };
+        }
+
+        else if (action === 'get_report') {
+          const [o, r, c] = await Promise.all([
+            pool.query('SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL \'30 days\'', [userId]),
+            pool.query('SELECT COUNT(*) as cnt FROM products WHERE user_id=$1', [userId]),
+            pool.query('SELECT COUNT(*) as cnt FROM customers WHERE user_id=$1', [userId])
+          ]);
+          actionResult = {
+            type: 'report',
+            data: { orders_30d: o.rows[0].cnt, revenue_30d: o.rows[0].rev, products: r.rows[0].cnt, customers: c.rows[0].cnt },
+            message: `الطلبات (30 يوم): ${o.rows[0].cnt} — الإيراد: ${Number(o.rows[0].rev).toLocaleString()}`
+          };
+        }
+
+      } catch (e) {
+        actionError = e.message;
+      }
+    }
+
+    res.json({
+      success: true,
+      reply,
+      action,
+      action_result: actionResult,
+      action_error: actionError
+    });
+
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ============================================================
