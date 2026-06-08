@@ -1419,6 +1419,7 @@ tr:hover td{background:rgba(79,142,247,.02);}
     <div class="page" id="page-analytics">
       <div class="pt"><div><h1>📊 التحليلات</h1></div><div class="pas"><select class="fs" style="width:auto;padding:7px 10px" id="aper" onchange="loadAna()"><option value="7">7 أيام</option><option value="30">30 يوم</option><option value="365">سنة</option></select></div></div>
       <div class="sg" id="anast"></div>
+      <div id="ana-biz-kpi"></div>
       <div class="g2">
         <div class="card"><h3>📈 الإيرادات اليومية</h3><div id="anachart"></div></div>
         <div class="card"><h3>🏆 أفضل العملاء</h3><div id="anacust"></div></div>
@@ -1428,7 +1429,7 @@ tr:hover td{background:rgba(79,142,247,.02);}
 
     <!-- COUPONS -->
     <div class="page" id="page-coupons">
-      <div class="pt"><div><h1>🎟️ الكوبونات</h1></div><div class="pas"><button class="btn ba" onclick="om('mcoup')">+ كوبون</button></div></div>
+      <div class="pt"><div><h1>🎟️ الكوبونات</h1></div><div class="pas"><button class="btn ba" onclick="openCoupModal()">+ كوبون</button></div></div>
       <div id="couplist"><div class="empty"><div class="ei">🎟️</div><p>لا كوبونات</p></div></div>
     </div>
 
@@ -1449,6 +1450,21 @@ tr:hover td{background:rgba(79,142,247,.02);}
           <div class="btc" id="wt-loy" onclick="selWa('loyalty',this)"><div class="bi">💎</div><div class="bn">نقاط<br><small id="wcl">0</small></div></div>
         </div>
         <div class="fg"><label class="fl">الرسالة ({اسم} للاسم)</label><textarea class="ft" id="wamsg" placeholder="مرحباً {اسم}، لدينا عرض خاص..."></textarea></div>
+        <!-- قوالب ذكية -->
+        <div style="margin-bottom:11px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+            <span style="font-size:.75rem;color:var(--text2);font-weight:700">✨ قوالب ذكية حسب نشاطك</span>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <button class="cs" onclick="loadWaTemplates('offer')">🔥 عرض</button>
+              <button class="cs" onclick="loadWaTemplates('new_product')">🆕 منتج جديد</button>
+              <button class="cs" onclick="loadWaTemplates('loyalty')">💎 ولاء</button>
+              <button class="cs" onclick="loadWaTemplates('followup')">🤝 متابعة</button>
+              <button class="cs" onclick="loadWaTemplates('seasonal')">🎉 موسمية</button>
+            </div>
+          </div>
+          <div id="wa-tpl-results" style="display:none;flex-direction:column;gap:6px"></div>
+          <div id="wa-tpl-loading" style="display:none;font-size:.8rem;color:var(--text2);padding:6px 0">⏳ جاري التوليد...</div>
+        </div>
         <button class="btn ba" onclick="sendBulk()" style="width:100%;padding:11px">📤 إرسال</button>
       </div>
       <div id="walinks" style="display:none"><div class="card"><h3>🔗 روابط الإرسال</h3><div id="walinksl"></div></div></div>
@@ -1681,6 +1697,17 @@ tr:hover td{background:rgba(79,142,247,.02);}
             </select>
           </div>
           <div class="fg"><label class="fl">المحتوى *</label><textarea class="ft" id="qp-content" placeholder="اكتب منشورك هنا..." style="min-height:100px" maxlength="2200"></textarea><div style="font-size:.72rem;color:var(--text2);text-align:left" id="qp-count">0/2200</div></div>
+          <!-- توليد المحتوى بالذكاء -->
+          <div style="margin-bottom:10px">
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+              <button class="cs" onclick="genPostContent('offer')">🔥 عرض</button>
+              <button class="cs" onclick="genPostContent('new_product')">🆕 منتج جديد</button>
+              <button class="cs" onclick="genPostContent('tips')">💡 نصيحة</button>
+              <button class="cs" onclick="genPostContent('story')">📖 قصة</button>
+              <button class="cs" onclick="genPostContent('engagement')">💬 تفاعل</button>
+            </div>
+            <div id="post-gen-loading" style="display:none;font-size:.78rem;color:var(--text2)">⏳ جاري التوليد...</div>
+          </div>
           <div class="fg"><label class="fl">رابط الصورة/الفيديو</label><input class="fi" id="qp-media" placeholder="https://..."></div>
           <div class="fg"><label class="fl">جدولة (اختياري)</label><input class="fi" type="datetime-local" id="qp-sched"></div>
           <div style="display:flex;gap:7px">
@@ -1771,6 +1798,28 @@ tr:hover td{background:rgba(79,142,247,.02);}
               <input type="range" id="id-wmo" min="0.1" max="1" step="0.1" value="0.8" style="width:100%;accent-color:var(--accent)" oninput="document.getElementById('id-wmo-val').textContent=this.value">
               <div style="font-size:.75rem;color:var(--text2);margin-top:3px">القيمة: <span id="id-wmo-val">0.8</span></div>
             </div>
+          </div>
+          <div class="card">
+            <h3>💳 بطاقات الدفع</h3>
+            <div style="font-size:.78rem;color:var(--text2);margin-bottom:11px">أضف بطاقاتك حتى يرسلها الموظف الرقمي للزبون عند طلب الدفع أو العربون</div>
+            <div id="pay-cards-list" style="margin-bottom:10px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+              <input class="fi" id="pc-name" placeholder="اسم البطاقة (زين كاش...)">
+              <input class="fi" id="pc-number" placeholder="الرقم أو الحساب" dir="ltr">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px">
+              <input class="fi" id="pc-owner" placeholder="اسم صاحب البطاقة">
+              <select class="fs" id="pc-type">
+                <option value="زين كاش">💜 زين كاش</option>
+                <option value="آسيا حوالة">🔵 آسيا حوالة</option>
+                <option value="ماستر رافدين">🟠 ماستر رافدين</option>
+                <option value="كي كارد">🟢 كي كارد</option>
+                <option value="إي فواتيركم">🔴 إي فواتيركم</option>
+                <option value="بطاقة بنكية">🏦 بطاقة بنكية</option>
+                <option value="أخرى">💳 أخرى</option>
+              </select>
+            </div>
+            <button class="btn bo bsm" onclick="addPayCard()" style="width:100%;padding:9px">+ إضافة بطاقة</button>
           </div>
           <div class="card" style="border-color:rgba(79,142,247,.2)">
             <h3>👁️ معاينة الهوية</h3>
@@ -2297,7 +2346,11 @@ tr:hover td{background:rgba(79,142,247,.02);}
               <button class="btn bo bsm" onclick="setEmMsg('صيانة')" style="padding:10px;justify-content:flex-start;text-align:right">🔧 رسالة صيانة</button>
               <button class="btn bo bsm" onclick="setEmMsg('عطلة')" style="padding:10px;justify-content:flex-start;text-align:right">🎉 رسالة عطلة رسمية</button>
               <button class="btn bo bsm" onclick="setEmMsg('طوارئ')" style="padding:10px;justify-content:flex-start;text-align:right">🚨 رسالة طوارئ</button>
+              <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+              <button class="btn ba bsm" id="em-ai-btn" onclick="suggestEmMsg()" style="padding:10px;justify-content:flex-start;text-align:right">✨ اقتراح ذكي حسب نشاطي</button>
             </div>
+            <!-- نتائج الاقتراح الذكي -->
+            <div id="em-ai-results" style="display:none;margin-top:10px;display:flex;flex-direction:column;gap:7px"></div>
           </div>
 
           <!-- أزرار التحكم -->
@@ -2662,7 +2715,7 @@ tr:hover td{background:rgba(79,142,247,.02);}
     </div>
     <div style="font-size:.72rem;color:var(--text2);margin-top:4px" id="card-info-hint"></div>
   </div>
-  <div class="fg"><label class="fl">المصدر</label><select class="fs" id="oplt"><option value="">غير محدد</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="whatsapp">WhatsApp</option><option value="store">المتجر</option></select></div>
+  <div class="fg"><label class="fl">المصدر</label><select class="fs" id="oplt"><option value="">غير محدد</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="tiktok">TikTok</option><option value="whatsapp">WhatsApp</option><option value="store">المتجر</option></select></div>
   <div class="fg"><label class="fl">ملاحظات</label><textarea class="ft" id="onto"></textarea></div>
   <button class="btn ba" onclick="saveOrd()" style="width:100%;padding:11px;margin-top:4px">✅ حفظ الطلب</button>
 </div></div>
@@ -2859,6 +2912,11 @@ tr:hover td{background:rgba(79,142,247,.02);}
 
 <div class="mo" id="mcoup"><div class="mdl">
   <div class="mh"><h2>🎟️ كوبون جديد</h2><button class="mclose" onclick="cm('mcoup')">✕</button></div>
+  <!-- اقتراح ذكي -->
+  <div style="margin-bottom:10px">
+    <div style="font-size:.72rem;color:var(--text2);margin-bottom:5px;font-weight:700">⚡ اقتراح سريع حسب نشاطك</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap" id="coup-suggestions"></div>
+  </div>
   <div class="fg"><label class="fl">الكود *</label><input class="fi" id="ccode" placeholder="SALE20" style="text-transform:uppercase"></div>
   <div class="g2">
     <div class="fg"><label class="fl">النوع</label><select class="fs" id="ctype"><option value="percent">نسبة %</option><option value="fixed">مبلغ ثابت</option></select></div>
@@ -2878,6 +2936,8 @@ tr:hover td{background:rgba(79,142,247,.02);}
   <div class="fg"><label class="fl">قيمة كل 100 نقطة</label><input class="fi" id="lrd" type="number" min="1"></div>
   <div class="fg"><label class="fl">حد أدنى للاسترداد</label><input class="fi" id="lmn" type="number" min="1"></div>
   <label style="display:flex;align-items:center;gap:7px;margin-bottom:13px;cursor:pointer"><input type="checkbox" id="lac"> تفعيل النقاط</label>
+  <button class="btn bo bsm" id="loy-smart-btn" onclick="applySmartLoyalty()" style="width:100%;padding:9px;margin-bottom:8px">✨ إعدادات ذكية حسب نشاطي</button>
+  <div id="loy-smart-hint" style="display:none;background:var(--surface2);border-radius:8px;padding:9px;font-size:.78rem;color:var(--text2);margin-bottom:10px;line-height:1.6"></div>
   <button class="btn ba" onclick="saveLoy()" style="width:100%;padding:11px">✅ حفظ</button>
 </div></div>
 
@@ -3179,8 +3239,49 @@ async function saveOb2(){
 }
 async function saveOb3(){
   const en=document.getElementById('oen').value.trim(),phil=document.getElementById('oep').value.trim(),obj=document.getElementById('oeo').value.trim();
-  await api('/api/employee',{method:'PUT',body:JSON.stringify({name:en||'مساعدي الذكي',philosophy:phil,objection_handling:obj})});
-  await api('/api/business/profile',{method:'PUT',body:JSON.stringify({onboarding_done:true})});
+  const storeName=document.getElementById('obsn').value.trim();
+  const storeDesc=document.getElementById('obsd').value.trim()||ob1CustomDesc||'';
+
+  // إظهار مؤشر التحميل
+  const btn=document.querySelector('#obs3 button.btn.ba');
+  if(btn){btn.disabled=true;btn.textContent='⏳ جاري إعداد نظامك...';}
+
+  try{
+    // 1) استدعاء auto-setup لتوليد الإعدادات المناسبة لنوع العمل
+    const setup=await api('/api/onboarding/auto-setup',{method:'POST',body:JSON.stringify({
+      business_type:selBT||'other',
+      business_desc:storeDesc,
+      store_name:storeName,
+      employee_name:en||'',
+      user_philosophy:phil||'',
+      user_objection:obj||''
+    })});
+
+    const s=setup.settings||{};
+
+    // 2) تطبيق إعدادات الموظف الرقمي (يدمج مدخلات المستخدم مع ما ولّده الذكاء)
+    await api('/api/employee',{method:'PUT',body:JSON.stringify({
+      name:       en   || s.employee_name        || 'مساعدي الذكي',
+      personality:       s.personality           || '',
+      sales_style:       s.sales_style           || '',
+      philosophy: phil || s.philosophy           || '',
+      objection_handling:obj||s.objection_handling||'',
+      boundaries:        s.boundaries            || ''
+    })});
+
+    // 3) تطبيق السياسات والأسلوب على الملف التجاري
+    await api('/api/business/profile',{method:'PUT',body:JSON.stringify({
+      communication_style: s.communication_style || '',
+      policies:            s.policies            || '',
+      onboarding_done:true
+    })});
+
+  }catch(e){
+    // في حال فشل الـ AI نكمل بالبيانات الأساسية فقط
+    await api('/api/employee',{method:'PUT',body:JSON.stringify({name:en||'مساعدي الذكي',philosophy:phil,objection_handling:obj})});
+    await api('/api/business/profile',{method:'PUT',body:JSON.stringify({onboarding_done:true})});
+  }
+
   finOb();
 }
 function finOb(){
@@ -3762,6 +3863,24 @@ const emMsgs = {
 
 function setEmMsg(type){ document.getElementById('emmsg').value = emMsgs[type] || ''; }
 
+async function suggestEmMsg(){
+  const btn = document.getElementById('em-ai-btn');
+  const resultsEl = document.getElementById('em-ai-results');
+  btn.disabled = true; btn.textContent = '⏳ جاري التوليد...';
+  resultsEl.style.display = 'none'; resultsEl.innerHTML = '';
+  const mode_type = document.getElementById('emtype')?.value || 'emergency';
+  const end_at = document.getElementById('emend')?.value || null;
+  const d = await api('/api/emergency/suggest', {method:'POST', body:JSON.stringify({mode_type, end_at})});
+  btn.disabled = false; btn.textContent = '✨ اقتراح ذكي حسب نشاطي';
+  if (!d.success || !d.messages?.length) return toast('❌ تعذر توليد الاقتراحات');
+  resultsEl.innerHTML = d.messages.map(m=>`
+    <div style="background:var(--surface2);border-radius:9px;padding:10px;cursor:pointer;border:1px solid var(--border)" onclick="document.getElementById('emmsg').value=\`${m.text.replace(/`/g,"'")}\`;toast('✅ تم نسخ الرسالة')">
+      <div style="font-size:.72rem;color:var(--accent);font-weight:700;margin-bottom:4px">${esc(m.label)}</div>
+      <div style="font-size:.8rem;color:var(--text1);line-height:1.5">${esc(m.text)}</div>
+    </div>`).join('');
+  resultsEl.style.display = 'flex';
+}
+
 async function ldEm(){
   const d = await api('/api/emergency');
   const st = document.getElementById('emst');
@@ -4037,6 +4156,15 @@ async function ldAna(){
   const per=p==='7'?'week':p==='30'?'month':'year';
   const d=await api('/api/analytics/report?period='+per);
   if(!d.success) return;
+  // KPI حسب نوع العمل
+  const kpi=d.business_kpi;
+  const kpiEl=document.getElementById('ana-biz-kpi');
+  if(kpiEl && kpi?.label && kpi.target>0){
+    const actual=parseFloat(kpi.actual||0);
+    const pct=Math.min(100,Math.round((actual/kpi.target)*100));
+    const ok=actual>=kpi.target;
+    kpiEl.innerHTML=`<div style="background:var(--surface2);border-radius:11px;padding:12px;margin-bottom:13px;border:1px solid ${ok?'rgba(0,200,150,.2)':'rgba(255,100,100,.15)'}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:.8rem;font-weight:700">🎯 ${esc(kpi.label)}</div><span class="badge ${ok?'bgr':'brd'}">${ok?'✅ محقق':'⚠️ دون المستهدف'}</span></div><div style="display:flex;gap:12px;font-size:.78rem;color:var(--text2);margin-bottom:7px"><span>الفعلي: <strong>${Number(actual).toLocaleString()} ${esc(kpi.unit)}</strong></span><span>المستهدف: <strong>${Number(kpi.target).toLocaleString()} ${esc(kpi.unit)}</strong></span></div><div style="height:7px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${ok?'var(--green)':'var(--accent3)'};border-radius:4px"></div></div>${kpi.tip?`<div style="font-size:.71rem;color:var(--text2);margin-top:5px">💡 ${esc(kpi.tip)}</div>`:''}</div>`;
+  } else if(kpiEl) kpiEl.innerHTML='';
   const gr=n=>n===null?'':` <span style="color:${parseFloat(n)>=0?'var(--green)':'var(--danger)'}">${parseFloat(n)>=0?'↑':'↓'}${Math.abs(n)}%</span>`;
   document.getElementById('anast').innerHTML=`<div class="sc"><div class="si">💰</div><div class="sv">${Number(d.orders?.revenue||0).toLocaleString()}</div><div class="sl">الإيرادات${gr(d.comparison?.revenue_growth)}</div></div><div class="sc"><div class="si">🛒</div><div class="sv">${d.orders?.total||0}</div><div class="sl">الطلبات${gr(d.comparison?.orders_growth)}</div></div><div class="sc"><div class="si">📦</div><div class="sv">${Number(d.orders?.deposits||0).toLocaleString()}</div><div class="sl">العربونات</div></div><div class="sc"><div class="si">🧮</div><div class="sv">${Number(d.orders?.avg||0).toFixed(0)}</div><div class="sl">متوسط الطلب</div></div>`;
   // Chart
@@ -4060,6 +4188,30 @@ async function ldCoups(){
   if(!d.coupons?.length){list.innerHTML='<div class="empty"><div class="ei">🎟️</div><p>لا كوبونات</p></div>';return;}
   list.innerHTML=`<div class="tw"><table><tr><th>الكود</th><th>النوع</th><th>القيمة</th><th>الاستخدام</th><th>الحالة</th><th>إجراءات</th></tr>${d.coupons.map(c=>`<tr><td style="font-weight:700;font-family:monospace">${esc(c.code)}</td><td>${c.type==='percent'?'%':'ثابت'}</td><td style="color:var(--accent);font-weight:700">${c.value}${c.type==='percent'?'%':''}</td><td>${c.used_count}/${c.max_uses}</td><td><span class="badge ${c.is_active?'bgr':'brd'}">${c.is_active?'✅':'❌'}</span></td><td><button class="btn bd bsm" onclick="delCoup(${c.id})">🗑</button></td></tr>`).join('')}</table></div>`;
 }
+
+function openCoupModal(){
+  // اقتراحات حسب نوع العمل (بدون AI — سريعة)
+  const type = biz?.business_type || 'other';
+  const suggestions = {
+    restaurant:  [{code:'MEAL10',type:'percent',val:10,min:5000},{code:'LUNCH15',type:'percent',val:15,min:10000}],
+    retail:      [{code:'SHOP10',type:'percent',val:10,min:15000},{code:'SAVE5K',type:'fixed',val:5000,min:20000}],
+    fashion:     [{code:'STYLE10',type:'percent',val:10,min:20000},{code:'SEASON15',type:'percent',val:15,min:30000}],
+    electronics: [{code:'TECH5',type:'percent',val:5,min:50000},{code:'GADGET3',type:'percent',val:3,min:100000}],
+    perfume:     [{code:'SCENT15',type:'percent',val:15,min:15000},{code:'LUXURY20',type:'percent',val:20,min:30000}],
+    health:      [{code:'CARE10',type:'percent',val:10,min:10000},{code:'BEAUTY15',type:'percent',val:15,min:20000}],
+    furniture:   [{code:'HOME5',type:'percent',val:5,min:100000},{code:'DECO10',type:'percent',val:10,min:200000}],
+    other:       [{code:'SAVE10',type:'percent',val:10,min:10000},{code:'WELCOME15',type:'percent',val:15,min:20000}]
+  }[type] || [{code:'SAVE10',type:'percent',val:10,min:10000}];
+  const el=document.getElementById('coup-suggestions');
+  if(el) el.innerHTML=suggestions.map(s=>`<button class="cs" onclick="applyCoupSuggestion('${s.code}','${s.type}',${s.val},${s.min})">${s.code} — ${s.val}${s.type==='percent'?'%':' ثابت'}</button>`).join('');
+  om('mcoup');
+}
+function applyCoupSuggestion(code,type,val,min){
+  document.getElementById('ccode').value=code;
+  document.getElementById('ctype').value=type;
+  document.getElementById('cval').value=val;
+  document.getElementById('cmin').value=min;
+}
 async function saveCoup(){
   const d=await api('/api/coupons',{method:'POST',body:JSON.stringify({code:document.getElementById('ccode').value,type:document.getElementById('ctype').value,value:parseFloat(document.getElementById('cval').value)||0,min_order:parseFloat(document.getElementById('cmin').value)||0,max_uses:parseInt(document.getElementById('cmax').value)||100,expires_at:document.getElementById('cexp').value||null})});
   if(d.success){toast('✅ تم');cm('mcoup');ldCoups();}else toast('❌ '+(d.message||'خطأ'));
@@ -4080,7 +4232,24 @@ async function openLoySet(){
   document.getElementById('lrd').value=s.redeem_rate||100;
   document.getElementById('lmn').value=s.min_redeem||100;
   document.getElementById('lac').checked=s.is_active!==false;
+  document.getElementById('loy-smart-hint').style.display='none';
   om('mloy');
+}
+async function applySmartLoyalty(){
+  const btn=document.getElementById('loy-smart-btn');
+  btn.disabled=true; btn.textContent='⏳ جاري التحليل...';
+  const d=await api('/api/loyalty/smart-defaults',{method:'POST'});
+  btn.disabled=false; btn.textContent='✨ إعدادات ذكية حسب نشاطي';
+  if(!d.success) return toast('❌ '+(d.message||'خطأ'));
+  const s=d.defaults;
+  document.getElementById('lr').value=s.points_per_currency;
+  document.getElementById('lrd').value=s.redeem_rate;
+  document.getElementById('lmn').value=s.min_redeem;
+  document.getElementById('lac').checked=true;
+  const hint=document.getElementById('loy-smart-hint');
+  hint.innerHTML=`💡 <strong>سبب هذه الإعدادات:</strong> ${esc(s.reason)}`;
+  hint.style.display='block';
+  toast('✅ تم تطبيق الإعدادات الذكية');
 }
 async function saveLoy(){
   const d=await api('/api/loyalty/settings',{method:'PUT',body:JSON.stringify({points_per_currency:parseFloat(document.getElementById('lr').value)||1,redeem_rate:parseFloat(document.getElementById('lrd').value)||100,min_redeem:parseInt(document.getElementById('lmn').value)||100,is_active:document.getElementById('lac').checked})});
@@ -4105,6 +4274,29 @@ async function sendBulk(){
   la.style.display='block';
   ll.innerHTML=d.links.map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)"><span style="font-size:.82rem">${esc(l.name||l.phone)}</span><a href="${esc(l.url)}" target="_blank" class="btn ba bsm">📤 إرسال</a></div>`).join('');
   toast(`✅ ${d.shown} رابط من ${d.total}`);
+}
+
+let _waTplCache = {};
+async function loadWaTemplates(type){
+  const resultsEl = document.getElementById('wa-tpl-results');
+  const loadingEl = document.getElementById('wa-tpl-loading');
+  if(_waTplCache[type]){ renderWaTpls(_waTplCache[type]); return; }
+  loadingEl.style.display='block'; resultsEl.style.display='none';
+  const d = await api('/api/whatsapp/templates/suggest',{method:'POST',body:JSON.stringify({template_type:type})});
+  loadingEl.style.display='none';
+  if(!d.success||!d.templates?.length) return toast('❌ تعذر توليد القوالب');
+  _waTplCache[type] = d.templates;
+  renderWaTpls(d.templates);
+}
+function renderWaTpls(templates){
+  const resultsEl = document.getElementById('wa-tpl-results');
+  resultsEl.innerHTML = templates.map(t=>`
+    <div style="background:var(--surface2);border-radius:9px;padding:10px;border:1px solid var(--border)">
+      <div style="font-size:.72rem;color:var(--accent);font-weight:700;margin-bottom:5px">${esc(t.label)}</div>
+      <div style="font-size:.81rem;color:var(--text1);line-height:1.6;margin-bottom:7px;white-space:pre-wrap">${esc(t.text)}</div>
+      <button class="btn ba bsm" onclick="document.getElementById('wamsg').value=\`${t.text.replace(/`/g,"'")}\`;toast('✅ تم تطبيق القالب')" style="padding:6px 12px">تطبيق ←</button>
+    </div>`).join('');
+  resultsEl.style.display='flex';
 }
 
 // ============================================================
@@ -4835,9 +5027,13 @@ const TEAM_ROLES_INFO={
 let dTeamHistory={};
 let currentDTeamRole='';
 
+let _dteamMembers = {};
+
 async function ldDTeam(){
   const d=await api('/api/team/digital');
   const members=d.members||[];
+  _dteamMembers = {};
+  members.forEach(m => { _dteamMembers[m.role] = m; });
   const cards=document.getElementById('dteam-cards');
   cards.innerHTML=members.map(m=>{
     const info=TEAM_ROLES_INFO[m.role]||{name:m.role,icon:'🤖',desc:'',color:'rgba(79,142,247,.2)'};
@@ -4858,7 +5054,7 @@ async function ldDTeam(){
         <div style="font-size:.75rem;color:var(--text2);margin-bottom:11px">التفاعلات: ${m.total_interactions||0}</div>
         <div style="display:flex;gap:6px">
           <button class="btn ba bsm" onclick="openDTeamChat('${m.role}')" style="flex:1;padding:9px">💬 محادثة</button>
-          <button class="btn bo bsm" onclick="openDTeamSettings('${m.role}',${JSON.stringify(m).replace(/'/g,'&apos;')})" style="padding:9px">⚙️</button>
+          <button class="btn bo bsm" onclick="openDTeamSettings('${m.role}')" style="padding:9px">⚙️</button>
         </div>
       </div>
     `;
@@ -4913,8 +5109,9 @@ async function sendDTeam(){
   input.focus();
 }
 
-function openDTeamSettings(role, member){
+function openDTeamSettings(role){
   const info=TEAM_ROLES_INFO[role]||{name:role,icon:'🤖'};
+  const member=_dteamMembers[role]||{};
   document.getElementById('dteam-set-title').textContent='⚙️ إعدادات '+info.name;
   document.getElementById('dteam-set-role').value=role;
   document.getElementById('dts-name').value=member.name||info.name;
@@ -5288,6 +5485,18 @@ function renderPosts(posts){
     </div>
   `).join('');
 }
+async function genPostContent(type){
+  const loadingEl=document.getElementById('post-gen-loading');
+  const platform=document.getElementById('qp-plat')?.value||'instagram';
+  loadingEl.style.display='block';
+  const d=await api('/api/posts/generate-content',{method:'POST',body:JSON.stringify({content_type:type,platform})});
+  loadingEl.style.display='none';
+  if(!d.success||!d.content) return toast('❌ تعذر التوليد');
+  document.getElementById('qp-content').value=d.content;
+  document.getElementById('qp-count').textContent=d.content.length+'/2200';
+  toast('✅ تم توليد المحتوى');
+}
+
 async function publishPost(schedule){
   const content=document.getElementById('qp-content').value.trim();
   const platform=document.getElementById('qp-plat').value;
@@ -5357,6 +5566,9 @@ async function ldIdentity(){
   document.getElementById('prv-c3').style.background = id.accent_color||'#00d4aa';
   if (id.logo_url) prvLogo();
   if (biz) document.getElementById('id-prv-name').textContent = biz.store_name||'اسم متجرك';
+  // تحميل البطاقات
+  try { _payCards = Array.isArray(id.payment_cards) ? id.payment_cards : JSON.parse(id.payment_cards||'[]'); } catch(e){ _payCards=[]; }
+  renderPayCards();
   document.getElementById('id-prv-style').textContent = id.communication_style||'ودي وقريب';
   // تطبيق هوية المتجر على كل الواجهة
   applyStoreIdentity(id);
@@ -5438,6 +5650,47 @@ function prvLogo(){
     prv.style.display='none';
   }
 }
+// ─── بطاقات الدفع ───
+let _payCards = [];
+
+function renderPayCards(){
+  const el = document.getElementById('pay-cards-list');
+  if (!el) return;
+  if (!_payCards.length) {
+    el.innerHTML = '<div style="font-size:.78rem;color:var(--text2);text-align:center;padding:8px">لا توجد بطاقات مضافة بعد</div>';
+    return;
+  }
+  el.innerHTML = _payCards.map((c,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:9px;margin-bottom:6px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:700">${esc(c.name)} — ${esc(c.type)}</div>
+        <div style="font-size:.78rem;color:var(--text2);direction:ltr;text-align:right">${esc(c.number)}</div>
+        <div style="font-size:.74rem;color:var(--text2)">${esc(c.owner)}</div>
+      </div>
+      <button class="btn bo bsm" onclick="removePayCard(${i})" style="padding:5px 9px;font-size:.75rem">✕</button>
+    </div>
+  `).join('');
+}
+
+function addPayCard(){
+  const name = document.getElementById('pc-name').value.trim();
+  const number = document.getElementById('pc-number').value.trim();
+  const owner = document.getElementById('pc-owner').value.trim();
+  const type = document.getElementById('pc-type').value;
+  if (!name || !number) return toast('⚠️ أدخل اسم البطاقة والرقم');
+  _payCards.push({ name, number, owner, type });
+  renderPayCards();
+  document.getElementById('pc-name').value = '';
+  document.getElementById('pc-number').value = '';
+  document.getElementById('pc-owner').value = '';
+  toast('✅ تمت إضافة البطاقة');
+}
+
+function removePayCard(i){
+  _payCards.splice(i, 1);
+  renderPayCards();
+}
+
 async function saveIdentity(){
   const d=await api('/api/identity',{method:'PUT',body:JSON.stringify({
     logo_url:document.getElementById('id-logo').value.trim(),
@@ -5449,7 +5702,8 @@ async function saveIdentity(){
     communication_style:document.getElementById('id-style').value,
     watermark_enabled:document.getElementById('id-wm').checked,
     watermark_position:document.getElementById('id-wmp').value,
-    watermark_opacity:parseFloat(document.getElementById('id-wmo').value)
+    watermark_opacity:parseFloat(document.getElementById('id-wmo').value),
+    payment_cards: _payCards
   })});
   if(d.success) toast('✅ تم حفظ هوية المتجر');
   else toast('❌ '+(d.message||'خطأ'));
@@ -6337,7 +6591,8 @@ function pickImg(inputId, btnId, prvId) {
 // Helper: تحويل حقل صورة عادي إلى img-picker
 function makeImgPicker(inputId, prvId) {
   const inp = document.getElementById(inputId);
-  if (!inp || inp._pickerDone) return;
+  if (!inp) return;
+  if (inp._pickerDone) return;
   inp._pickerDone = true;
 
   const btnId = inputId + '_pickbtn';

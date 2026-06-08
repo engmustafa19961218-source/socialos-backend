@@ -883,6 +883,68 @@ app.get('/api/business/types', (req, res) => {
 });
 
 // ============================================================
+// ONBOARDING AUTO-SETUP — الإعداد الذكي التلقائي
+// ============================================================
+app.post('/api/onboarding/auto-setup', authenticateToken, async (req, res) => {
+  const { business_type, business_desc, store_name, employee_name, user_philosophy, user_objection } = req.body;
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.json({ success: false, message: 'AI غير متاح' });
+
+  const typeNames = {
+    retail:'تجارة ومنتجات', restaurant:'مطاعم وكافيه', real_estate:'عقارات',
+    services:'خدمات', health:'صحة وجمال', education:'تعليم',
+    sports:'رياضة', perfume:'عطور', furniture:'أثاث',
+    fashion:'أزياء وملابس', electronics:'إلكترونيات', other:'أخرى'
+  };
+  const typeName = typeNames[business_type] || business_type;
+
+  try {
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 800,
+        messages: [{
+          role: 'user',
+          content: `أنت مساعد إعداد أنظمة تجارية ذكية. بناءً على معلومات هذا المتجر، أنشئ إعدادات مناسبة.
+
+المتجر: ${escapeHtml(store_name||'')}
+نوع النشاط: ${typeName}
+وصف العمل: ${escapeHtml(business_desc||'')}
+اسم الموظف الرقمي: ${escapeHtml(employee_name||'مساعدي الذكي')}
+فلسفة صاحب العمل: ${escapeHtml(user_philosophy||'')}
+أسلوبه مع طلبات الخصم: ${escapeHtml(user_objection||'')}
+
+أرجع JSON فقط بهذا الشكل بدون أي نص خارجه:
+{
+  "employee_name": "اسم مناسب للموظف إذا لم يُحدد",
+  "personality": "وصف شخصية الموظف الرقمي المناسبة لهذا النشاط (جملتان)",
+  "sales_style": "أسلوب البيع المناسب لهذا النشاط (جملتان)",
+  "philosophy": "فلسفة التعامل مع العملاء إذا لم يحددها صاحب العمل (جملتان)",
+  "objection_handling": "كيفية التعامل مع اعتراضات العملاء إذا لم تُحدد (جملتان)",
+  "boundaries": "ما لا يجب على الموظف فعله (جملة واحدة)",
+  "communication_style": "ودي وقريب",
+  "policies": "سياسات مناسبة لهذا النشاط (3-4 سياسات مفصولة بفاصلة)"
+}`
+        }]
+      })
+    });
+    const aiData = await aiRes.json();
+    let raw = aiData.choices?.[0]?.message?.content || '{}';
+    let settings = {};
+    try { settings = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim()); } catch(e) {}
+    // إذا أدخل المستخدم بيانات خاصة، لا نتجاوزها
+    if (user_philosophy) settings.philosophy = user_philosophy;
+    if (user_objection) settings.objection_handling = user_objection;
+    if (employee_name) settings.employee_name = employee_name;
+    res.json({ success: true, settings });
+  } catch(e) {
+    res.json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
 // DIGITAL EMPLOYEE — الموظف الرقمي
 // ============================================================
 app.get('/api/employee', authenticateToken, async (req, res) => {
@@ -958,16 +1020,17 @@ app.post('/api/training/chat', authenticateToken, rateLimit(30, 60*1000), async 
   const userId = req.user.id;
   if (!message) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
 
-  let businessProfile = {}, employee = {}, knowledge = [], decisions = [], corrections = [], products = [];
+  let businessProfile = {}, employee = {}, knowledge = [], decisions = [], corrections = [], products = [], identity = {};
   try {
     if (pool) {
-      const [bp, emp, kb, dm, cor, prods] = await Promise.all([
+      const [bp, emp, kb, dm, cor, prods, sid] = await Promise.all([
         pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId]),
         pool.query('SELECT * FROM digital_employee WHERE user_id=$1', [userId]),
         pool.query('SELECT title, content, type FROM knowledge_base WHERE user_id=$1 ORDER BY created_at DESC LIMIT 15', [userId]),
         pool.query('SELECT decision, reason, context FROM decision_memory WHERE user_id=$1 AND is_active=true LIMIT 15', [userId]),
         pool.query('SELECT corrected_response, lesson FROM training_corrections WHERE user_id=$1 ORDER BY created_at DESC LIMIT 10', [userId]),
-        pool.query('SELECT name, price, description, stock FROM products WHERE user_id=$1 AND is_available=true LIMIT 20', [userId])
+        pool.query('SELECT name, price, description, stock FROM products WHERE user_id=$1 AND is_available=true LIMIT 20', [userId]),
+        pool.query('SELECT payment_cards FROM store_identity WHERE user_id=$1', [userId]).catch(()=>({rows:[]}))
       ]);
       businessProfile = bp.rows[0] || {};
       employee = emp.rows[0] || {};
@@ -975,6 +1038,7 @@ app.post('/api/training/chat', authenticateToken, rateLimit(30, 60*1000), async 
       decisions = dm.rows;
       corrections = cor.rows;
       products = prods.rows;
+      identity = sid.rows[0] || {};
     }
   } catch (e) {}
 
@@ -1015,6 +1079,17 @@ ${decisions.length ? decisions.map(d=>`⚠️ ${escapeHtml(d.decision)} — ال
 
 ═══ دروس من التدريب ═══
 ${corrections.length ? corrections.map(c=>`✓ ${escapeHtml(c.lesson||c.corrected_response.substring(0,150))}`).join('\n') : 'لا دروس بعد'}
+
+═══ بطاقات الدفع والتحويل ═══
+${(() => {
+  try {
+    const cards = JSON.parse(identity.payment_cards || '[]');
+    if (!cards.length) return 'لم تُضَف بطاقات دفع بعد';
+    return cards.map(c => `💳 ${c.type} — ${c.name}\nالرقم: ${c.number}${c.owner ? '\nالاسم: '+c.owner : ''}`).join('\n---\n');
+  } catch(e) { return 'لا بطاقات'; }
+})()}
+
+عند طلب الزبون دفع العربون أو السداد، أرسل له بطاقات الدفع أعلاه مع تنسيق واضح.
 
 ═══ قواعد صارمة ═══
 1. تحدث بأسلوب صاحب العمل وفلسفته دائماً
@@ -1718,6 +1793,53 @@ app.put('/api/emergency', authenticateToken, async (req, res) => {
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
 });
 
+// اقتراح رسائل طوارئ ذكية حسب نوع العمل
+app.post('/api/emergency/suggest', authenticateToken, rateLimit(10, 60*1000), async (req, res) => {
+  const { mode_type, end_at } = req.body;
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.json({ success: false, message: 'AI غير متاح' });
+  try {
+    let bp = {};
+    if (pool) {
+      const r = await pool.query('SELECT store_name, business_type, whatsapp_number, communication_style FROM business_profile WHERE user_id=$1', [req.user.id]);
+      bp = r.rows[0] || {};
+    }
+
+    const modeLabels = { emergency:'طارئ', vacation:'إجازة', maintenance:'صيانة', holiday:'عطلة رسمية', closed:'مغلق مؤقتاً' };
+    const endStr = end_at ? `موعد العودة: ${new Date(end_at).toLocaleDateString('ar-IQ')}` : 'موعد العودة: غير محدد';
+
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 600,
+        messages: [{ role: 'user', content:
+`أنت خبير تواصل تجاري. اكتب 3 رسائل مختلفة لوضع "${modeLabels[mode_type]||mode_type}" لهذا العمل.
+
+المتجر: ${escapeHtml(bp.store_name||'متجرنا')}
+نوع النشاط: ${escapeHtml(bp.business_type||'تجارة')}
+أسلوب التواصل: ${escapeHtml(bp.communication_style||'ودي')}
+${bp.whatsapp_number ? `واتساب: ${escapeHtml(bp.whatsapp_number)}` : ''}
+${endStr}
+
+المطلوب: رسائل قصيرة مناسبة لطبيعة هذا النشاط تحديداً (ليست عامة). الرسالة الأولى رسمية، الثانية ودية، الثالثة مختصرة.
+
+أرجع JSON فقط:
+{"messages":[{"label":"رسمية","text":"..."},{"label":"ودية","text":"..."},{"label":"مختصرة","text":"..."}]}`
+        }]
+      })
+    });
+    const data = await aiRes.json();
+    let result = {};
+    try {
+      const raw = data.choices?.[0]?.message?.content || '{}';
+      result = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    } catch(e) {}
+    res.json({ success: true, messages: result.messages || [] });
+  } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
 // ============================================================
 // APPROVAL REQUESTS — مركز الموافقات
 // ============================================================
@@ -2377,22 +2499,39 @@ app.get('/api/analytics/report', authenticateToken, async (req, res) => {
   const days = period === 'month' ? 30 : period === 'year' ? 365 : 7;
   try {
     if (pool) {
-      const [orders, prevOrders, topCustomers, daily, statusBreak] = await Promise.all([
+      const [orders, prevOrders, topCustomers, daily, statusBreak, bp] = await Promise.all([
         pool.query(`SELECT COUNT(*) as cnt, SUM(total) as rev, SUM(deposit) as dep FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days'`, [userId]),
         pool.query(`SELECT COUNT(*) as cnt, SUM(total) as rev FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days*2} days' AND created_at<NOW()-INTERVAL '${days} days'`, [userId]),
         pool.query(`SELECT customer_name, customer_phone, COUNT(*) as orders, SUM(total) as spent FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days' GROUP BY customer_name,customer_phone ORDER BY spent DESC LIMIT 10`, [userId]),
         pool.query(`SELECT DATE(created_at) as date, SUM(total) as revenue, COUNT(*) as orders FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days' GROUP BY DATE(created_at) ORDER BY date`, [userId]),
-        pool.query(`SELECT status, COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days' GROUP BY status`, [userId])
+        pool.query(`SELECT status, COUNT(*) as count, SUM(total) as revenue FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL '${days} days' GROUP BY status`, [userId]),
+        pool.query('SELECT business_type FROM business_profile WHERE user_id=$1', [userId])
       ]);
       const totalRev = parseFloat(orders.rows[0]?.rev||0);
       const totalCnt = parseInt(orders.rows[0]?.cnt||0);
       const prevRev = parseFloat(prevOrders.rows[0]?.rev||0);
       const prevCnt = parseInt(prevOrders.rows[0]?.cnt||0);
+
+      // مؤشرات KPI حسب نوع العمل
+      const bizType = bp.rows[0]?.business_type || 'other';
+      const kpiByType = {
+        restaurant:  { label: 'متوسط قيمة الطلب المستهدف', target: 8000,  unit: 'د.ع', tip: 'المطاعم تستهدف متوسط طلب 8,000–15,000 دينار' },
+        retail:      { label: 'معدل تكرار الشراء المستهدف', target: 2,    unit: 'مرة/شهر', tip: 'التجزئة الناجحة تحقق 2+ عمليات شراء شهرياً لكل عميل' },
+        fashion:     { label: 'متوسط قيمة الطلب المستهدف', target: 25000, unit: 'د.ع', tip: 'الأزياء تستهدف متوسط طلب 25,000+ دينار' },
+        electronics: { label: 'متوسط قيمة الطلب المستهدف', target: 80000, unit: 'د.ع', tip: 'الإلكترونيات تستهدف متوسط طلب 80,000+ دينار' },
+        perfume:     { label: 'متوسط قيمة الطلب المستهدف', target: 20000, unit: 'د.ع', tip: 'العطور تستهدف متوسط طلب 20,000+ دينار' },
+        health:      { label: 'معدل العودة المستهدف', target: 60, unit: '%', tip: 'الصحة والجمال تستهدف 60%+ من العملاء يعودون' },
+        services:    { label: 'معدل العودة المستهدف', target: 70, unit: '%', tip: 'الخدمات تستهدف 70%+ من العملاء يعودون' },
+        other:       { label: 'متوسط قيمة الطلب', target: 0, unit: 'د.ع', tip: '' }
+      };
+      const kpi = kpiByType[bizType] || kpiByType.other;
+
       return res.json({
         success: true, days,
         orders: { total: totalCnt, revenue: totalRev, deposits: parseFloat(orders.rows[0]?.dep||0), avg: totalCnt>0?totalRev/totalCnt:0 },
         comparison: { prev_revenue: prevRev, prev_orders: prevCnt, revenue_growth: prevRev>0?((totalRev-prevRev)/prevRev*100).toFixed(1):null, orders_growth: prevCnt>0?((totalCnt-prevCnt)/prevCnt*100).toFixed(1):null },
-        top_customers: topCustomers.rows, daily_revenue: daily.rows, status_breakdown: statusBreak.rows
+        top_customers: topCustomers.rows, daily_revenue: daily.rows, status_breakdown: statusBreak.rows,
+        business_kpi: { type: bizType, ...kpi, actual: totalCnt>0?(totalRev/totalCnt).toFixed(0):0 }
       });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
@@ -2475,6 +2614,39 @@ app.put('/api/loyalty/settings', authenticateToken, async (req, res) => {
       return res.json({ success: true });
     }
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إعدادات ولاء ذكية حسب نوع العمل
+app.post('/api/loyalty/smart-defaults', authenticateToken, rateLimit(10, 60*1000), async (req, res) => {
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.json({ success: false, message: 'AI غير متاح' });
+  try {
+    let bp = {};
+    if (pool) {
+      const r = await pool.query('SELECT business_type, currency FROM business_profile WHERE user_id=$1', [req.user.id]);
+      bp = r.rows[0] || {};
+    }
+
+    // إعدادات افتراضية ذكية بدون AI لأنواع العمل الشائعة (أسرع وأوفر)
+    const smartDefaults = {
+      restaurant:   { points_per_currency: 1,    redeem_rate: 500,  min_redeem: 500,  reason: 'المطاعم تعتمد تكرار الزيارة — نقطة لكل دينار تشجع العودة السريعة، والاسترداد بـ500 نقطة يعادل وجبة صغيرة' },
+      retail:       { points_per_currency: 0.5,  redeem_rate: 1000, min_redeem: 1000, reason: 'تجارة التجزئة: نصف نقطة لكل دينار مع استرداد بـ1000 نقطة يحافظ على هامش الربح' },
+      fashion:      { points_per_currency: 0.5,  redeem_rate: 1000, min_redeem: 1000, reason: 'الأزياء: مشتريات بمبالغ عالية — نقطة لكل 2 دينار ومكافأة عند تراكم كافٍ' },
+      electronics:  { points_per_currency: 0.2,  redeem_rate: 2000, min_redeem: 2000, reason: 'الإلكترونيات: هامش ربح محدود — 0.2 نقطة فقط مع استرداد عالي لحماية الهامش' },
+      perfume:      { points_per_currency: 1,    redeem_rate: 500,  min_redeem: 500,  reason: 'العطور: مشتريات متكررة — نقطة كاملة لكل دينار لتشجيع الولاء' },
+      health:       { points_per_currency: 1,    redeem_rate: 500,  min_redeem: 500,  reason: 'الصحة والجمال: زيارات متكررة — نقطة لكل دينار مع استرداد معقول' },
+      education:    { points_per_currency: 0.5,  redeem_rate: 1000, min_redeem: 1000, reason: 'التعليم: خدمات دورية — نصف نقطة مع استرداد يوازي خصم على الدورة القادمة' },
+      furniture:    { points_per_currency: 0.1,  redeem_rate: 5000, min_redeem: 5000, reason: 'الأثاث: مشتريات نادرة وكبيرة — نقاط رمزية للولاء بدون ضغط على الهامش' },
+      sports:       { points_per_currency: 1,    redeem_rate: 500,  min_redeem: 500,  reason: 'الرياضة: مشتريات متكررة — نقطة كاملة تشجع على الاستمرار' },
+      real_estate:  { points_per_currency: 0.01, redeem_rate: 10000,min_redeem:10000, reason: 'العقارات: صفقات ضخمة ونادرة — نقاط رمزية فقط، نظام الولاء غير أساسي لهذا النشاط' },
+      services:     { points_per_currency: 1,    redeem_rate: 500,  min_redeem: 500,  reason: 'الخدمات: تكرار التعامل مهم — نقطة كاملة لكل دينار لبناء علاقة طويلة' },
+      other:        { points_per_currency: 1,    redeem_rate: 1000, min_redeem: 1000, reason: 'إعدادات متوازنة مناسبة لمعظم أنواع الأعمال' }
+    };
+
+    const type = bp.business_type || 'other';
+    const defaults = smartDefaults[type] || smartDefaults.other;
+    res.json({ success: true, defaults });
+  } catch(e) { res.json({ success: false, message: e.message }); }
 });
 
 app.get('/api/loyalty/customers', authenticateToken, async (req, res) => {
@@ -2786,6 +2958,52 @@ app.get('/api/whatsapp/bulk/counts', authenticateToken, async (req, res) => {
 // ============================================================
 // REPLY TEMPLATES
 // ============================================================
+// اقتراح قوالب واتساب ذكية حسب نوع العمل
+app.post('/api/whatsapp/templates/suggest', authenticateToken, rateLimit(15, 60*1000), async (req, res) => {
+  const { template_type } = req.body;
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.json({ success: false, message: 'AI غير متاح' });
+  try {
+    let bp = {};
+    if (pool) {
+      const r = await pool.query('SELECT store_name, business_type, communication_style, currency FROM business_profile WHERE user_id=$1', [req.user.id]);
+      bp = r.rows[0] || {};
+    }
+    const typeLabels = {
+      offer: 'عرض خاص أو تخفيض',
+      new_product: 'منتج أو خدمة جديدة',
+      loyalty: 'مكافأة عملاء مميزين',
+      followup: 'متابعة عملاء غير نشطين',
+      seasonal: 'مناسبة موسمية أو عطلة'
+    };
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 700,
+        messages: [{ role: 'user', content:
+`أنت خبير تسويق واتساب للسوق العربي. اكتب 3 قوالب رسائل واتساب لـ "${typeLabels[template_type]||template_type}".
+
+المتجر: ${escapeHtml(bp.store_name||'متجرنا')}
+نوع النشاط: ${escapeHtml(bp.business_type||'تجارة')}
+أسلوب التواصل: ${escapeHtml(bp.communication_style||'ودي')}
+العملة: ${bp.currency||'IQD'}
+
+المطلوب: رسائل قصيرة مناسبة لطبيعة هذا النشاط تحديداً. استخدم {اسم} لاسم العميل. بدون مبالغة.
+
+أرجع JSON فقط:
+{"templates":[{"label":"نسخة 1","text":"..."},{"label":"نسخة 2","text":"..."},{"label":"نسخة 3","text":"..."}]}`
+        }]
+      })
+    });
+    const data = await aiRes.json();
+    let result = {};
+    try { result = JSON.parse((data.choices?.[0]?.message?.content||'{}').replace(/```json|```/g,'').trim()); } catch(e){}
+    res.json({ success: true, templates: result.templates || [] });
+  } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
 app.post('/api/templates', authenticateToken, async (req, res) => {
   const { title, content, category } = req.body;
   if (!title || !content) return res.status(400).json({ success: false, message: 'العنوان والمحتوى مطلوبان' });
@@ -3624,15 +3842,16 @@ app.put('/api/identity', authenticateToken, async (req, res) => {
   const {
     logo_url, cover_url, primary_color, secondary_color, accent_color,
     font_name, communication_style, watermark_enabled, watermark_position,
-    watermark_opacity, social_template
+    watermark_opacity, social_template, payment_cards
   } = req.body;
   try {
     if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const cardsJson = Array.isArray(payment_cards) ? JSON.stringify(payment_cards) : '[]';
     await pool.query(`
       INSERT INTO store_identity
         (user_id, logo_url, cover_url, primary_color, secondary_color, accent_color,
-         font_name, communication_style, watermark_enabled, watermark_position, watermark_opacity, social_template, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+         font_name, communication_style, watermark_enabled, watermark_position, watermark_opacity, social_template, payment_cards, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
       ON CONFLICT (user_id) DO UPDATE SET
         logo_url=COALESCE(NULLIF($2,''), store_identity.logo_url),
         cover_url=COALESCE(NULLIF($3,''), store_identity.cover_url),
@@ -3645,11 +3864,12 @@ app.put('/api/identity', authenticateToken, async (req, res) => {
         watermark_position=COALESCE(NULLIF($10,''), store_identity.watermark_position),
         watermark_opacity=COALESCE($11, store_identity.watermark_opacity),
         social_template=COALESCE(NULLIF($12,'{}'), store_identity.social_template),
+        payment_cards=$13,
         updated_at=NOW()
     `, [req.user.id, logo_url||'', cover_url||'', primary_color||'', secondary_color||'',
         accent_color||'', font_name||'', communication_style||'',
         watermark_enabled, watermark_position||'', watermark_opacity||null,
-        social_template ? JSON.stringify(social_template) : '{}']);
+        social_template ? JSON.stringify(social_template) : '{}', cardsJson]);
     await auditLog(req.user.id, 'update_identity', 'store_identity', null, '', req.ip);
     const r = await pool.query('SELECT * FROM store_identity WHERE user_id=$1', [req.user.id]);
     res.json({ success: true, identity: r.rows[0] });
@@ -4372,6 +4592,57 @@ function buildMetaTargeting(audience) {
 // ============================================================
 
 // جلب المنشورات
+// توليد محتوى منشور بالذكاء حسب نوع العمل
+app.post('/api/posts/generate-content', authenticateToken, rateLimit(20, 60*1000), async (req, res) => {
+  const { content_type, platform } = req.body;
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_KEY) return res.json({ success: false, message: 'AI غير متاح' });
+  try {
+    let bp = {}, identity = {};
+    if (pool) {
+      const [bpR, idR] = await Promise.all([
+        pool.query('SELECT store_name, business_type, business_desc, target_audience, communication_style FROM business_profile WHERE user_id=$1', [req.user.id]),
+        pool.query('SELECT brand_voice FROM store_identity WHERE user_id=$1', [req.user.id]).catch(()=>({rows:[]}))
+      ]);
+      bp = bpR.rows[0] || {};
+      identity = idR.rows[0] || {};
+    }
+    const typeLabels = {
+      offer: 'عرض خاص أو تخفيض', new_product: 'إطلاق منتج أو خدمة جديدة',
+      tips: 'نصيحة مفيدة مرتبطة بالنشاط', story: 'قصة عن العمل أو خلف الكواليس',
+      engagement: 'منشور يشجع على التفاعل والتعليقات'
+    };
+    const platRules = {
+      instagram: 'قصير وجذاب مع هاشتاقات (5-10) في النهاية، أقل من 300 كلمة',
+      facebook: 'متوسط الطول مع دعوة للتفاعل، أقل من 400 كلمة',
+      tiktok: 'قصير جداً لوصف فيديو، أقل من 150 كلمة مع هاشتاقات'
+    };
+    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 500,
+        messages: [{ role: 'user', content:
+`اكتب منشور "${typeLabels[content_type]||content_type}" لـ${platform} لهذا العمل.
+
+المتجر: ${escapeHtml(bp.store_name||'متجرنا')}
+نوع النشاط: ${escapeHtml(bp.business_type||'تجارة')}
+وصف العمل: ${escapeHtml(bp.business_desc||'')}
+الجمهور: ${escapeHtml(bp.target_audience||'الجميع')}
+أسلوب التواصل: ${escapeHtml(bp.communication_style||identity.brand_voice||'ودي')}
+قواعد المنصة: ${platRules[platform]||''}
+
+أرجع نص المنشور فقط بدون أي مقدمة أو شرح.`
+        }]
+      })
+    });
+    const data = await aiRes.json();
+    const content = data.choices?.[0]?.message?.content?.trim() || '';
+    res.json({ success: true, content });
+  } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
 app.get('/api/posts', authenticateToken, async (req, res) => {
   const platform = req.query.platform;
   try {
@@ -5036,12 +5307,27 @@ app.post('/api/mike', authenticateToken, async (req, res) => {
       };
     }
 
+    const bizType = context.store?.business_type || '';
+    const bizTypeContext = {
+      restaurant: '⚠️ هذا متجر مطاعم/كافيه — ركز على: الطلبات والتوصيل، أوقات العمل، قائمة الطعام، الحجوزات، العروض اليومية.',
+      retail: '⚠️ هذا متجر تجزئة — ركز على: المخزون، العروض، الشحن، استفسارات المنتجات.',
+      fashion: '⚠️ هذا متجر أزياء — ركز على: الأصناف والمقاسات، العروض الموسمية، صور المنتجات.',
+      electronics: '⚠️ هذا متجر إلكترونيات — ركز على: المواصفات التقنية، الضمان، التوافقية.',
+      perfume: '⚠️ هذا متجر عطور — ركز على: وصف الرائحة، المناسبات، العروض المجمعة.',
+      health: '⚠️ هذا مركز صحة وجمال — ركز على: المواعيد، الخدمات، الحزم.',
+      education: '⚠️ هذا مركز تعليمي — ركز على: الدورات، المواعيد، التسجيل.',
+      real_estate: '⚠️ هذا مكتب عقارات — ركز على: العقارات، المعاينات، الأسعار.',
+      furniture: '⚠️ هذا متجر أثاث — ركز على: المقاسات، التوصيل والتركيب، التخصيص.',
+      sports: '⚠️ هذا متجر رياضة — ركز على: المعدات، المقاسات، العروض.',
+    }[bizType] || '';
+
     const systemPrompt = `أنت Mike، المساعد التنفيذي الذكي لـ SocialOS.
 أنت مرتبط بجميع أنظمة المتجر وتستطيع تنفيذ الأوامر مباشرة.
+${bizTypeContext}
 
 معلومات المتجر:
 - الاسم: ${escapeHtml(context.store?.store_name || '')}
-- النوع: ${escapeHtml(context.store?.business_type || '')}
+- النوع: ${escapeHtml(bizType)}
 - العملة: ${context.store?.currency || 'IQD'}
 - واتساب: ${context.store?.whatsapp_number || ''}
 - إجمالي الطلبات: ${context.total_orders}
@@ -5175,8 +5461,9 @@ app.post('/api/mike', authenticateToken, async (req, res) => {
         }
 
         else if (action === 'create_product') {
-          const price = parseFloat(actionData.price);
-          if (!price || price <= 0) throw new Error('السعر غير صالح');
+          const rawPrice = String(actionData.price || '').replace(/[^\d.]/g, '');
+          const price = parseFloat(rawPrice);
+          if (!price || price <= 0) throw new Error('السعر غير صالح — قل مثلاً: سعره 25000');
           const r = await pool.query(
             'INSERT INTO products (user_id,name,description,price,stock,category,is_available) VALUES ($1,$2,$3,$4,$5,$6,true) RETURNING id',
             [userId, escapeHtml(actionData.name||'منتج جديد'), escapeHtml(actionData.description||''),
@@ -5649,6 +5936,10 @@ setTimeout(() => {
     pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_wa_link TEXT DEFAULT ''`).catch(()=>{});
     pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS custom_delivery_companies TEXT DEFAULT '[]'`).catch(()=>{});
     pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_info TEXT DEFAULT ''`).catch(()=>{});
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(50) DEFAULT ''`).catch(()=>{});
+    pool.query(`ALTER TABLE store_identity ADD COLUMN IF NOT EXISTS payment_cards TEXT DEFAULT '[]'`).catch(()=>{});
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2) DEFAULT 0`).catch(()=>{});
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS loyalty_points_used INTEGER DEFAULT 0`).catch(()=>{});
   }
 }, 3000);
 
