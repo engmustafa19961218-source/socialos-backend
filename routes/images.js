@@ -16,49 +16,41 @@ app.post('/api/images/remove-bg', authenticateToken, async (req, res) => {
     return res.status(503).json({ success: false, message: 'REMOVE_BG_API_KEY غير مضبوط في المتغيرات' });
 
   try {
-    let formData, contentType;
+    let response;
 
     if (image_url) {
       try { new URL(image_url); } catch { return res.status(400).json({ success: false, message: 'رابط غير صالح' }); }
-    }
-
-    // بناء multipart form
-    const boundary = '----FormBoundary' + Date.now();
-    const parts = [];
-
-    if (image_url) {
-      parts.push(
-        `--${boundary}\r\nContent-Disposition: form-data; name="image_url"\r\n\r\n${image_url}`
-      );
+      // إرسال بـ URL
+      const boundary = '----FormBoundary' + Date.now();
+      const body = `--${boundary}\r\nContent-Disposition: form-data; name="image_url"\r\n\r\n${image_url}\r\n--${boundary}--`;
+      response = await fetch('https://api.remove.bg/v1.0/removebg', {
+        method: 'POST',
+        headers: { 'X-Api-Key': REMOVE_BG_KEY, 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+        body
+      });
     } else {
-      // base64 — نحوله لبيانات ثنائية
+      // إرسال base64 كملف ثنائي
       const base64Data = image_base64.replace(/^data:image\/\w+;base64,/, '');
       const imgBuffer = Buffer.from(base64Data, 'base64');
-      parts.push(
-        `--${boundary}\r\nContent-Disposition: form-data; name="image_file"; filename="image.png"\r\nContent-Type: image/png\r\n\r\n`
+      const boundary = '----FormBoundary' + Date.now();
+      const CRLF = '\r\n';
+      const header = Buffer.from(
+        `--${boundary}${CRLF}` +
+        `Content-Disposition: form-data; name="image_file"; filename="image.png"${CRLF}` +
+        `Content-Type: image/png${CRLF}${CRLF}`
       );
-      formData = Buffer.concat([
-        Buffer.from(parts.join('\r\n') + '\r\n'),
-        imgBuffer,
-        Buffer.from(`\r\n--${boundary}--`)
-      ]);
-      contentType = `multipart/form-data; boundary=${boundary}`;
+      const footer = Buffer.from(`${CRLF}--${boundary}--`);
+      const formData = Buffer.concat([header, imgBuffer, footer]);
+      response = await fetch('https://api.remove.bg/v1.0/removebg', {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': REMOVE_BG_KEY,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': String(formData.length)
+        },
+        body: formData
+      });
     }
-
-    if (!formData) {
-      const body = parts.join('\r\n') + `\r\n--${boundary}--`;
-      formData = Buffer.from(body);
-      contentType = `multipart/form-data; boundary=${boundary}`;
-    }
-
-    const response = await fetch('https://api.remove.bg/v1.0/removebg', {
-      method: 'POST',
-      headers: {
-        'X-Api-Key': REMOVE_BG_KEY,
-        'Content-Type': contentType,
-      },
-      body: formData
-    });
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));

@@ -21,7 +21,7 @@ app.post('/api/training/session', authenticateToken, async (req, res) => {
 
 // Training chat — محادثة تدريب
 app.post('/api/training/chat', authenticateToken, rateLimit(30, 60*1000), async (req, res) => {
-  const { session_id, message, mode } = req.body;
+  const { session_id, message, mode, image_base64 } = req.body;
   const userId = req.user.id;
   if (!message) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
 

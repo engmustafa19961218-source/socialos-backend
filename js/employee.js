@@ -163,16 +163,44 @@ function endTrain(){
   ldCorrs();
 }
 
+
+// إرفاق صورة في التدريب
+function attachTrainImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    window._trainAttachedImage = reader.result;
+    // إزالة preview قديم
+    document.getElementById('train-img-preview')?.remove();
+    // إضافة preview
+    const cin = document.querySelector('#train-area .cin');
+    if (cin) {
+      const prev = document.createElement('div');
+      prev.id = 'train-img-preview';
+      prev.style.cssText = 'padding:6px;display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;margin-bottom:4px';
+      prev.innerHTML = `<img src="${reader.result}" style="width:40px;height:40px;object-fit:cover;border-radius:6px"><span style="font-size:.78rem;flex:1">صورة مرفقة</span><button onclick="window._trainAttachedImage=null;this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--danger)">✕</button>`;
+      cin.parentElement.insertBefore(prev, cin);
+    }
+    toast('✅ تم إرفاق الصورة — اكتب رسالتك وأرسل');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
 async function sendTrain(){
   const inp = document.getElementById('tinput');
   const msg = inp.value.trim();
-  if (!msg || !trainSess) return;
+  const attachedImg = window._trainAttachedImage;
+  if (!msg && !attachedImg || !trainSess) return;
   inp.value = '';
-  addCm('tchat','user',msg);
+  const displayMsg = msg + (attachedImg ? ' 🖼️' : '');
+  addCm('tchat','user', displayMsg);
   const btn = document.getElementById('tbtn');
   btn.disabled = true; btn.textContent = '⏳';
-  const body = {session_id:trainSess.id, message:msg, mode:trainMode};
+  const body = {session_id:trainSess.id, message: msg || 'انظر لهذه الصورة', mode:trainMode};
   if (simScenario) body.scenario = simScenario;
+  if (attachedImg) { body.image_base64 = attachedImg; window._trainAttachedImage = null; document.getElementById('train-img-preview')?.remove(); }
   const d = await api('/api/training/chat',{method:'POST',body:JSON.stringify(body)});
   btn.disabled = false; btn.textContent = 'إرسال';
   if (d.success) {

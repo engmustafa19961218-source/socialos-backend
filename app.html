@@ -1183,6 +1183,8 @@ tr:hover td{background:rgba(79,142,247,.02);}
               <button class="btn ba bsm" onclick="sendTrain()" id="tbtn">إرسال</button>
               <button class="btn bo bsm" id="voice-rec-btn" onclick="startVoiceRecord()" title="تحدث بصوتك">🎤</button>
               <button class="btn bo bsm" id="voice-mode-btn" onclick="toggleVoiceMode()" title="تفعيل/إيقاف وضع الصوت" style="font-size:.7rem">🔇 صوت</button>
+              <button class="btn bo bsm" onclick="document.getElementById('train-img-input').click()" title="أرفق صورة">🖼️</button>
+              <input type="file" id="train-img-input" accept="image/*" style="display:none" onchange="attachTrainImage(this)">
             </div>
           </div>
         </div>
