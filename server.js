@@ -6011,9 +6011,9 @@ app.post('/api/push/test', authenticateToken, async (req, res) => {
 // ============================================================
 app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(__dirname + '/app.html'));
-app.get('/privacy', (req, res) => res.send('<html><body style="font-family:Arial;padding:40px"><h1>Privacy Policy</h1><p>SocialOS stores user data securely and never sells it.</p></body></html>'));
-app.get('/terms', (req, res) => res.send('<html><body style="font-family:Arial;padding:40px"><h1>Terms of Service</h1><p>By using SocialOS, you agree to use it lawfully.</p></body></html>'));
-
+app.get('/legal', (req, res) => res.sendFile(__dirname + '/legal.html'));
+app.get('/privacy', (req, res) => res.redirect('/legal'));
+app.get('/terms', (req, res) => res.redirect('/legal'));
 // ============================================================
 // CONFIG (public)
 // ============================================================
