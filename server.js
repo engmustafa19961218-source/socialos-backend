@@ -4739,7 +4739,85 @@ app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
+// ============================================================
+// COMMENTS — تعليقات الصفحة
+// ============================================================
 
+app.get('/api/comments/posts', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const accR = await pool.query(
+      "SELECT access_token, page_id FROM social_accounts WHERE user_id=$1 AND platform='facebook' AND is_connected=true",
+      [req.user.id]
+    );
+    if (!accR.rows.length || !accR.rows[0].access_token)
+      return res.status(400).json({ success: false, message: 'لم يتم ربط Facebook' });
+    const { access_token, page_id } = accR.rows[0];
+    if (!page_id) return res.status(400).json({ success: false, message: 'لم يتم ربط صفحة Facebook' });
+    const fbRes = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(page_id)}/feed?fields=id,message,created_time,comments.summary(true)&limit=10&access_token=${encodeURIComponent(access_token)}`);
+    const data = await fbRes.json();
+    if (data.error) return res.status(400).json({ success: false, message: data.error.message });
+    res.json({ success: true, posts: data.data || [] });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/comments/post/:postId', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const accR = await pool.query(
+      "SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform='facebook' AND is_connected=true",
+      [req.user.id]
+    );
+    if (!accR.rows.length || !accR.rows[0].access_token)
+      return res.status(400).json({ success: false, message: 'لم يتم ربط Facebook' });
+    const { access_token } = accR.rows[0];
+    const fbRes = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(req.params.postId)}/comments?fields=id,message,from,created_time,like_count&access_token=${encodeURIComponent(access_token)}`);
+    const data = await fbRes.json();
+    if (data.error) return res.status(400).json({ success: false, message: data.error.message });
+    res.json({ success: true, comments: data.data || [] });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.post('/api/comments/reply', authenticateToken, async (req, res) => {
+  const { comment_id, message } = req.body;
+  if (!comment_id || !message?.trim())
+    return res.status(400).json({ success: false, message: 'comment_id والرسالة مطلوبان' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const accR = await pool.query(
+      "SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform='facebook' AND is_connected=true",
+      [req.user.id]
+    );
+    if (!accR.rows.length || !accR.rows[0].access_token)
+      return res.status(400).json({ success: false, message: 'لم يتم ربط Facebook' });
+    const { access_token } = accR.rows[0];
+    const fbRes = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(comment_id)}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message.trim(), access_token })
+    });
+    const data = await fbRes.json();
+    if (data.error) return res.status(400).json({ success: false, message: data.error.message });
+    res.json({ success: true, reply_id: data.id, message: 'تم الرد بنجاح' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.delete('/api/comments/:commentId', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+    const accR = await pool.query(
+      "SELECT access_token FROM social_accounts WHERE user_id=$1 AND platform='facebook' AND is_connected=true",
+      [req.user.id]
+    );
+    if (!accR.rows.length || !accR.rows[0].access_token)
+      return res.status(400).json({ success: false, message: 'لم يتم ربط Facebook' });
+    const { access_token } = accR.rows[0];
+    const fbRes = await fetch(`https://graph.facebook.com/v19.0/${encodeURIComponent(req.params.commentId)}?access_token=${encodeURIComponent(access_token)}`, { method: 'DELETE' });
+    const data = await fbRes.json();
+    if (data.error) return res.status(400).json({ success: false, message: data.error.message });
+    res.json({ success: true, message: 'تم حذف التعليق' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 // Cron — نشر المنشورات المجدولة
 cron.schedule('*/5 * * * *', async () => {
   try {
