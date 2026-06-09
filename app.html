@@ -821,6 +821,7 @@ tr:hover td{background:rgba(79,142,247,.02);}
       <button class="si-btn" onclick="sp('ads',this)"><span class="si-icon">📣</span><span class="si-label">الإعلانات</span></button>
       <button class="si-btn" onclick="sp('retargeting',this)"><span class="si-icon">🎯</span><span class="si-label">إعادة الاستهداف</span></button>
       <button class="si-btn" onclick="sp('posts',this)"><span class="si-icon">📱</span><span class="si-label">المنشورات</span></button>
+      <button class="si-btn" onclick="sp('comments',this)"><span class="si-icon">💬</span><span class="si-label">التعليقات</span></button>
 
       <div class="nav-divider"></div>
       <div class="nav-group-label">المتجر</div>
@@ -919,6 +920,7 @@ tr:hover td{background:rgba(79,142,247,.02);}
         <button onclick="sp('bulk-wa',null);closeMobileMenu()" class="mob-nav-btn">📢<span>حملات واتساب</span></button>
         <button onclick="sp('ads',null);closeMobileMenu()" class="mob-nav-btn">📣<span>الإعلانات</span></button>
         <button onclick="sp('posts',null);closeMobileMenu()" class="mob-nav-btn">📱<span>المنشورات</span></button>
+        <button onclick="sp('comments',null);closeMobileMenu()" class="mob-nav-btn">💬<span>التعليقات</span></button>
 
         <!-- المتجر -->
         <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">المتجر</div>
@@ -2273,6 +2275,33 @@ tr:hover td{background:rgba(79,142,247,.02);}
           <div style="background:var(--surface2);border-radius:10px;padding:12px">
             <div style="font-weight:700;margin-bottom:5px;font-size:.85rem">💬 WhatsApp Business</div>
             <div style="color:var(--text2);font-size:.77rem;line-height:1.6">احصل على Access Token وPhone Number ID من Meta for Developers أو من لوحة WhatsApp Business API وادخلهما هنا.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMMENTS — تعليقات الصفحة -->
+    <div class="page" id="page-comments">
+      <div class="pt"><div><h1>💬 التعليقات</h1><p>راقب تعليقات صفحتك على Facebook وارد عليها</p></div><div class="pas"><button class="btn bo bsm" onclick="ldCommentsPosts()">🔄 تحديث</button></div></div>
+
+      <div class="g2" style="align-items:start">
+        <!-- قائمة المنشورات -->
+        <div>
+          <div class="card">
+            <h3 style="margin-bottom:12px">📝 منشوراتك الأخيرة</h3>
+            <div id="comments-posts-list"><div class="empty"><div class="ei">📝</div><p>جاري التحميل...</p></div></div>
+          </div>
+        </div>
+
+        <!-- التعليقات -->
+        <div>
+          <div class="card" id="comments-panel">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <h3 style="margin:0">💬 التعليقات</h3>
+              <span id="comments-post-title" style="font-size:.78rem;color:var(--text2);flex:1"></span>
+              <button class="btn bo bsm" onclick="ldComments(currentCommentPostId)" id="comments-refresh-btn" style="display:none">🔄</button>
+            </div>
+            <div id="comments-list"><div class="empty"><div class="ei">💬</div><p>اختر منشوراً لعرض تعليقاته</p></div></div>
           </div>
         </div>
       </div>
@@ -4640,6 +4669,99 @@ async function saveProf(){
 // ============================================================
 // SOCIAL ACCOUNTS — ربط حسابات التواصل الاجتماعي
 // ============================================================
+// ============================================================
+// COMMENTS — تعليقات الصفحة
+// ============================================================
+let currentCommentPostId = null;
+
+async function ldCommentsPosts() {
+  const el = document.getElementById('comments-posts-list');
+  el.innerHTML = '<div class="empty"><div class="ei">⏳</div><p>جاري التحميل...</p></div>';
+  const d = await api('/api/comments/posts');
+  if (!d.success) {
+    el.innerHTML = `<div class="empty"><div class="ei">⚠️</div><p>${esc(d.message||'خطأ')}</p><button class="btn ba bsm" onclick="sp('social',null)" style="margin-top:10px">ربط Facebook</button></div>`;
+    return;
+  }
+  if (!d.posts?.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">📝</div><p>لا توجد منشورات</p></div>';
+    return;
+  }
+  el.innerHTML = d.posts.map(p => {
+    const cnt = p.comments?.summary?.total_count || 0;
+    const msg = p.message ? (p.message.length > 60 ? p.message.slice(0,60)+'...' : p.message) : '(منشور بدون نص)';
+    const date = p.created_time ? new Date(p.created_time).toLocaleDateString('ar-IQ') : '';
+    return `<div class="card" style="margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:.2s" id="cp-${esc(p.id)}" onclick="ldComments('${esc(p.id)}','${esc(msg)}',this)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:.85rem;flex:1">${esc(msg)}</div>
+        <div style="background:var(--accent);color:#fff;border-radius:20px;padding:2px 10px;font-size:.75rem;font-weight:700;margin-right:8px;flex-shrink:0">${cnt} 💬</div>
+      </div>
+      <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${date}</div>
+    </div>`;
+  }).join('');
+}
+
+async function ldComments(postId, title, el) {
+  if (!postId) return;
+  currentCommentPostId = postId;
+  // تمييز المنشور المختار
+  document.querySelectorAll('[id^="cp-"]').forEach(e => e.style.borderColor = 'transparent');
+  if (el) el.style.borderColor = 'var(--accent)';
+  document.getElementById('comments-refresh-btn').style.display = '';
+  if (title) document.getElementById('comments-post-title').textContent = title;
+
+  const list = document.getElementById('comments-list');
+  list.innerHTML = '<div class="empty"><div class="ei">⏳</div><p>جاري تحميل التعليقات...</p></div>';
+
+  const d = await api(`/api/comments/post/${encodeURIComponent(postId)}`);
+  if (!d.success) {
+    list.innerHTML = `<div class="empty"><div class="ei">⚠️</div><p>${esc(d.message||'خطأ')}</p></div>`;
+    return;
+  }
+  if (!d.comments?.length) {
+    list.innerHTML = '<div class="empty"><div class="ei">💬</div><p>لا توجد تعليقات على هذا المنشور</p></div>';
+    return;
+  }
+  list.innerHTML = d.comments.map(c => {
+    const name = c.from?.name || 'مجهول';
+    const date = c.created_time ? new Date(c.created_time).toLocaleString('ar-IQ') : '';
+    return `<div class="card" style="margin-bottom:10px" id="comment-${esc(c.id)}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <span style="font-weight:700;font-size:.85rem">${esc(name)}</span>
+          <span style="color:var(--text2);font-size:.72rem;margin-right:8px">${date}</span>
+        </div>
+        <button onclick="deleteComment('${esc(c.id)}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:.8rem;padding:2px 6px" title="حذف">🗑️</button>
+      </div>
+      <p style="font-size:.875rem;margin-bottom:10px;line-height:1.6">${esc(c.message||'')}</p>
+      <div style="display:flex;gap:7px;align-items:center">
+        <input class="fi" id="reply-${esc(c.id)}" placeholder="اكتب ردك هنا..." style="flex:1;padding:8px;font-size:.82rem">
+        <button class="btn ba bsm" onclick="replyComment('${esc(c.id)}')" style="padding:8px 14px;flex-shrink:0">↩️ رد</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function replyComment(commentId) {
+  const inp = document.getElementById('reply-'+commentId);
+  const msg = inp?.value?.trim();
+  if (!msg) return toast('⚠️ اكتب ردك أولاً');
+  const btn = inp.nextElementSibling;
+  btn.disabled = true; btn.textContent = '⏳';
+  const d = await api('/api/comments/reply', 'POST', { comment_id: commentId, message: msg });
+  btn.disabled = false; btn.textContent = '↩️ رد';
+  if (d.success) { toast('✅ تم الرد بنجاح'); inp.value = ''; }
+  else toast('❌ '+( d.message||'فشل الرد'));
+}
+
+async function deleteComment(commentId) {
+  if (!confirm('هل تريد حذف هذا التعليق؟')) return;
+  const d = await api(`/api/comments/${encodeURIComponent(commentId)}`, 'DELETE');
+  if (d.success) {
+    document.getElementById('comment-'+commentId)?.remove();
+    toast('✅ تم حذف التعليق');
+  } else toast('❌ '+(d.message||'فشل الحذف'));
+}
+
 async function ldSocial(){
   const d=await api('/api/social/accounts');
   const accounts=(d.accounts||[]);
@@ -6445,7 +6567,7 @@ function goBack() {
   document.querySelectorAll('.si-btn').forEach(b => b.classList.remove('active'));
   const pg = document.getElementById('page-' + prev);
   if (pg) pg.classList.add('active');
-  const ldr = {home:ldHome,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,'team-meeting':ldTeamMeeting,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs,delivery:ldDelivery,retargeting:ldRetargeting,'employee-log':ldEmpLog,'session-detail':()=>{}};
+  const ldr = {home:ldHome,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,'team-meeting':ldTeamMeeting,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,comments:ldCommentsPosts,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs,delivery:ldDelivery,retargeting:ldRetargeting,'employee-log':ldEmpLog,'session-detail':()=>{}};
   if (ldr[prev]) ldr[prev]();
 }
 
