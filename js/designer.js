@@ -257,7 +257,18 @@ async function removeBg(){
     try {
       let base64;
       if (img.src.startsWith('data:')) {
-        base64 = img.src;
+        // تحويل لـ PNG
+        base64 = await new Promise(res => {
+          const image = new Image();
+          image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            canvas.getContext('2d').drawImage(image, 0, 0);
+            res(canvas.toDataURL('image/png'));
+          };
+          image.src = img.src;
+        });
       } else {
         // blob URL — نحوله لbase64
         const resp = await fetch(img.src);
@@ -266,6 +277,18 @@ async function removeBg(){
           const r = new FileReader();
           r.onloadend = () => res(r.result);
           r.readAsDataURL(blob);
+        });
+        // تحويل لـ PNG عبر canvas لضمان القبول
+        base64 = await new Promise(res => {
+          const image = new Image();
+          image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            canvas.getContext('2d').drawImage(image, 0, 0);
+            res(canvas.toDataURL('image/png'));
+          };
+          image.src = base64;
         });
       }
       payload = { image_base64: base64 };
