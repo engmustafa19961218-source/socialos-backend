@@ -245,10 +245,37 @@ function downloadPlacement() {
 async function removeBg(){
   const url = document.getElementById('des-url')?.value.trim();
   const img = document.getElementById('des-img');
-  if (!url && (!img || !img.src)) return toast('⚠️ أدخل رابط الصورة أولاً');
+  if (!url && (!img || !img.src || img.src === window.location.href)) return toast('⚠️ أدخل رابط الصورة أو ارفع صورة أولاً');
   const btn = document.getElementById('rm-bg-btn');
   btn.disabled = true; btn.querySelector('span:last-child').textContent = '⏳ جاري الإزالة...';
-  const payload = url ? { image_url: url } : { image_base64: img.src };
+
+  let payload;
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    payload = { image_url: url };
+  } else {
+    // تحويل الصورة لbase64 إن كانت blob أو data URL
+    try {
+      let base64;
+      if (img.src.startsWith('data:')) {
+        base64 = img.src;
+      } else {
+        // blob URL — نحوله لbase64
+        const resp = await fetch(img.src);
+        const blob = await resp.blob();
+        base64 = await new Promise(res => {
+          const r = new FileReader();
+          r.onloadend = () => res(r.result);
+          r.readAsDataURL(blob);
+        });
+      }
+      payload = { image_base64: base64 };
+    } catch(e) {
+      btn.disabled = false;
+      btn.querySelector('span:last-child').textContent = 'إزالة الخلفية';
+      return toast('❌ تعذر قراءة الصورة — جرب رفعها مرة أخرى');
+    }
+  }
+
   const d = await api('/api/images/remove-bg', { method:'POST', body: JSON.stringify(payload) });
   btn.disabled = false; btn.querySelector('span:last-child').textContent = 'إزالة الخلفية';
   if (d.success) {
