@@ -12,6 +12,7 @@ const app = express();
 // ========== CORS ==========
 const ALLOWED_ORIGINS = [
   'https://socialos-production-4aa6.up.railway.app',
+  'https://socialos.store',
   'http://localhost:3000',
   ...(process.env.EXTRA_ORIGINS ? process.env.EXTRA_ORIGINS.split(',') : [])
 ];
