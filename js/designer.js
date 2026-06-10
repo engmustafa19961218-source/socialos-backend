@@ -218,11 +218,11 @@ async function placeProduct() {
   if (!bgImg || bgImg === window.location.href) return toast('⚠️ احذف الخلفية أولاً');
   const btn = document.getElementById('placement-btn');
   btn.disabled = true; btn.textContent = '⏳ جاري المعالجة...';
-  const d = await api('/api/images/place-product', 'POST', {
+  const d = await api('/api/images/place-product', { method: 'POST', body: JSON.stringify({
     product_base64: bgImg.startsWith('data:') ? bgImg.split(',')[1] : null,
     product_url: bgImg.startsWith('http') ? bgImg : null,
     placement_prompt: prompt
-  });
+  }) });
   btn.disabled = false; btn.textContent = '🎨 ضع المنتج في البيئة';
   if (d.success) {
     const result = document.getElementById('placement-result');
