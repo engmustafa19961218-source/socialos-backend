@@ -2720,12 +2720,72 @@ tr:hover td{background:rgba(79,142,247,.02);}
   <div id="ad-launch-result" style="display:none;margin-top:9px;font-size:.82rem;padding:10px;border-radius:8px"></div>
 </div></div>
 
-<!-- New Post Modal -->
+
+<!-- Invoice Modal -->
 <div class="mo" id="minvoice"><div class="mdl">
   <div class="mh"><h2>🧾 فاتورة جديدة</h2><button class="mclose" onclick="cm('minvoice')">✕</button></div>
-  <div class="fg"><label class="fl">العميل *</label><input class="fi" id="inv-cname" placeholder="اسم العميل"></div>
+
+  <!-- اسم الزبون ورقم الهاتف -->
   <div class="g2">
-    <div class="fg"><label class="fl">رقم الهاتف</label><input class="fi" id="inv-cphone" placeholder="07xxxxxxxxx" dir="ltr"></div>
+    <div class="fg"><label class="fl">اسم الزبون *</label><input class="fi" id="inv-cname" placeholder="اسم الزبون"></div>
+    <div class="fg"><label class="fl">رقم الهاتف *</label><input class="fi" id="inv-cphone" placeholder="07xxxxxxxxx" dir="ltr"></div>
+  </div>
+
+  <!-- تفاصيل الطلب -->
+  <div style="margin:12px 0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <label class="fl" style="margin:0">تفاصيل الطلب *</label>
+      <button class="btn bo bsm" onclick="addInvItem()">+ إضافة منتج</button>
+    </div>
+    <div id="inv-items"></div>
+  </div>
+
+  <!-- الأسعار -->
+  <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.84rem">
+      <span>المجموع الفرعي:</span><span id="inv-subtotal" style="font-weight:700">0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.84rem">
+      <span>ضريبة %: <input type="number" id="inv-tax" value="0" min="0" max="100" style="width:50px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text)" onchange="calcInvTotal()"></span>
+      <span id="inv-tax-amount">0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.84rem">
+      <span>خصم: <input type="number" id="inv-discount" value="0" min="0" style="width:70px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text)" onchange="calcInvTotal()"></span>
+      <span id="inv-disc-amount">0</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:.95rem;border-top:1px solid var(--border);padding-top:8px">
+      <span>السعر الكلي:</span><span id="inv-total-calc" style="color:var(--accent)">0</span>
+    </div>
+  </div>
+
+  <!-- العربون -->
+  <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:12px;border:1px solid rgba(79,142,247,.2)">
+    <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:10px">
+      <div class="fg" style="flex:1;margin:0">
+        <label class="fl">العربون الواصل</label>
+        <input class="fi" type="number" id="inv-deposit" value="0" min="0" placeholder="0" onchange="calcInvRemaining()">
+      </div>
+      <div style="text-align:center;padding-bottom:4px">
+        <!-- زر رفع صورة الوصل -->
+        <input type="file" id="inv-receipt-input" accept="image/*" style="display:none" onchange="loadReceiptImage(this)">
+        <button class="btn bo bsm" onclick="document.getElementById('inv-receipt-input').click()" style="padding:8px 12px">
+          📎 صورة الوصل
+        </button>
+      </div>
+    </div>
+    <!-- معاينة صورة الوصل -->
+    <div id="inv-receipt-preview" style="display:none;margin-bottom:8px">
+      <img id="inv-receipt-img" style="max-width:100%;max-height:150px;border-radius:8px;border:1px solid var(--border);display:block">
+      <button onclick="clearReceiptImage()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:.75rem;margin-top:4px">✕ حذف الصورة</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.84rem;border-top:1px solid var(--border);padding-top:8px">
+      <span style="color:var(--text2)">السعر الباقي:</span>
+      <span id="inv-remaining" style="font-weight:700;color:var(--accent3)">0</span>
+    </div>
+  </div>
+
+  <!-- العملة والتاريخ -->
+  <div class="g2">
     <div class="fg"><label class="fl">العملة</label>
       <select class="fs" id="inv-currency">
         <option value="IQD">دينار عراقي</option>
@@ -2734,39 +2794,17 @@ tr:hover td{background:rgba(79,142,247,.02);}
         <option value="AED">درهم إماراتي</option>
       </select>
     </div>
-  </div>
-  <div class="fg"><label class="fl">العنوان</label><input class="fi" id="inv-address" placeholder="عنوان التوصيل (اختياري)"></div>
-
-  <!-- المنتجات -->
-  <div style="margin:12px 0">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <label class="fl" style="margin:0">المنتجات *</label>
-      <button class="btn bo bsm" onclick="addInvItem()">+ إضافة منتج</button>
-    </div>
-    <div id="inv-items"></div>
-    <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-top:8px;font-size:.82rem">
-      <div style="display:flex;justify-content:space-between"><span>المجموع الفرعي:</span><span id="inv-subtotal">0</span></div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <span>ضريبة %: <input type="number" id="inv-tax" value="0" min="0" max="100" style="width:50px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text)" onchange="calcInvTotal()"></span>
-        <span id="inv-tax-amount">0</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px">
-        <span>خصم: <input type="number" id="inv-discount" value="0" min="0" style="width:70px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text)" onchange="calcInvTotal()"></span>
-        <span id="inv-disc-amount">0</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:700;font-size:.9rem;border-top:1px solid var(--border);padding-top:6px">
-        <span>الإجمالي:</span><span id="inv-total-calc" style="color:var(--accent)">0</span>
-      </div>
-    </div>
+    <div class="fg"><label class="fl">تاريخ الاستحقاق</label><input class="fi" type="date" id="inv-duedate"></div>
   </div>
 
-  <div class="fg"><label class="fl">تاريخ الاستحقاق</label><input class="fi" type="date" id="inv-duedate"></div>
   <div class="fg"><label class="fl">ملاحظات</label><textarea class="ft" id="inv-notes" placeholder="ملاحظات إضافية..." style="min-height:60px"></textarea></div>
+
   <div style="display:flex;gap:7px;margin-top:4px">
     <button class="btn ba" onclick="saveInvoice()" style="flex:1;padding:11px">💾 حفظ الفاتورة</button>
     <button class="btn bo" onclick="saveAndPrintInvoice()" style="flex:1;padding:11px">🖨️ حفظ وطباعة</button>
   </div>
 </div></div>
+
 
 <div class="mo" id="mposts"><div class="mdl">
   <div class="mh"><h2>📱 منشور جديد</h2><button class="mclose" onclick="cm('mposts')">✕</button></div>

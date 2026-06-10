@@ -551,7 +551,34 @@ async function deleteComment(commentId) {
 // ============================================================
 // INVOICES — الفواتير
 // ============================================================
-let invItems = [], invFilter = 'all';
+let invItems = [], invFilter = 'all', invReceiptBase64 = null;
+
+// صورة الوصل
+function loadReceiptImage(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) return toast('⚠️ الصورة أكبر من 5MB');
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    invReceiptBase64 = reader.result;
+    const img = document.getElementById('inv-receipt-img');
+    const prv = document.getElementById('inv-receipt-preview');
+    if (img) img.src = invReceiptBase64;
+    if (prv) prv.style.display = 'block';
+    toast('✅ تم تحميل صورة الوصل');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearReceiptImage() {
+  invReceiptBase64 = null;
+  const img = document.getElementById('inv-receipt-img');
+  const prv = document.getElementById('inv-receipt-preview');
+  const input = document.getElementById('inv-receipt-input');
+  if (img) img.src = '';
+  if (prv) prv.style.display = 'none';
+  if (input) input.value = '';
+}
 
 function addInvItem() {
   invItems.push({ name: '', qty: 1, price: 0 });
@@ -584,28 +611,46 @@ function calcInvTotal() {
   if (document.getElementById('inv-tax-amount')) document.getElementById('inv-tax-amount').textContent = fmt(taxAmt);
   if (document.getElementById('inv-disc-amount')) document.getElementById('inv-disc-amount').textContent = fmt(disc);
   if (document.getElementById('inv-total-calc')) document.getElementById('inv-total-calc').textContent = fmt(total);
+  calcInvRemaining();
+}
+
+function calcInvRemaining() {
+  const cur = document.getElementById('inv-currency')?.value || 'IQD';
+  const subtotal = invItems.reduce((s, i) => s + (i.price||0) * (i.qty||1), 0);
+  const tax = parseFloat(document.getElementById('inv-tax')?.value) || 0;
+  const disc = parseFloat(document.getElementById('inv-discount')?.value) || 0;
+  const taxAmt = subtotal * tax / 100;
+  const total = subtotal + taxAmt - disc;
+  const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
+  const remaining = Math.max(0, total - deposit);
+  const fmt = n => n.toLocaleString('ar-IQ') + ' ' + cur;
+  if (document.getElementById('inv-remaining')) document.getElementById('inv-remaining').textContent = fmt(remaining);
 }
 
 async function saveInvoice(print = false) {
   const cname = document.getElementById('inv-cname')?.value.trim();
-  if (!cname) return toast('⚠️ اسم العميل مطلوب');
+  if (!cname) return toast('⚠️ اسم الزبون مطلوب');
   if (!invItems.length) return toast('⚠️ أضف منتجاً واحداً على الأقل');
+  const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
   const body = {
     customer_name: cname,
     customer_phone: document.getElementById('inv-cphone')?.value.trim(),
-    customer_address: document.getElementById('inv-address')?.value.trim(),
     items: invItems,
     tax_rate: parseFloat(document.getElementById('inv-tax')?.value) || 0,
     discount: parseFloat(document.getElementById('inv-discount')?.value) || 0,
+    deposit: deposit,
+    receipt_image: invReceiptBase64 || null,
     notes: document.getElementById('inv-notes')?.value.trim(),
     due_date: document.getElementById('inv-duedate')?.value || null,
     currency: document.getElementById('inv-currency')?.value || 'IQD'
   };
-  const d = await api('/api/invoices', 'POST', body);
+  const d = await api('/api/invoices', { method: 'POST', body: JSON.stringify(body) });
   if (d.success) {
     toast('✅ تم حفظ الفاتورة ' + d.invoice.invoice_number);
     cm('minvoice');
     invItems = [];
+    invReceiptBase64 = null;
+    clearReceiptImage();
     ldInvoices();
     if (print) printInvoice(d.invoice);
   } else toast('❌ ' + (d.message || 'خطأ'));
