@@ -563,7 +563,7 @@ function loadReceiptImage(input) {
     invReceiptBase64 = reader.result;
     const img = document.getElementById('inv-receipt-img');
     const prv = document.getElementById('inv-receipt-preview');
-    if (img) img.src = invReceiptBase64;
+    if (img) { img.src = invReceiptBase64; img.style.display = 'block'; }
     if (prv) prv.style.display = 'block';
     toast('✅ تم تحميل صورة الوصل');
   };
@@ -575,69 +575,35 @@ function clearReceiptImage() {
   const img = document.getElementById('inv-receipt-img');
   const prv = document.getElementById('inv-receipt-preview');
   const input = document.getElementById('inv-receipt-input');
-  if (img) img.src = '';
+  if (img) { img.src = ''; img.style.display = 'none'; }
   if (prv) prv.style.display = 'none';
   if (input) input.value = '';
 }
 
-function addInvItem() {
-  invItems.push({ name: '', qty: 1, price: 0 });
-  renderInvItems();
-}
-
-function renderInvItems() {
-  const el = document.getElementById('inv-items');
-  if (!invItems.length) { el.innerHTML = '<div style="color:var(--text2);font-size:.8rem;text-align:center;padding:8px">لا منتجات — اضغط + إضافة منتج</div>'; return; }
-  el.innerHTML = invItems.map((item, i) => `
-    <div style="display:grid;grid-template-columns:1fr 60px 80px 30px;gap:5px;margin-bottom:6px;align-items:center">
-      <input class="fi" value="${esc(item.name)}" placeholder="اسم المنتج" oninput="invItems[${i}].name=this.value;calcInvTotal()" style="padding:7px">
-      <input class="fi" type="number" value="${item.qty}" min="1" oninput="invItems[${i}].qty=+this.value;calcInvTotal()" style="padding:7px;text-align:center">
-      <input class="fi" type="number" value="${item.price}" min="0" oninput="invItems[${i}].price=+this.value;calcInvTotal()" style="padding:7px;text-align:left" dir="ltr">
-      <button onclick="invItems.splice(${i},1);renderInvItems();calcInvTotal()" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem">🗑</button>
-    </div>
-  `).join('');
-  calcInvTotal();
-}
-
-function calcInvTotal() {
-  const subtotal = invItems.reduce((s, i) => s + (i.price||0) * (i.qty||1), 0);
-  const tax = parseFloat(document.getElementById('inv-tax')?.value) || 0;
-  const disc = parseFloat(document.getElementById('inv-discount')?.value) || 0;
-  const taxAmt = subtotal * tax / 100;
-  const total = subtotal + taxAmt - disc;
-  const cur = document.getElementById('inv-currency')?.value || 'IQD';
-  const fmt = n => n.toLocaleString('ar-IQ') + ' ' + cur;
-  if (document.getElementById('inv-subtotal')) document.getElementById('inv-subtotal').textContent = fmt(subtotal);
-  if (document.getElementById('inv-tax-amount')) document.getElementById('inv-tax-amount').textContent = fmt(taxAmt);
-  if (document.getElementById('inv-disc-amount')) document.getElementById('inv-disc-amount').textContent = fmt(disc);
-  if (document.getElementById('inv-total-calc')) document.getElementById('inv-total-calc').textContent = fmt(total);
-  calcInvRemaining();
-}
-
 function calcInvRemaining() {
-  const cur = document.getElementById('inv-currency')?.value || 'IQD';
-  const subtotal = invItems.reduce((s, i) => s + (i.price||0) * (i.qty||1), 0);
-  const tax = parseFloat(document.getElementById('inv-tax')?.value) || 0;
-  const disc = parseFloat(document.getElementById('inv-discount')?.value) || 0;
-  const taxAmt = subtotal * tax / 100;
-  const total = subtotal + taxAmt - disc;
+  const total = parseFloat(document.getElementById('inv-total-calc')?.value) || 0;
   const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
   const remaining = Math.max(0, total - deposit);
+  const cur = document.getElementById('inv-currency')?.value || 'IQD';
   const fmt = n => n.toLocaleString('ar-IQ') + ' ' + cur;
   if (document.getElementById('inv-remaining')) document.getElementById('inv-remaining').textContent = fmt(remaining);
 }
 
 async function saveInvoice(print = false) {
   const cname = document.getElementById('inv-cname')?.value.trim();
+  const details = document.getElementById('inv-details')?.value.trim();
+  const total = parseFloat(document.getElementById('inv-total-calc')?.value) || 0;
   if (!cname) return toast('⚠️ اسم الزبون مطلوب');
-  if (!invItems.length) return toast('⚠️ أضف منتجاً واحداً على الأقل');
+  if (!details) return toast('⚠️ تفاصيل الطلب مطلوبة');
+  if (total <= 0) return toast('⚠️ السعر الكلي يجب أن يكون أكبر من صفر');
   const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
   const body = {
     customer_name: cname,
     customer_phone: document.getElementById('inv-cphone')?.value.trim(),
-    items: invItems,
-    tax_rate: parseFloat(document.getElementById('inv-tax')?.value) || 0,
-    discount: parseFloat(document.getElementById('inv-discount')?.value) || 0,
+    items: [{ description: details, qty: 1, price: total }],
+    total: total,
+    tax_rate: 0,
+    discount: 0,
     deposit: deposit,
     receipt_image: invReceiptBase64 || null,
     notes: document.getElementById('inv-notes')?.value.trim(),
@@ -648,9 +614,15 @@ async function saveInvoice(print = false) {
   if (d.success) {
     toast('✅ تم حفظ الفاتورة ' + d.invoice.invoice_number);
     cm('minvoice');
-    invItems = [];
     invReceiptBase64 = null;
     clearReceiptImage();
+    // إعادة تعيين الحقول
+    ['inv-cname','inv-cphone','inv-details','inv-notes','inv-duedate'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('inv-total-calc').value = '';
+    document.getElementById('inv-deposit').value = '0';
+    document.getElementById('inv-remaining').textContent = '0';
     ldInvoices();
     if (print) printInvoice(d.invoice);
   } else toast('❌ ' + (d.message || 'خطأ'));

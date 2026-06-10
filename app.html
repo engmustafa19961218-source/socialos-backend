@@ -2732,30 +2732,15 @@ tr:hover td{background:rgba(79,142,247,.02);}
   </div>
 
   <!-- تفاصيل الطلب -->
-  <div style="margin:12px 0">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <label class="fl" style="margin:0">تفاصيل الطلب *</label>
-      <button class="btn bo bsm" onclick="addInvItem()">+ إضافة منتج</button>
-    </div>
-    <div id="inv-items"></div>
+  <div class="fg">
+    <label class="fl">تفاصيل الطلب *</label>
+    <textarea class="ft" id="inv-details" placeholder="اكتب تفاصيل الطلب هنا..." style="min-height:80px"></textarea>
   </div>
 
-  <!-- الأسعار -->
-  <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:12px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.84rem">
-      <span>المجموع الفرعي:</span><span id="inv-subtotal" style="font-weight:700">0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.84rem">
-      <span>ضريبة %: <input type="number" id="inv-tax" value="0" min="0" max="100" style="width:50px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text)" onchange="calcInvTotal()"></span>
-      <span id="inv-tax-amount">0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.84rem">
-      <span>خصم: <input type="number" id="inv-discount" value="0" min="0" style="width:70px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--text)" onchange="calcInvTotal()"></span>
-      <span id="inv-disc-amount">0</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:.95rem;border-top:1px solid var(--border);padding-top:8px">
-      <span>السعر الكلي:</span><span id="inv-total-calc" style="color:var(--accent)">0</span>
-    </div>
+  <!-- السعر الكلي -->
+  <div class="fg">
+    <label class="fl">السعر الكلي *</label>
+    <input class="fi" type="number" id="inv-total-calc" placeholder="0" min="0" oninput="calcInvRemaining()" dir="ltr">
   </div>
 
   <!-- العربون -->
