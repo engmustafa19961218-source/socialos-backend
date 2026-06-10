@@ -142,10 +142,10 @@ app.put('/api/social/accounts/:platform', authenticateToken, async (req, res) =>
 app.get('/api/social/meta/auth-url', authenticateToken, (req, res) => {
   const clientId = process.env.META_APP_ID;
   if (!clientId) return res.status(503).json({ success: false, message: 'META_APP_ID غير مضبوط' });
-  const redirectUri = `${process.env.APP_URL || 'https://socialos-production-4aa6.up.railway.app'}/api/social/meta/callback`;
+  const redirectUri = `https://socialos.store/api/social/meta/callback`;
   const scopes = [
     'pages_show_list', 'pages_read_engagement', 'pages_manage_posts',
-    'instagram_basic', 'instagram_content_publish', 'business_management'
+    'business_management'
   ].join(',');
   const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
   const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${encodeURIComponent(state)}&response_type=code`;
@@ -167,7 +167,7 @@ app.get('/api/social/meta/callback', async (req, res) => {
 
   const clientId = process.env.META_APP_ID;
   const clientSecret = process.env.META_APP_SECRET;
-  const redirectUri = `${process.env.APP_URL || 'https://socialos-production-4aa6.up.railway.app'}/api/social/meta/callback`;
+  const redirectUri = `https://socialos.store/api/social/meta/callback`;
 
   try {
     // استبدال الكود بتوكن
