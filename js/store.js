@@ -563,8 +563,18 @@ function loadReceiptImage(input) {
     invReceiptBase64 = reader.result;
     const img = document.getElementById('inv-receipt-img');
     const prv = document.getElementById('inv-receipt-preview');
-    if (img) { img.src = invReceiptBase64; img.style.display = 'block'; }
-    if (prv) prv.style.display = 'block';
+    if (img) {
+      img.src = invReceiptBase64;
+      img.style.display = 'block';
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = '150px';
+      img.style.borderRadius = '8px';
+      img.style.marginTop = '8px';
+    }
+    if (prv) {
+      prv.style.display = 'block';
+      prv.style.visibility = 'visible';
+    }
     toast('✅ تم تحميل صورة الوصل');
   };
   reader.readAsDataURL(file);
@@ -600,6 +610,7 @@ async function saveInvoice(print = false) {
   const body = {
     customer_name: cname,
     customer_phone: document.getElementById('inv-cphone')?.value.trim(),
+    customer_address: document.getElementById('inv-address')?.value.trim(),
     items: [{ description: details, qty: 1, price: total }],
     total: total,
     tax_rate: 0,
