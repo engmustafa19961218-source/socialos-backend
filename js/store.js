@@ -562,19 +562,12 @@ function loadReceiptImage(input) {
   reader.onloadend = () => {
     invReceiptBase64 = reader.result;
     const img = document.getElementById('inv-receipt-img');
-    const prv = document.getElementById('inv-receipt-preview');
+    const clearBtn = document.getElementById('inv-receipt-clear');
     if (img) {
-      img.src = invReceiptBase64;
-      img.style.display = 'block';
-      img.style.maxWidth = '100%';
-      img.style.maxHeight = '150px';
-      img.style.borderRadius = '8px';
-      img.style.marginTop = '8px';
+      img.setAttribute('src', invReceiptBase64);
+      img.style.cssText = 'display:block;width:100%;max-height:150px;object-fit:contain;border-radius:8px;border:1px solid var(--border);margin-top:8px';
     }
-    if (prv) {
-      prv.style.display = 'block';
-      prv.style.visibility = 'visible';
-    }
+    if (clearBtn) clearBtn.style.display = 'inline-block';
     toast('✅ تم تحميل صورة الوصل');
   };
   reader.readAsDataURL(file);
@@ -583,10 +576,10 @@ function loadReceiptImage(input) {
 function clearReceiptImage() {
   invReceiptBase64 = null;
   const img = document.getElementById('inv-receipt-img');
-  const prv = document.getElementById('inv-receipt-preview');
+  const clearBtn = document.getElementById('inv-receipt-clear');
   const input = document.getElementById('inv-receipt-input');
-  if (img) { img.src = ''; img.style.display = 'none'; }
-  if (prv) prv.style.display = 'none';
+  if (img) { img.removeAttribute('src'); img.style.display = 'none'; }
+  if (clearBtn) clearBtn.style.display = 'none';
   if (input) input.value = '';
 }
 
