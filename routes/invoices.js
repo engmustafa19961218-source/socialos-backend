@@ -5,6 +5,16 @@ const { escapeHtml, sanitize, authenticateToken, rateLimit, notify, auditLog, es
 // INVOICES — الفواتير
 // ============================================================
 
+// إنشاء أعمدة جديدة إذا لم تكن موجودة
+async function ensureInvoiceColumns() {
+  if (!pool) return;
+  try {
+    await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit NUMERIC DEFAULT 0`);
+    await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS receipt_image TEXT`);
+  } catch(e) {}
+}
+ensureInvoiceColumns();
+
 // جلب الفواتير
 app.get('/api/invoices', authenticateToken, async (req, res) => {
   try {
@@ -16,7 +26,7 @@ app.get('/api/invoices', authenticateToken, async (req, res) => {
 
 // إنشاء فاتورة
 app.post('/api/invoices', authenticateToken, async (req, res) => {
-  const { order_id, customer_name, customer_phone, customer_address, items, tax_rate, discount, notes, due_date, currency } = req.body;
+  const { order_id, customer_name, customer_phone, customer_address, items, tax_rate, discount, deposit, receipt_image, notes, due_date, currency } = req.body;
   const userId = req.user.id;
   try {
     if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
@@ -33,12 +43,16 @@ app.post('/api/invoices', authenticateToken, async (req, res) => {
     const tax_amount = subtotal * taxRate / 100;
     const disc = parseFloat(discount) || 0;
     const total = subtotal + tax_amount - disc;
+    const dep = parseFloat(deposit) || 0;
+
+    // تخزين الصورة — إذا كانت base64 نخزنها مباشرة
+    const receiptImg = receipt_image || null;
 
     const r = await pool.query(
-      `INSERT INTO invoices (user_id, invoice_number, order_id, customer_name, customer_phone, customer_address, items, subtotal, tax_rate, tax_amount, discount, total, currency, notes, due_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+      `INSERT INTO invoices (user_id, invoice_number, order_id, customer_name, customer_phone, customer_address, items, subtotal, tax_rate, tax_amount, discount, deposit, total, currency, notes, due_date, receipt_image)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
       [userId, invoice_number, order_id||null, sanitize(customer_name||''), sanitize(customer_phone||''), sanitize(customer_address||''),
-       JSON.stringify(parsedItems), subtotal, taxRate, tax_amount, disc, total, currency||'IQD', sanitize(notes||''), due_date||null]
+       JSON.stringify(parsedItems), subtotal, taxRate, tax_amount, disc, dep, total, currency||'IQD', sanitize(notes||''), due_date||null, receiptImg]
     );
     res.json({ success: true, invoice: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
@@ -76,7 +90,6 @@ app.post('/api/invoices/from-order/:orderId', authenticateToken, async (req, res
     if (!orderR.rows.length) return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
     const o = orderR.rows[0];
 
-    // جلب منتجات الطلب
     const itemsR = await pool.query(
       'SELECT oi.*, p.name FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1',
       [o.id]
@@ -90,14 +103,13 @@ app.post('/api/invoices/from-order/:orderId', authenticateToken, async (req, res
     const total = subtotal - (o.discount||0);
 
     const r = await pool.query(
-      `INSERT INTO invoices (user_id, invoice_number, order_id, customer_name, customer_phone, customer_address, items, subtotal, discount, total, currency, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      `INSERT INTO invoices (user_id, invoice_number, order_id, customer_name, customer_phone, customer_address, items, subtotal, discount, deposit, total, currency, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [userId, invoice_number, o.id, o.customer_name||'', o.customer_phone||'', o.address||'',
-       JSON.stringify(items), subtotal, o.discount||0, total, o.currency||'IQD', '']
+       JSON.stringify(items), subtotal, o.discount||0, o.deposit||0, total, o.currency||'IQD', '']
     );
     res.json({ success: true, invoice: r.rows[0] });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// Submit correction — تصحيح الموظف
 };
