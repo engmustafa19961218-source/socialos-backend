@@ -796,5 +796,3 @@ async function speakResponse(text) {
   }
 }
 
-/ *   c a c h e   b u s t   * /  
- 
