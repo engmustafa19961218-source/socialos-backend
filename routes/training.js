@@ -23,7 +23,7 @@ app.post('/api/training/session', authenticateToken, async (req, res) => {
 app.post('/api/training/chat', authenticateToken, rateLimit(30, 60*1000), async (req, res) => {
   const { session_id, message, mode, image_base64 } = req.body;
   const userId = req.user.id;
-  if (!message) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
+  if (!message && !image_base64) return res.status(400).json({ success: false, message: 'الرسالة مطلوبة' });
 
   let businessProfile = {}, employee = {}, knowledge = [], decisions = [], corrections = [], products = [], identity = {}, trainingMemories = [];
   try {
@@ -199,7 +199,20 @@ ${corrections.map(c=>`✓ ${escapeHtml(c.lesson||c.corrected_response.substring(
         try { sessionMessages = JSON.parse(r.rows[0].messages || '[]'); } catch (e) {}
       }
     }
-    sessionMessages.push({ role: 'user', content: message.substring(0, 2000) });
+    // بناء محتوى الرسالة (نص أو نص + صورة)
+    let userContent;
+    if (image_base64) {
+      const base64Clean = image_base64.startsWith('data:') ? image_base64.split(',')[1] : image_base64;
+      const mimeMatch = image_base64.match(/data:([^;]+);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      userContent = [
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Clean}`, detail: 'low' } },
+        { type: 'text', text: (message || 'ما رأيك في هذه الصورة؟ كيف نستخدمها في المتجر؟').substring(0, 500) }
+      ];
+    } else {
+      userContent = (message || '').substring(0, 2000);
+    }
+    sessionMessages.push({ role: 'user', content: userContent });
     if (sessionMessages.length > 30) sessionMessages = sessionMessages.slice(-30);
 
     const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {

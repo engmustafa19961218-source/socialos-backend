@@ -156,51 +156,44 @@ async function startTrain(mode){
   addCm('tchat','ai', intros[mode]||'مرحباً!');
 }
 
-function endTrain(){
+async function endTrain(){
+  // حفظ تلقائي للذاكرة عند إنهاء الجلسة
+  if (trainSess) {
+    try {
+      const d = await api('/api/training/save-memory', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: trainSess.id })
+      });
+      if (d.success && d.summary) toast('✅ تم حفظ ما تعلمته تلقائياً 🧠');
+    } catch(e) {}
+  }
   trainSess = null;
   simScenario = '';
-  document.getElementById('train-area').style.display = 'none';
-  ldCorrs();
-}
-
-
-// إرفاق صورة في التدريب
-function attachTrainImage(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    window._trainAttachedImage = reader.result;
-    // إزالة preview قديم
-    document.getElementById('train-img-preview')?.remove();
-    // إضافة preview
-    const cin = document.querySelector('#train-area .cin');
-    if (cin) {
-      const prev = document.createElement('div');
-      prev.id = 'train-img-preview';
-      prev.style.cssText = 'padding:6px;display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;margin-bottom:4px';
-      prev.innerHTML = `<img src="${reader.result}" style="width:40px;height:40px;object-fit:cover;border-radius:6px"><span style="font-size:.78rem;flex:1">صورة مرفقة</span><button onclick="window._trainAttachedImage=null;this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--danger)">✕</button>`;
-      cin.parentElement.insertBefore(prev, cin);
+  // إيقاف التسجيل إن كان شغالاً
+  if (typeof trainRecording !== 'undefined' && trainRecording) {
+    if (typeof trainMediaRecorder !== 'undefined' && trainMediaRecorder && trainMediaRecorder.state !== 'inactive') {
+      try { trainMediaRecorder.stop(); } catch(e) {}
     }
-    toast('✅ تم إرفاق الصورة — اكتب رسالتك وأرسل');
-  };
-  reader.readAsDataURL(file);
-  input.value = '';
+    trainRecording = false;
+  }
+  document.getElementById('train-area').style.display = 'none';
+  document.getElementById('transfer-alert').style.display = 'none';
+  const vmBtn = document.getElementById('voice-mode-btn');
+  if (vmBtn) { vmBtn.textContent = '🔇 صوت'; vmBtn.style.background = ''; }
+  if (typeof voiceMode !== 'undefined') voiceMode = false;
+  ldCorrs();
 }
 
 async function sendTrain(){
   const inp = document.getElementById('tinput');
   const msg = inp.value.trim();
-  const attachedImg = window._trainAttachedImage;
-  if (!msg && !attachedImg || !trainSess) return;
+  if (!msg || !trainSess) return;
   inp.value = '';
-  const displayMsg = msg + (attachedImg ? ' 🖼️' : '');
-  addCm('tchat','user', displayMsg);
+  addCm('tchat','user',msg);
   const btn = document.getElementById('tbtn');
   btn.disabled = true; btn.textContent = '⏳';
-  const body = {session_id:trainSess.id, message: msg || 'انظر لهذه الصورة', mode:trainMode};
+  const body = {session_id:trainSess.id, message:msg, mode:trainMode};
   if (simScenario) body.scenario = simScenario;
-  if (attachedImg) { body.image_base64 = attachedImg; window._trainAttachedImage = null; document.getElementById('train-img-preview')?.remove(); }
   const d = await api('/api/training/chat',{method:'POST',body:JSON.stringify(body)});
   btn.disabled = false; btn.textContent = 'إرسال';
   if (d.success) {
@@ -628,3 +621,152 @@ async function decAppr(id,status){await api('/api/approvals/'+id,{method:'PUT',b
 // ============================================================
 // ORDERS
 // ============================================================
+
+// ============================================================
+// VOICE & IMAGE TRAINING — الصوت والصور في التدريب
+// ============================================================
+let voiceMode = false;
+let trainMediaRecorder = null;
+let trainAudioChunks = [];
+let trainRecording = false;
+
+// TTS — تشغيل رد الموظف بصوت
+async function speakResponse(text) {
+  if (!text || !voiceMode) return;
+  try {
+    const d = await api('/api/voice/speak', {
+      method: 'POST',
+      body: JSON.stringify({ text: text.substring(0, 500) })
+    });
+    if (d.success && d.audio_base64) {
+      const audio = new Audio('data:' + d.mime_type + ';base64,' + d.audio_base64);
+      audio.play().catch(() => {});
+    }
+  } catch (e) {}
+}
+
+// تبديل وضع الصوت (TTS)
+function toggleVoiceMode() {
+  voiceMode = !voiceMode;
+  const btn = document.getElementById('voice-mode-btn');
+  if (btn) {
+    btn.textContent = voiceMode ? '🔊 صوت' : '🔇 صوت';
+    btn.style.background = voiceMode ? 'var(--green)' : '';
+  }
+  toast(voiceMode ? '🔊 الموظف سيتكلم بصوت' : '🔇 تم إيقاف الصوت');
+}
+
+// تسجيل صوت → Whisper → نص → إرسال
+async function startVoiceRecord() {
+  const btn = document.getElementById('voice-rec-btn');
+  if (!btn) return;
+
+  if (trainRecording) {
+    // إيقاف التسجيل
+    if (trainMediaRecorder && trainMediaRecorder.state !== 'inactive') {
+      trainMediaRecorder.stop();
+    }
+    trainRecording = false;
+    btn.textContent = '🎤';
+    btn.style.background = '';
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    trainAudioChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+
+    trainMediaRecorder = new MediaRecorder(stream, { mimeType });
+    trainMediaRecorder.ondataavailable = e => { if (e.data.size > 0) trainAudioChunks.push(e.data); };
+
+    trainMediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      if (!trainAudioChunks.length) return;
+      const blob = new Blob(trainAudioChunks, { type: mimeType });
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result.split(',')[1];
+        btn.textContent = '⏳'; btn.disabled = true;
+        const d = await api('/api/voice/transcribe', {
+          method: 'POST',
+          body: JSON.stringify({ audio_base64: base64, mime_type: mimeType })
+        });
+        btn.disabled = false; btn.textContent = '🎤';
+        if (d.success && d.text) {
+          const inp = document.getElementById('tinput');
+          if (inp) { inp.value = d.text; setTimeout(() => sendTrain(), 300); }
+          toast('✅ ' + d.text.substring(0, 50));
+        } else {
+          toast('❌ فشل التعرف: ' + (d.message || 'حاول مجدداً'));
+        }
+      };
+      reader.readAsDataURL(blob);
+    };
+
+    trainMediaRecorder.start();
+    trainRecording = true;
+    btn.textContent = '⏹️';
+    btn.style.background = 'var(--danger)';
+    toast('🎤 جاري التسجيل... اضغط مرة ثانية للإيقاف');
+
+  } catch (e) {
+    toast('❌ لا يمكن الوصول للميكروفون');
+    trainRecording = false;
+    if (btn) { btn.textContent = '🎤'; btn.style.background = ''; }
+  }
+}
+
+// إرسال صورة في التدريب
+async function attachTrainImage(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) return toast('⚠️ الصورة أكبر من 5MB');
+  if (!trainSess) return toast('⚠️ ابدأ جلسة تدريب أولاً');
+
+  const reader = new FileReader();
+  reader.onloadend = async () => {
+    const base64 = reader.result;
+
+    // عرض الصورة في المحادثة
+    const c = document.getElementById('tchat');
+    if (c) {
+      const div = document.createElement('div');
+      div.className = 'cm u';
+      div.innerHTML = `<div class="cav" style="background:var(--accent)">👤</div>
+        <div class="cbub">
+          <img src="${base64}" style="max-width:200px;max-height:150px;border-radius:8px;display:block;margin-bottom:4px">
+          <span style="font-size:.75rem;color:var(--text2)">صورة</span>
+        </div>`;
+      c.appendChild(div);
+      c.scrollTop = c.scrollHeight;
+    }
+
+    const btn = document.getElementById('tbtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+    const d = await api('/api/training/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_id: trainSess.id,
+        message: 'ما رأيك في هذه الصورة؟',
+        mode: trainMode,
+        image_base64: base64
+      })
+    });
+
+    if (btn) { btn.disabled = false; btn.textContent = 'إرسال'; }
+
+    if (d.success) {
+      lastTrainR = d.response;
+      addCm('tchat', 'ai', d.response);
+      if (voiceMode) speakResponse(d.response);
+    } else {
+      addCm('tchat', 'ai', '❌ ' + (d.message || 'خطأ في معالجة الصورة'));
+    }
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
