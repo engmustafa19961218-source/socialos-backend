@@ -63,14 +63,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .empty .ei{font-size:2.2rem!important;margin-bottom:8px!important;opacity:.4!important;}
 .empty p{font-size:.82rem!important;color:var(--text3)!important;}
 /* Tabs / filter bars */
-.fbar{display:flex!important;gap:6px!important;flex-wrap:wrap!important;}
-.fb{background:var(--surface2)!important;border:1px solid var(--border)!important;color:var(--text2)!important;border-radius:20px!important;padding:5px 12px!important;font-size:.75rem!important;font-weight:700!important;cursor:pointer!important;transition:all .15s!important;}
-.fb.active,.fb:hover{background:rgba(91,106,240,.15)!important;color:var(--accent2)!important;border-color:rgba(91,106,240,.3)!important;}
+/* removed */
 /* Stat cards */
 .stat-box{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:12px!important;}
 /* Modals */
-.modal-box,.modal-inner{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:16px!important;}
-.modal-header{border-bottom:1px solid var(--border)!important;padding:14px 16px!important;}
+/* removed */
 /* Section headers */
 .sec-hd{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;}
 .sec-hd h3,.sec-hd h2{font-size:.9rem!important;font-weight:700!important;color:var(--text)!important;}
@@ -741,149 +738,6 @@ tr:hover td{background:rgba(79,142,247,.02);}
   background:var(--surface2);display:none;
 }
 
-/* ============================================================
-   DARK PRO FINAL OVERRIDE — يطغى على كل شيء
-   ============================================================ */
-
-/* الألوان الأساسية */
-:root {
-  --bg:#0a0a0c!important;
-  --bg2:#0d0d10!important;
-  --surface:#111114!important;
-  --surface2:#18181c!important;
-  --surface3:#222228!important;
-  --border:#28282f!important;
-  --border2:#1e1e24!important;
-  --accent:#5b6af0!important;
-  --accent2:#7c8cf8!important;
-  --text:#f0f0f2!important;
-  --text2:#8888a0!important;
-  --text3:#44445a!important;
-  --green:#22c55e!important;
-  --danger:#ef4444!important;
-}
-
-/* الجسم */
-body { background:#0a0a0c!important; color:#f0f0f2!important; }
-
-/* الكروت */
-.card {
-  background:#111114!important;
-  border:1px solid #28282f!important;
-  border-radius:12px!important;
-  box-shadow:none!important;
-  padding:14px!important;
-  margin-bottom:10px!important;
-}
-
-/* الأزرار */
-.btn.ba, .btn.bp {
-  background:#5b6af0!important;
-  border:1px solid #5b6af0!important;
-  color:white!important;
-  border-radius:8px!important;
-  box-shadow:none!important;
-  transform:none!important;
-}
-.btn.ba:hover { background:#7c8cf8!important; }
-.btn.bo {
-  background:#18181c!important;
-  border:1px solid #28282f!important;
-  color:#8888a0!important;
-  border-radius:8px!important;
-  box-shadow:none!important;
-}
-.btn.bo:hover { background:#222228!important; color:#f0f0f2!important; border-color:#28282f!important; }
-
-/* الإدخالات */
-.fi, .ft, .fs {
-  background:#18181c!important;
-  border:1px solid #28282f!important;
-  color:#f0f0f2!important;
-  border-radius:8px!important;
-}
-.fi:focus, .ft:focus, .fs:focus {
-  border-color:#5b6af0!important;
-  box-shadow:0 0 0 3px rgba(91,106,240,.1)!important;
-}
-
-/* الجداول */
-.tw table { border-collapse:collapse!important; width:100%!important; }
-.tw th {
-  background:#18181c!important;
-  color:#44445a!important;
-  font-size:.68rem!important;
-  text-transform:uppercase!important;
-  letter-spacing:.5px!important;
-  padding:8px 10px!important;
-  border-bottom:1px solid #28282f!important;
-  font-weight:700!important;
-}
-.tw td {
-  padding:9px 10px!important;
-  border-bottom:1px solid #1e1e24!important;
-  font-size:.8rem!important;
-  color:#f0f0f2!important;
-}
-.tw tr:hover td { background:#18181c!important; }
-
-/* الشريط الجانبي */
-.sidebar { background:#111114!important; border-color:#28282f!important; }
-.sidebar-logo { border-color:#28282f!important; }
-.sidebar-logo-icon { background:linear-gradient(135deg,#5b6af0,#7c8cf8)!important; box-shadow:none!important; }
-.si-btn.active { background:rgba(91,106,240,.1)!important; color:#7c8cf8!important; }
-.si-btn.active::before { background:#5b6af0!important; }
-.si-btn:hover { background:#18181c!important; }
-.mike-btn { background:rgba(91,106,240,.1)!important; border-color:rgba(91,106,240,.2)!important; }
-.mike-btn.active { background:linear-gradient(135deg,#5b6af0,#7c8cf8)!important; }
-.nav-group-label { color:#44445a!important; }
-.nav-divider { background:#28282f!important; }
-
-/* الـ Topbar */
-.topbar { background:#111114!important; border-color:#28282f!important; }
-
-/* فلاتر الأزرار */
-.fb {
-  background:#18181c!important;
-  border:1px solid #28282f!important;
-  color:#8888a0!important;
-  border-radius:20px!important;
-  padding:5px 12px!important;
-  font-size:.74rem!important;
-  font-weight:700!important;
-}
-.fb.active, .fb:hover {
-  background:rgba(91,106,240,.12)!important;
-  color:#7c8cf8!important;
-  border-color:rgba(91,106,240,.25)!important;
-}
-
-/* الـ page header */
-.pt { padding:12px 16px 8px!important; }
-.pt h1 { font-size:1.15rem!important; font-weight:800!important; }
-
-/* Empty state */
-.empty { padding:32px 20px!important; text-align:center!important; }
-.empty .ei { font-size:2rem!important; opacity:.35!important; margin-bottom:8px!important; display:block!important; }
-.empty p { font-size:.8rem!important; color:#44445a!important; }
-
-/* الـ Bottom Nav */
-#bottom-nav {
-  background:#111114!important;
-  border-top:1px solid #28282f!important;
-  box-shadow:0 -8px 32px rgba(0,0,0,.5)!important;
-}
-.bn-label { font-family:'Tajawal',sans-serif!important; }
-
-/* Page transitions */
-.page { animation:pgIn .15s ease!important; }
-@keyframes pgIn { from{opacity:.5;transform:translateY(3px)} to{opacity:1;transform:none} }
-
-/* إخفاء Mike FAB على موبايل */
-@media(max-width:768px) {
-  #mike-fab { display:none!important; }
-  #mike-float-panel { bottom:82px!important; left:8px!important; width:calc(100vw - 16px)!important; }
-}
 </style>
 </head>
 <body>
@@ -965,177 +819,55 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 <!-- ONBOARDING -->
 <div id="onboarding">
   <div class="obc">
-    <div class="pdots">
-      <div class="pd active" id="pd0"></div>
-      <div class="pd" id="pd1"></div>
-      <div class="pd" id="pd2"></div>
-      <div class="pd" id="pd3"></div>
-      <div class="pd" id="pd4"></div>
-    </div>
-
-    <!-- مرحلة 0 — ترحيب -->
+    <div class="pdots"><div class="pd active" id="pd0"></div><div class="pd" id="pd1"></div><div class="pd" id="pd2"></div><div class="pd" id="pd3"></div></div>
     <div class="obs active" id="obs0">
-      <div class="shd">
-        <div style="font-size:3rem;margin-bottom:12px">⚡</div>
-        <h2>مرحباً في SocialOS!</h2>
-        <p>سنعد شركتك الرقمية الكاملة في 4 خطوات</p>
-      </div>
-      <div class="card" style="margin-bottom:12px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center">
-            <div style="font-size:1.6rem;margin-bottom:5px">🤖</div>
-            <div style="font-weight:700;font-size:.8rem">Mike المدير العام</div>
-            <div style="font-size:.7rem;color:var(--text2);margin-top:2px">ينفذ أوامرك</div>
-          </div>
-          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center">
-            <div style="font-size:1.6rem;margin-bottom:5px">🏢</div>
-            <div style="font-weight:700;font-size:.8rem">6 أقسام رقمية</div>
-            <div style="font-size:.7rem;color:var(--text2);margin-top:2px">فريق متكامل</div>
-          </div>
-          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center">
-            <div style="font-size:1.6rem;margin-bottom:5px">💬</div>
-            <div style="font-weight:700;font-size:.8rem">خدمة عملاء</div>
-            <div style="font-size:.7rem;color:var(--text2);margin-top:2px">24/7 تلقائي</div>
-          </div>
-          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center">
-            <div style="font-size:1.6rem;margin-bottom:5px">📊</div>
-            <div style="font-weight:700;font-size:.8rem">تحليل وتقارير</div>
-            <div style="font-size:.7rem;color:var(--text2);margin-top:2px">ذكاء اصطناعي</div>
-          </div>
+      <div class="shd"><div style="font-size:2.8rem;margin-bottom:10px">🚀</div><h2>مرحباً في SocialOS!</h2><p>سنعد نظامك الذكي في دقيقتين</p></div>
+      <div class="card" style="text-align:center;padding:24px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:16px">
+          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">🧠</div><div style="font-weight:700;font-size:.81rem">موظف رقمي ذكي</div></div>
+          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">📚</div><div style="font-weight:700;font-size:.81rem">مركز المعرفة</div></div>
+          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">🏛️</div><div style="font-weight:700;font-size:.81rem">مجلس الإدارة</div></div>
+          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">🗂️</div><div style="font-weight:700;font-size:.81rem">سجل القرارات</div></div>
         </div>
+        <button class="btn ba" onclick="nextStep()" style="width:100%;padding:12px;font-size:.92rem">ابدأ الإعداد ←</button>
       </div>
-      <button class="btn ba bfull" onclick="nextStep()" style="padding:13px;font-size:.95rem">ابدأ الإعداد ←</button>
     </div>
-
-    <!-- مرحلة 1 — نوع العمل -->
     <div class="obs" id="obs1">
-      <div class="shd">
-        <div style="font-size:2.4rem;margin-bottom:10px">🏪</div>
-        <h2>ما نوع عملك؟</h2>
-        <p>اكتب بكلماتك — Mike سيتكيف معك</p>
-      </div>
-      <div class="card">
-        <div class="fg"><label class="fl">اسم المتجر / النشاط *</label><input class="fi" id="ob-store-name" placeholder="مثال: متجر الأناقة، مطعم البيت..."></div>
-        <div class="fg"><label class="fl">نوع النشاط التجاري *</label><input class="fi" id="ob-business-type" placeholder="مثال: ملابس نسائية، مطعم، صيدلية..."></div>
-        <div class="fg">
-          <label class="fl">صف عملك (اختياري)</label>
-          <textarea class="ft" id="ob-business-desc" placeholder="مثال: أبيع ملابس نسائية في البصرة، عملائي من 18-40..." style="min-height:80px"></textarea>
-          <div style="font-size:.71rem;color:var(--text2);margin-top:4px">💡 كلما كان الوصف أدق، تكيّف Mike معك أكثر</div>
-        </div>
-      </div>
-      <button class="btn ba bfull" onclick="saveOb1New()" style="padding:12px">التالي ←</button>
-    </div>
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">🏪</div><h2>ما نوع عملك؟</h2><p>اختر من القائمة أو اشرح بكلماتك الخاصة</p></div>
 
-    <!-- مرحلة 2 — بطاقات الدفع -->
+      <!-- اختيار سريع -->
+      <div class="btg" id="btg"></div>
+
+      <!-- أو اكتب بحرية -->
+      <div class="card" style="margin-top:4px;border-color:rgba(79,142,247,.15)">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+          <div style="width:2px;height:16px;background:var(--accent);border-radius:2px"></div>
+          <span style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">أو صف عملك بكلماتك</span>
+        </div>
+        <textarea class="ft" id="ob1-custom" placeholder="مثال: عندي محل ملابس رجالية في البصرة، أبيع بالتجزئة وأحياناً بالجملة، عملائي من 20-45 سنة، أركز على الجودة وسعر مناسب..." style="min-height:100px"></textarea>
+        <div style="font-size:.72rem;color:var(--text2);margin-top:5px">💡 كلما كان الوصف أدق، كلما تعلم الذكاء الاصطناعي عنك أكثر</div>
+      </div>
+
+      <button class="btn ba" onclick="saveOb1()" style="width:100%;padding:12px;margin-top:12px">التالي ←</button>
+    </div>
     <div class="obs" id="obs2">
-      <div class="shd">
-        <div style="font-size:2.4rem;margin-bottom:10px">💳</div>
-        <h2>أرقام الدفع</h2>
-        <p>يرسلها الموظف الرقمي للزبائن تلقائياً عند تثبيت الطلب</p>
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">✍️</div><h2>صف عملك</h2><p>كأنك تشرح لموظف جديد</p></div>
+      <div class="card">
+        <div class="fg"><label class="fl">اسم متجرك *</label><input class="fi" id="obsn" placeholder="متجر النور، مطعم الأصيل..."></div>
+        <div class="fg"><label class="fl">صف عملك</label><textarea class="ft" id="obsd" placeholder="أبيع ملابس نسائية للنساء 18-35..."></textarea></div>
+        <div class="fg"><label class="fl">واتساب (اختياري)</label><input class="fi" id="obsw" placeholder="07xxxxxxxxxx" dir="ltr"></div>
       </div>
-      <div class="card" id="ob-cards-list">
-        <div class="empty" style="padding:16px"><div class="ei" style="font-size:1.6rem">💳</div><p>لم تضف بطاقات بعد</p></div>
-      </div>
-      <div class="card" style="border-color:rgba(91,106,240,.2)">
-        <div style="font-size:.76rem;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">إضافة بطاقة</div>
-        <div class="fg"><label class="fl">نوع البطاقة</label>
-          <select class="fs" id="ob-card-type">
-            <option>ZainCash</option><option>Asia Hawala</option><option>QiCard</option>
-            <option>FastPay</option><option>FIB</option><option>Visa</option><option>MasterCard</option>
-          </select>
-        </div>
-        <div class="fg"><label class="fl">رقم البطاقة / الحساب</label><input class="fi" id="ob-card-number" placeholder="07xxxxxxxxxx" dir="ltr"></div>
-        <div class="fg"><label class="fl">اسم صاحب البطاقة</label><input class="fi" id="ob-card-holder" placeholder="الاسم الكامل"></div>
-        <div class="fg"><label class="fl">ملاحظة (اختياري)</label><input class="fi" id="ob-card-notes" placeholder="للتحويل 9ص-9م"></div>
-        <button class="btn ba bfull" onclick="addObCard()" style="padding:10px">+ إضافة البطاقة</button>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:4px">
-        <button class="btn bo" onclick="prevStep()" style="flex:1;padding:11px">← رجوع</button>
-        <button class="btn ba" onclick="saveOb2New()" style="flex:2;padding:11px">التالي ←</button>
-      </div>
+      <button class="btn ba" onclick="saveOb2()" style="width:100%;padding:12px">التالي ←</button>
     </div>
-
-    <!-- مرحلة 3 — واتساب -->
     <div class="obs" id="obs3">
-      <div class="shd">
-        <div style="font-size:2.4rem;margin-bottom:10px">📱</div>
-        <h2>واتساب التجاري</h2>
-        <p>الرقم الذي يتواصل منه الموظف الرقمي مع الزبائن</p>
-      </div>
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">🧠</div><h2>علّم موظفك الرقمي</h2><p>أخبره بفلسفتك</p></div>
       <div class="card">
-        <div class="fg">
-          <label class="fl">رقم واتساب الصفحة التجارية *</label>
-          <input class="fi" id="ob-whatsapp" placeholder="07xxxxxxxxxx" dir="ltr" type="tel">
-          <div style="font-size:.72rem;color:var(--text2);margin-top:4px">📌 يجب أن يكون رقم WhatsApp Business</div>
-        </div>
-        <div class="fg"><label class="fl">العملة</label>
-          <select class="fs" id="ob-currency">
-            <option value="IQD">د.ع — دينار عراقي</option>
-            <option value="SAR">ر.س — ريال سعودي</option>
-            <option value="AED">د.إ — درهم إماراتي</option>
-            <option value="USD">$ — دولار أمريكي</option>
-          </select>
-        </div>
-        <div class="fg"><label class="fl">أسلوب التواصل مع الزبائن</label>
-          <select class="fs" id="ob-style">
-            <option value="ودي وقريب">ودي وقريب 😊</option>
-            <option value="عراقي">عراقي أصيل 🇮🇶</option>
-            <option value="خليجي">خليجي راقي</option>
-            <option value="رسمي">رسمي ومهني</option>
-          </select>
-        </div>
+        <div class="fg"><label class="fl">اسم الموظف</label><input class="fi" id="oen" placeholder="مساعدي، سارة، أحمد..."></div>
+        <div class="fg"><label class="fl">فلسفتك مع العملاء</label><textarea class="ft" id="oep" placeholder="أؤمن بالصدق. لا أبيع ما لا يناسب العميل..."></textarea></div>
+        <div class="fg"><label class="fl">كيف تتعامل مع طلب الخصم؟</label><textarea class="ft" id="oeo" placeholder="أشرح القيمة أولاً، ثم للعملاء الدائمين خصم 10%..."></textarea></div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:4px">
-        <button class="btn bo" onclick="prevStep()" style="flex:1;padding:11px">← رجوع</button>
-        <button class="btn ba" onclick="saveOb3New()" style="flex:2;padding:11px">التالي ←</button>
-      </div>
+      <button class="btn ba" onclick="saveOb3()" style="width:100%;padding:12px">إنهاء الإعداد 🎉</button>
     </div>
-
-    <!-- مرحلة 4 — هوية المتجر -->
-    <div class="obs" id="obs4">
-      <div class="shd">
-        <div style="font-size:2.4rem;margin-bottom:10px">🎨</div>
-        <h2>هوية متجرك</h2>
-        <p>Mike وفريقه سيستخدمونها في التصاميم والمنشورات</p>
-      </div>
-      <div class="card">
-        <div class="fg"><label class="fl">شعار المتجر (URL اختياري)</label><input class="fi" id="ob-logo" placeholder="https://..." dir="ltr"></div>
-        <div class="g2">
-          <div class="fg" style="margin:0">
-            <label class="fl">اللون الرئيسي</label>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="color" id="ob-color1" value="#5b6af0" style="width:44px;height:36px;border-radius:8px;border:1px solid var(--border);cursor:pointer">
-              <input class="fi" id="ob-color1-hex" value="#5b6af0" dir="ltr" style="flex:1">
-            </div>
-          </div>
-          <div class="fg" style="margin:0">
-            <label class="fl">اللون الثانوي</label>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="color" id="ob-color2" value="#f59e0b" style="width:44px;height:36px;border-radius:8px;border:1px solid var(--border);cursor:pointer">
-              <input class="fi" id="ob-color2-hex" value="#f59e0b" dir="ltr" style="flex:1">
-            </div>
-          </div>
-        </div>
-        <div class="fg"><label class="fl">الخط</label>
-          <select class="fs" id="ob-font">
-            <option value="Tajawal">Tajawal — عصري</option>
-            <option value="Cairo">Cairo — واضح</option>
-            <option value="Almarai">Almarai — أنيق</option>
-          </select>
-        </div>
-      </div>
-      <!-- معاينة -->
-      <div id="ob-preview" style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
-        <div style="font-size:2rem;margin-bottom:6px">⚡</div>
-        <div id="ob-prev-name" style="font-weight:900;font-size:1.1rem">اسم متجرك</div>
-        <div id="ob-prev-type" style="font-size:.78rem;color:var(--text2);margin-top:3px">نوع النشاط</div>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button class="btn bo" onclick="prevStep()" style="flex:1;padding:11px">← رجوع</button>
-        <button class="btn ba" onclick="saveOb4New()" style="flex:2;padding:13px;font-size:.95rem">🚀 ابدأ مع SocialOS</button>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -2097,230 +1829,157 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     </div>
 
     <!-- DIGITAL TEAM — الفريق الرقمي -->
-    <!-- DIGITAL TEAM — الفريق الرقمي الكامل -->
     <div class="page" id="page-digital-team">
-      <div class="pt">
-        <div><h1>🏢 الفريق الرقمي</h1><p>Mike + 6 موظفين رقميين متخصصين</p></div>
-        <div class="pas"><button class="btn ba bsm" onclick="ldMikeBrief()">🔄 تحديث</button></div>
-      </div>
+      <div class="pt"><div><h1>🤖 الفريق الرقمي</h1><p>موظفون رقميون متخصصون يعملون معك</p></div></div>
 
-      <!-- Mike Brief -->
-      <div id="mike-brief" class="card" style="border-color:rgba(91,106,240,.2);margin-bottom:14px">
-        <div class="empty"><div class="ei">🤖</div><p>جاري تحميل تقرير Mike...</p></div>
-      </div>
+      <!-- بطاقات الموظفين -->
+      <div id="dteam-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:13px;margin-bottom:14px"></div>
 
-      <!-- Mike Chat -->
-      <div class="card" style="border-color:rgba(91,106,240,.15);margin-bottom:14px">
-        <h3>⚡ Mike — أعطِه أمراً</h3>
-        <div id="mike-chat-msgs" style="min-height:120px;max-height:220px;overflow-y:auto;margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px">
-          <input class="fi" id="mike-command-input" placeholder="مثال: أضف منتج جديد، انشر بوست، أعطني تقرير اليوم..." style="flex:1" onkeydown="if(event.key==='Enter')mikeSendCommand()">
-          <button class="btn ba" onclick="mikeSendCommand()" style="padding:10px 14px">↑</button>
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
-          <button class="btn bo bsm" onclick="document.getElementById('mike-command-input').value='أعطني تقرير اليوم';mikeSendCommand()">📊 تقرير اليوم</button>
-          <button class="btn bo bsm" onclick="document.getElementById('mike-command-input').value='فحص المخزون';mikeSendCommand()">📦 فحص المخزون</button>
-          <button class="btn bo bsm" onclick="document.getElementById('mike-command-input').value='ما الطلبات المعلقة؟';mikeSendCommand()">⏳ طلبات معلقة</button>
-        </div>
-      </div>
-
-      <!-- تبويبات الأقسام -->
-      <div class="fbar" style="margin-bottom:14px">
-        <button class="fb team-tab-btn active" onclick="switchTeamTab('customer',this)">💬 خدمة عملاء</button>
-        <button class="fb team-tab-btn" onclick="switchTeamTab('design',this)">🎨 تصميم ونشر</button>
-        <button class="fb team-tab-btn" onclick="switchTeamTab('promotion',this)">📢 ترويج</button>
-        <button class="fb team-tab-btn" onclick="switchTeamTab('orders',this)">📦 الطلبات</button>
-        <button class="fb team-tab-btn" onclick="switchTeamTab('inventory',this)">🏪 المخزن</button>
-        <button class="fb team-tab-btn" onclick="switchTeamTab('analytics',this)">📊 تحليل</button>
-      </div>
-
-      <!-- ══════════════════════════════════════
-           💬 خدمة العملاء
-      ══════════════════════════════════════ -->
-      <div id="team-tab-customer" class="team-tab-content">
-
-        <!-- رد على رسائل -->
-        <div class="card" style="margin-bottom:10px">
-          <h3>💬 اختبار الرد التلقائي على الزبائن</h3>
-          <div class="g2" style="margin-bottom:10px">
-            <input class="fi" id="customer-name-input" placeholder="اسم الزبون">
-            <input class="fi" id="customer-phone-input" placeholder="07xxxxxxxxxx" dir="ltr">
+      <!-- منطقة المحادثة مع الموظف -->
+      <div id="dteam-chat-area" style="display:none">
+        <div class="card" style="border-color:rgba(79,142,247,.25)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="dteam-chat-icon" style="font-size:1.4rem">🤖</span>
+              <div>
+                <div id="dteam-chat-name" style="font-weight:900;font-size:.92rem"></div>
+                <div id="dteam-chat-desc" style="font-size:.74rem;color:var(--text2)"></div>
+              </div>
+            </div>
+            <button class="btn bo bsm" onclick="closeDTeamChat()">✕ إغلاق</button>
           </div>
-          <div id="customer-chat-msgs" style="min-height:150px;max-height:280px;overflow-y:auto;background:var(--s2);border-radius:10px;padding:12px;margin-bottom:10px">
-            <div style="text-align:center;font-size:.78rem;color:var(--text3);padding:20px">ابدأ محادثة تجريبية مع الموظف الرقمي</div>
+          <div class="cwrap">
+            <div class="cmsgs" id="dteam-msgs"></div>
+            <div class="cin">
+              <input id="dteam-input" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter')sendDTeam()">
+              <button class="btn ba bsm" onclick="sendDTeam()" id="dteam-btn">إرسال</button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <!-- إعدادات الموظف -->
+      <div id="dteam-settings-area" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
+            <h3 id="dteam-set-title">⚙️ إعدادات الموظف</h3>
+            <button class="btn bo bsm" onclick="closeDTeamSettings()">✕</button>
+          </div>
+          <input type="hidden" id="dteam-set-role">
+          <div class="fg"><label class="fl">الاسم</label><input class="fi" id="dts-name"></div>
+          <div class="fg"><label class="fl">الشخصية</label><textarea class="ft" id="dts-personality" placeholder="ودي، محترف، مقنع..."></textarea></div>
+          <div class="fg"><label class="fl">الخبرة</label><textarea class="ft" id="dts-expertise" placeholder="خبير في... متخصص في..."></textarea></div>
+          <div class="fg"><label class="fl">تعليمات خاصة</label><textarea class="ft" id="dts-instructions" placeholder="تعليمات إضافية للموظف..."></textarea></div>
           <div style="display:flex;gap:8px">
-            <input class="fi" id="customer-msg-input" placeholder="رسالة الزبون..." style="flex:1" onkeydown="if(event.key==='Enter')customerSendMsg()">
-            <button class="btn ba" onclick="customerSendMsg()" style="padding:10px 14px">إرسال</button>
-          </div>
-          <button class="btn bo bsm" onclick="_chatHistory=[];document.getElementById('customer-chat-msgs').innerHTML='<div style='text-align:center;font-size:.78rem;color:var(--text3);padding:20px'>محادثة جديدة</div>'" style="margin-top:8px;width:100%">🔄 محادثة جديدة</button>
-        </div>
-
-        <!-- رد على تعليق -->
-        <div class="card">
-          <h3>💬 رد تلقائي على تعليق</h3>
-          <div class="fg">
-            <label class="fl">نص التعليق</label>
-            <textarea class="ft" id="comment-text" placeholder="الصق هنا تعليق الزبون..." style="min-height:70px"></textarea>
-          </div>
-          <button class="btn ba bfull" id="comment-reply-btn" onclick="replyToComment()">💬 توليد رد</button>
-          <div id="comment-reply-result" style="display:none;margin-top:10px"></div>
-        </div>
-      </div>
-
-      <!-- ══════════════════════════════════════
-           🎨 تصميم ونشر
-      ══════════════════════════════════════ -->
-      <div id="team-tab-design" class="team-tab-content" style="display:none">
-
-        <!-- تصميم مجموعة صور -->
-        <div class="card" style="margin-bottom:10px">
-          <h3>🎨 تصميم مجموعة صور</h3>
-          <div class="fg">
-            <label class="fl">اسم المنتج *</label>
-            <input class="fi" id="design-product" placeholder="مثال: قميص كاجوال أزرق">
-          </div>
-          <div class="fg">
-            <label class="fl">نوع الخلفية</label>
-            <input class="fi" id="design-bg" placeholder="مثال: خلفية بيضاء، ورد ملون، طبيعة...">
-          </div>
-          <div class="fg">
-            <label class="fl">عدد التصاميم</label>
-            <select class="fs" id="design-count">
-              <option value="3">3 تصاميم</option>
-              <option value="5">5 تصاميم</option>
-              <option value="7">7 تصاميم</option>
-            </select>
-          </div>
-          <button class="btn ba bfull" id="design-gen-btn" onclick="generateBatchDesign()">🎨 توليد التصاميم</button>
-          <div id="design-results" style="margin-top:12px"></div>
-        </div>
-
-        <!-- كتابة بوست -->
-        <div class="card">
-          <h3>✍️ كتابة بوست + ربطه بالصورة</h3>
-          <div class="g2">
-            <div class="fg" style="margin:0">
-              <label class="fl">المنتج</label>
-              <input class="fi" id="post-product" placeholder="اسم المنتج">
-            </div>
-            <div class="fg" style="margin:0">
-              <label class="fl">السعر</label>
-              <input class="fi" id="post-price" placeholder="0" dir="ltr">
-            </div>
-          </div>
-          <div class="fg">
-            <label class="fl">المنصة</label>
-            <select class="fs" id="post-platform">
-              <option>Instagram</option>
-              <option>Facebook</option>
-              <option>TikTok</option>
-            </select>
-          </div>
-          <button class="btn ba bfull" onclick="generatePostContent()">✍️ كتابة البوست</button>
-          <div id="post-result" style="margin-top:10px"></div>
-        </div>
-      </div>
-
-      <!-- ══════════════════════════════════════
-           📢 ترويج
-      ══════════════════════════════════════ -->
-      <div id="team-tab-promotion" class="team-tab-content" style="display:none">
-        <div class="card" style="border-color:rgba(245,158,11,.2);margin-bottom:10px">
-          <div style="background:rgba(245,158,11,.08);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.78rem;color:var(--yellow)">
-            💰 تذكير: تحديد الميزانية الإعلانية يكون منك أنت فقط — Mike وقسم الترويج يقدمان الدراسة فقط
-          </div>
-          <h3>📢 دراسة حملة ترويجية</h3>
-          <div class="fg">
-            <label class="fl">هدف الحملة *</label>
-            <input class="fi" id="promo-goal" placeholder="مثال: زيادة المبيعات، إطلاق منتج جديد...">
-          </div>
-          <div class="fg">
-            <label class="fl">المنتج المستهدف</label>
-            <input class="fi" id="promo-product" placeholder="اسم المنتج أو 'جميع المنتجات'">
-          </div>
-          <div class="fg">
-            <label class="fl">مدة الحملة</label>
-            <select class="fs" id="promo-days">
-              <option value="7">7 أيام</option>
-              <option value="14">14 يوم</option>
-              <option value="30">30 يوم</option>
-            </select>
-          </div>
-          <button class="btn ba bfull" id="promo-btn" onclick="generateCampaignStudy()">📢 ابدأ الدراسة</button>
-          <div id="promo-result" style="margin-top:12px"></div>
-        </div>
-      </div>
-
-      <!-- ══════════════════════════════════════
-           📦 الطلبات
-      ══════════════════════════════════════ -->
-      <div id="team-tab-orders" class="team-tab-content" style="display:none">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3>📦 طلبات واردة من خدمة العملاء</h3>
-            <button class="btn bo bsm" onclick="ldTeamOrders()">🔄</button>
-          </div>
-          <div id="team-orders-list">
-            <div class="empty"><div class="ei">📦</div><p>لا طلبات معلقة</p></div>
+            <button class="btn ba" onclick="saveDTeamMember()" style="flex:1;padding:11px">💾 حفظ</button>
           </div>
         </div>
       </div>
-
-      <!-- ══════════════════════════════════════
-           🏪 المخزن
-      ══════════════════════════════════════ -->
-      <div id="team-tab-inventory" class="team-tab-content" style="display:none">
-
-        <!-- تنبيهات المخزون -->
-        <div class="card" style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3>⚠️ تنبيهات المخزون</h3>
-            <button class="btn bo bsm" onclick="ldTeamInventory()">🔄</button>
-          </div>
-          <div id="inventory-alerts">
-            <div class="empty"><div class="ei">✅</div><p>جاري الفحص...</p></div>
-          </div>
-        </div>
-
-        <!-- إضافة منتج -->
-        <div class="card">
-          <h3>📦 إضافة منتج جديد</h3>
-          <div class="g2">
-            <div class="fg" style="margin:0"><label class="fl">الاسم *</label><input class="fi" id="inv-name" placeholder="اسم المنتج"></div>
-            <div class="fg" style="margin:0"><label class="fl">السعر *</label><input class="fi" id="inv-price" placeholder="0" dir="ltr" type="number"></div>
-          </div>
-          <div class="g2" style="margin-top:10px">
-            <div class="fg" style="margin:0"><label class="fl">الكمية</label><input class="fi" id="inv-stock" placeholder="0" dir="ltr" type="number"></div>
-            <div class="fg" style="margin:0"><label class="fl">الفئة</label><input class="fi" id="inv-cat" placeholder="الفئة"></div>
-          </div>
-          <div class="fg" style="margin-top:10px"><label class="fl">الوصف</label><textarea class="ft" id="inv-desc" placeholder="وصف المنتج..." style="min-height:60px"></textarea></div>
-          <button class="btn ba bfull" onclick="addTeamProduct()">➕ إضافة المنتج</button>
-        </div>
-      </div>
-
-      <!-- ══════════════════════════════════════
-           📊 التحليل والتقارير
-      ══════════════════════════════════════ -->
-      <div id="team-tab-analytics" class="team-tab-content" style="display:none">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3>📊 تقرير شامل</h3>
-            <select class="fs" id="report-period" style="width:auto;padding:5px 10px">
-              <option value="7">7 أيام</option>
-              <option value="30">30 يوم</option>
-              <option value="90">3 أشهر</option>
-              <option value="365">سنة</option>
-            </select>
-          </div>
-          <button class="btn ba bfull" id="report-btn" onclick="generateTeamReport()">📊 توليد التقرير</button>
-          <div id="team-report-result" style="margin-top:12px"></div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- SOCIAL POSTS — المنشورات -->
+    <!-- AD MANAGER — مدير الإعلانات -->
+    <div class="page" id="page-ads">
+      <div class="pt"><div><h1>📣 مدير الإعلانات</h1><p>أنشئ وأطلق حملاتك على Meta وTikTok</p></div>
+        <div class="pas">
+          <button class="btn bo bsm" onclick="syncAdsInsights()">🔄 تحديث النتائج</button>
+          <button class="btn ba" onclick="om('mads')">+ حملة جديدة</button>
+        </div>
+      </div>
+
+      <!-- حالة الربط -->
+      <div id="ads-connect-status" style="margin-bottom:14px"></div>
+
+      <!-- إحصائيات سريعة -->
+      <div class="sg" id="ads-stats" style="margin-bottom:14px">
+        <div class="sc"><div class="si">📣</div><div class="sv" id="ads-total">0</div><div class="sl">الحملات</div></div>
+        <div class="sc"><div class="si">▶️</div><div class="sv" id="ads-active">0</div><div class="sl">نشطة</div></div>
+        <div class="sc"><div class="si">👁️</div><div class="sv" id="ads-impressions">0</div><div class="sl">مشاهدة</div></div>
+        <div class="sc"><div class="si">💸</div><div class="sv" id="ads-spend">0</div><div class="sl">الإنفاق $</div></div>
+      </div>
+
+      <!-- اقتراح ذكي -->
+      <div class="card" style="border-color:rgba(79,142,247,.25);margin-bottom:14px">
+        <h3>🤖 اقتراح حملة بالذكاء الاصطناعي</h3>
+        <div class="g2">
+          <div class="fg"><label class="fl">الهدف</label>
+            <select class="fs" id="ads-goal">
+              <option value="زيادة المبيعات">💰 زيادة المبيعات</option>
+              <option value="زيادة المتابعين">📈 زيادة المتابعين</option>
+              <option value="الترويج لمنتج جديد">🆕 منتج جديد</option>
+              <option value="زيادة الوعي بالمتجر">👁️ زيادة الوعي</option>
+              <option value="استهداف عملاء جدد">🎯 عملاء جدد</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">المنصة</label>
+            <select class="fs" id="ads-plat">
+              <option value="facebook">👥 Facebook</option>
+              <option value="instagram">📸 Instagram</option>
+              <option value="tiktok">🎵 TikTok</option>
+            </select>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="fg"><label class="fl">الميزانية اليومية ($)</label><input class="fi" id="ads-budget" type="number" min="1" placeholder="10"></div>
+          <div class="fg"><label class="fl">وصف المنتج</label><input class="fi" id="ads-pdesc" placeholder="ملابس رجالية عراقية..."></div>
+        </div>
+        <button class="btn ba" onclick="suggestAd()" id="ads-sug-btn" style="width:100%;padding:11px">✨ اقترح حملة بالـ AI</button>
+        <div id="ads-sug-result" style="display:none;margin-top:12px"></div>
+      </div>
+
+      <!-- إعادة الاستهداف السريع -->
+      <div class="card" style="border-color:rgba(245,158,11,.2);margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+          <h3>🎯 إعادة الاستهداف</h3>
+          <button class="btn ba bsm" onclick="sp('retargeting',null)" style="background:linear-gradient(135deg,var(--accent3),#e08000);border:none">عرض الكل ←</button>
+        </div>
+        <div id="ads-retarget-preview"><div class="empty"><div class="ei">🎯</div><p>جاري التحميل...</p></div></div>
+      </div>
+
+      <!-- قائمة الحملات -->
+      <div class="card">
+        <h3>📊 حملاتي</h3>
+        <div id="ads-list"><div class="empty"><div class="ei">📣</div><p>لا حملات بعد — أنشئ حملتك الأولى</p></div></div>
+      </div>
+    </div>
+
+    <!-- RETARGETING — إعادة الاستهداف -->
+    <div class="page" id="page-retargeting">
+      <div class="pt"><div><h1>🎯 إعادة الاستهداف</h1><p>استهدف عملاءك السابقين بعروض مخصصة</p></div></div>
+
+      <!-- شرح -->
+      <div style="background:rgba(79,142,247,.06);border:1px solid rgba(79,142,247,.15);border-radius:12px;padding:14px;margin-bottom:16px;font-size:.82rem;color:var(--text2);line-height:1.7">
+        🎯 <b style="color:var(--text)">كيف يعمل؟</b> — SocialOS يأخذ أرقام عملائك ويرفعها كـ Custom Audience على Meta وTikTok (مشفّرة بالكامل). بمجرد وصول موافقة المنصة سيتم الاستهداف تلقائياً. حتى ذلك الوقت يمكنك إرسال العروض عبر واتساب.
+      </div>
+
+      <!-- الجماهير -->
+      <div id="retarget-audiences" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px;margin-bottom:16px">
+        <div class="empty"><div class="ei">🎯</div><p>جاري التحميل...</p></div>
+      </div>
+
+      <!-- نموذج الإطلاق -->
+      <div class="card" id="retarget-launch-form" style="display:none">
+        <h3 id="retarget-launch-title">🚀 إطلاق حملة إعادة استهداف</h3>
+        <input type="hidden" id="rt-audience-id">
+        <div class="fg"><label class="fl">المنصة</label>
+          <select class="fs" id="rt-platform">
+            <option value="facebook">👥 Facebook</option>
+            <option value="instagram">📸 Instagram</option>
+            <option value="tiktok">🎵 TikTok</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">الميزانية اليومية ($)</label><input class="fi" id="rt-budget" type="number" min="1" value="5" placeholder="5"></div>
+        <div class="fg"><label class="fl">نص الإعلان / العرض *</label><textarea class="ft" id="rt-copy" placeholder="عرض خاص لعملائنا المميزين — خصم 20% على كل الطلبات هذا الأسبوع! 🎁" style="min-height:90px"></textarea></div>
+        <div class="fg"><label class="fl">العرض الخاص (سيظهر في رسائل واتساب)</label><input class="fi" id="rt-offer" placeholder="كوبون WELCOME20 — خصم 20%"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn ba" onclick="launchRetargeting()" style="flex:1;padding:12px;font-weight:900" id="rt-launch-btn">🚀 إطلاق</button>
+          <button class="btn bo" onclick="document.getElementById('retarget-launch-form').style.display='none'" style="padding:12px">إلغاء</button>
+        </div>
+      </div>
+
+      <!-- نتائج الإطلاق -->
+      <div id="retarget-result" style="display:none;margin-top:13px"></div>
+    </div>
+
     <!-- SOCIAL POSTS — المنشورات -->
     <div class="page" id="page-posts">
       <div class="pt"><div><h1>📱 المنشورات</h1><p>انشر وجدول محتواك على المنصات</p></div><div class="pas"><button class="btn ba" onclick="om('mposts')">+ منشور جديد</button></div></div>
@@ -3242,7 +2901,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
             <div style="font-size:.76rem;color:var(--text2)">يراقب الأقسام ويوافق على المهام</div>
           </div>
           <div style="margin-right:auto;position:relative">
-            <button class="btn ba bsm" onclick="sp('mike',null)" style="padding:8px 14px">لوحة Mike</button>
+            <button class="btn ba bsm" onclick="showPage('page-mike')" style="padding:8px 14px">لوحة Mike</button>
             <span id="pending-tasks-badge" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:.65rem;font-weight:700;display:none;align-items:center;justify-content:center"></span>
           </div>
         </div>
@@ -3854,20 +3513,19 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=11"></script>
-<script src="/js/employee.js?v=11"></script>
-<script src="/js/orders.js?v=11"></script>
-<script src="/js/store.js?v=11"></script>
-<script src="/js/social.js?v=11"></script>
-<script src="/js/departments.js?v=11"></script>
-<script src="/js/team_ui.js?v=11"></script>
-<script src="/js/ai_features.js?v=11"></script>
-<script src="/js/mike.js?v=11"></script>
-<script src="/js/analytics.js?v=11"></script>
-<script src="/js/ads.js?v=11"></script>
-<script src="/js/designer.js?v=11"></script>
-<script src="/js/app.js?v=11"></script>
-<script src="/js/app2.js?v=11"></script>
+<script src="/js/core.js?v=12"></script>
+<script src="/js/employee.js?v=12"></script>
+<script src="/js/orders.js?v=12"></script>
+<script src="/js/store.js?v=12"></script>
+<script src="/js/social.js?v=12"></script>
+<script src="/js/departments.js?v=12"></script>
+<script src="/js/ai_features.js?v=12"></script>
+<script src="/js/mike.js?v=12"></script>
+<script src="/js/analytics.js?v=12"></script>
+<script src="/js/ads.js?v=12"></script>
+<script src="/js/designer.js?v=12"></script>
+<script src="/js/app.js?v=12"></script>
+<script src="/js/app2.js?v=12"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>
