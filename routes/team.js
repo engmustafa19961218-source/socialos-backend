@@ -73,6 +73,16 @@ app.post('/api/team/design/batch', authenticateToken, rateLimit(10, 60000), asyn
       ).catch(() => {});
     }
 
+    // 🎨 تصميم → 📢 ترويج: إشعار بجاهزية التصاميم
+    if (pool) {
+      await pool.query(
+        `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, data, status)
+         VALUES ($1,'design_publish','promotion','designs_ready',$2,$3,'pending')`,
+        [req.user.id, `تصاميم ${product_name} جاهزة للترويج`,
+         JSON.stringify({ product_name, count, prompts })]
+      ).catch(() => {});
+    }
+
     res.json({ success: true, prompts, watermark: { store_name: storeName, phone, color: primaryColor, font } });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -400,6 +410,17 @@ app.post('/api/team/analytics/report', authenticateToken, rateLimit(10, 60000), 
       800
     );
 
+    // 📊 تحليل → 🤖 Mike: إرسال التقرير
+    if (pool) {
+      await pool.query(
+        `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, description, data, status)
+         VALUES ($1,'analytics','mike','report_ready',$2,$3,$4,'completed')`,
+        [req.user.id, `تقرير ${period} يوم جاهز`,
+         analysis?.summary || '',
+         JSON.stringify({ period, total_orders: totalOrders, total_revenue: totalRevenue, score: analysis?.score })]
+      ).catch(() => {});
+    }
+
     res.json({
       success: true,
       report: {
@@ -504,6 +525,127 @@ app.get('/api/mike/daily-brief', authenticateToken, rateLimit(5, 60000), async (
     );
 
     res.json({ success: true, brief: brief.trim(), stats });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+
+// ============================================================
+// 📱 النشر على المنصات — قسم التصميم والنشر
+// ============================================================
+
+// نشر بوست على منصة
+app.post('/api/team/publish/post', authenticateToken, rateLimit(20, 60000), async (req, res) => {
+  const { platform, content, media_url, scheduled_at, post_type } = req.body;
+  if (!platform || !content) return res.status(400).json({ success: false, message: 'المنصة والمحتوى مطلوبان' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    // إنشاء البوست
+    const r = await pool.query(
+      `INSERT INTO posts (user_id, platform, content, media_url, media_type, scheduled_at, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.user.id, platform, sanitize(content.substring(0,2200)), media_url||null,
+       media_url ? 'image' : 'text', scheduled_at||null, scheduled_at ? 'scheduled' : 'pending']
+    );
+
+    // مهمة workflow من التصميم والنشر
+    await pool.query(
+      `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, data, status)
+       VALUES ($1,'design_publish','analytics','post_published',$2,$3,'completed')`,
+      [req.user.id, `${scheduled_at ? 'جُدول' : 'نُشر'} بوست على ${platform}`,
+       JSON.stringify({ platform, post_type: post_type||'post', post_id: r.rows[0].id, scheduled_at })]
+    ).catch(() => {});
+
+    // نشر فوري إذا لم يكن مجدولاً
+    if (!scheduled_at) {
+      const acc = await pool.query(
+        'SELECT access_token, page_id FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+        [req.user.id, platform]
+      );
+
+      if (acc.rows.length && acc.rows[0].access_token) {
+        const { access_token, page_id } = acc.rows[0];
+        try {
+          if (platform === 'facebook' && page_id) {
+            const fbRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/feed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: content.substring(0,2200), access_token })
+            });
+            const fbData = await fbRes.json();
+            if (fbData.id) {
+              await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3', ['published', fbData.id, r.rows[0].id]);
+            }
+          } else if (platform === 'instagram' && page_id && media_url) {
+            const containerRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/media`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image_url: media_url, caption: content.substring(0,2200), access_token })
+            });
+            const container = await containerRes.json();
+            if (container.id) {
+              const publishRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/media_publish`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ creation_id: container.id, access_token })
+              });
+              const pub = await publishRes.json();
+              if (pub.id) await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3', ['published', pub.id, r.rows[0].id]);
+            }
+          }
+        } catch(e) { /* نكمل حتى لو فشل النشر */ }
+      }
+    }
+
+    const bp = await getBP(req.user.id);
+    await notify(req.user.id,
+      scheduled_at ? `📅 جُدول بوست على ${platform}` : `✅ نُشر بوست على ${platform}`,
+      content.substring(0,50) + '...', 'post'
+    );
+
+    res.json({ success: true, post: r.rows[0] });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// جلب آخر البوستات
+app.get('/api/team/publish/posts', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, posts: [] });
+    const r = await pool.query(
+      'SELECT * FROM posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',
+      [req.user.id]
+    );
+    res.json({ success: true, posts: r.rows });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// توليد محتوى بوست بالذكاء الاصطناعي
+app.post('/api/team/publish/generate', authenticateToken, rateLimit(20, 60000), async (req, res) => {
+  const { post_type, product_name, price, platform, offer_details } = req.body;
+  try {
+    const bp = await getBP(req.user.id);
+    const result = await askAIJSON(
+      `أنت كاتب محتوى عربي محترف لـ ${bp.store_name} (${bp.business_type}).
+       أسلوب التواصل: ${bp.communication_style || 'ودي'}
+       العملة: ${bp.currency || 'IQD'}
+       المنصة: ${platform || 'Instagram'}`,
+      `نوع البوست: ${post_type || 'منتج'}
+       ${product_name ? `المنتج: ${product_name}` : ''}
+       ${price ? `السعر: ${price}` : ''}
+       ${offer_details ? `تفاصيل العرض: ${offer_details}` : ''}
+       
+       أنشئ محتوى جذاب يناسب ${platform || 'Instagram'} بصيغة JSON:
+       {
+         "caption": "نص البوست الكامل مع إيموجي",
+         "hashtags": ["#هاشتاغ1","#هاشتاغ2","#هاشتاغ3"],
+         "story_text": "نص قصير للستوري",
+         "cta": "نص الدعوة للتصرف",
+         "best_time": "أفضل وقت للنشر"
+       }`,
+      600
+    );
+
+    res.json({ success: true, content: result || {} });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

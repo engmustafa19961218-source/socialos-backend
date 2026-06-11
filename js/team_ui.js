@@ -384,3 +384,118 @@ async function processTeamOrder(taskId) {
   if (d.success) { toast('✅ تم إنشاء الفاتورة'); ldTeamOrders(); }
   else toast('❌ ' + (d.message || 'خطأ'));
 }
+
+// ============================================================
+// 📱 النشر على المنصات
+// ============================================================
+
+let _publishPlatform = 'instagram';
+
+function switchPublishPlatform(platform, btn) {
+  _publishPlatform = platform;
+  document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+async function generatePublishContent() {
+  const postType = document.getElementById('pub-post-type')?.value;
+  const product = document.getElementById('pub-product')?.value.trim();
+  const price = document.getElementById('pub-price')?.value.trim();
+  const offer = document.getElementById('pub-offer')?.value.trim();
+
+  const btn = document.getElementById('pub-gen-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التوليد...'; }
+
+  const d = await api('/api/team/publish/generate', {
+    method: 'POST',
+    body: JSON.stringify({ post_type: postType, product_name: product, price, platform: _publishPlatform, offer_details: offer })
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = '✨ توليد المحتوى'; }
+  if (!d.success) return toast('❌ ' + (d.message || 'خطأ'));
+
+  const t = d.content;
+  const captionEl = document.getElementById('pub-caption');
+  if (captionEl) captionEl.value = t.caption || '';
+
+  const hashEl = document.getElementById('pub-hashtags');
+  if (hashEl) hashEl.value = (t.hashtags || []).join(' ');
+
+  const el = document.getElementById('pub-content-preview');
+  if (el) {
+    el.style.display = 'block';
+    el.innerHTML = `
+      <div style="background:rgba(91,106,240,.06);border-radius:10px;padding:12px;margin-top:10px">
+        ${t.story_text ? `<div style="font-size:.75rem;color:var(--text2);margin-bottom:6px">📖 ستوري: <span style="color:var(--text)">${esc(t.story_text)}</span></div>` : ''}
+        ${t.cta ? `<div style="font-size:.75rem;color:var(--text2);margin-bottom:4px">📢 CTA: <span style="color:var(--green)">${esc(t.cta)}</span></div>` : ''}
+        ${t.best_time ? `<div style="font-size:.75rem;color:var(--text2)">⏰ أفضل وقت: <span style="color:var(--yellow)">${esc(t.best_time)}</span></div>` : ''}
+      </div>`;
+  }
+}
+
+async function publishPost() {
+  const content = document.getElementById('pub-caption')?.value.trim();
+  const hashtags = document.getElementById('pub-hashtags')?.value.trim();
+  const mediaUrl = document.getElementById('pub-media-url')?.value.trim();
+  const scheduledAt = document.getElementById('pub-scheduled')?.value;
+
+  if (!content) return toast('⚠️ أدخل محتوى البوست');
+
+  const fullContent = hashtags ? content + '
+
+' + hashtags : content;
+
+  const btn = document.getElementById('pub-publish-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري النشر...'; }
+
+  const d = await api('/api/team/publish/post', {
+    method: 'POST',
+    body: JSON.stringify({
+      platform: _publishPlatform,
+      content: fullContent,
+      media_url: mediaUrl || null,
+      scheduled_at: scheduledAt || null
+    })
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = scheduledAt ? '📅 جدولة' : '🚀 نشر الآن'; }
+
+  if (d.success) {
+    toast(scheduledAt ? '📅 تم جدولة البوست' : '✅ تم النشر بنجاح');
+    document.getElementById('pub-caption').value = '';
+    document.getElementById('pub-hashtags').value = '';
+    if (document.getElementById('pub-media-url')) document.getElementById('pub-media-url').value = '';
+    if (document.getElementById('pub-scheduled')) document.getElementById('pub-scheduled').value = '';
+    if (document.getElementById('pub-content-preview')) document.getElementById('pub-content-preview').style.display = 'none';
+    ldPublishedPosts();
+  } else toast('❌ ' + (d.message || 'خطأ في النشر'));
+}
+
+async function ldPublishedPosts() {
+  const d = await api('/api/team/publish/posts');
+  if (!d.success) return;
+  const el = document.getElementById('published-posts-list');
+  if (!el) return;
+
+  if (!d.posts.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">📱</div><p>لا منشورات بعد</p></div>';
+    return;
+  }
+
+  const platformIcon = { instagram: '📸', facebook: '👤', tiktok: '🎵' };
+  const statusColor = { published: 'var(--green)', scheduled: 'var(--yellow)', pending: 'var(--text2)', failed: 'var(--red)' };
+  const statusLabel = { published: 'نُشر', scheduled: 'مجدول', pending: 'معلق', failed: 'فشل' };
+
+  el.innerHTML = d.posts.map(p => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:7px">
+      <div style="font-size:1.4rem;flex-shrink:0">${platformIcon[p.platform] || '📱'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;line-height:1.5;margin-bottom:4px">${esc(p.content?.substring(0,80) || '')}${p.content?.length > 80 ? '...' : ''}</div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:.72rem">
+          <span style="color:${statusColor[p.status] || 'var(--text2)'}">● ${statusLabel[p.status] || p.status}</span>
+          <span style="color:var(--text3)">${p.platform}</span>
+          <span style="color:var(--text3)">${new Date(p.created_at).toLocaleDateString('ar')}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}

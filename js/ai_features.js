@@ -102,7 +102,7 @@ async function ldForecast() {
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
       <div style="background:rgba(79,142,247,.1);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:.72rem;color:var(--text2)">الإيراد المتوقع</div>
-        <div style="font-weight:800;font-size:1rem;color:#5b6af0">${Number(f.total_predicted_revenue||0).toLocaleString()}</div>
+        <div style="font-weight:800;font-size:1rem;color:#4f8ef7">${Number(f.total_predicted_revenue||0).toLocaleString()}</div>
       </div>
       <div style="background:rgba(16,185,129,.1);border-radius:10px;padding:12px;text-align:center">
         <div style="font-size:.72rem;color:var(--text2)">الطلبات المتوقعة</div>
@@ -284,7 +284,7 @@ async function ldWeaknesses() {
 
     ${a.quick_wins?.length ? `
       <div style="background:rgba(79,142,247,.08);border-radius:10px;padding:12px;margin-top:10px">
-        <div style="font-size:.76rem;font-weight:700;color:#5b6af0;margin-bottom:8px">⚡ إجراءات سريعة</div>
+        <div style="font-size:.76rem;font-weight:700;color:#4f8ef7;margin-bottom:8px">⚡ إجراءات سريعة</div>
         ${a.quick_wins.map(w => `<div style="font-size:.8rem;padding:4px 0">✓ ${esc(w)}</div>`).join('')}
       </div>
     ` : ''}
@@ -320,7 +320,7 @@ async function generateDesignTemplate() {
 
     ${t.hashtags?.length ? `
       <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
-        ${t.hashtags.map(h => `<span style="background:rgba(79,142,247,.12);color:#5b6af0;border-radius:20px;padding:3px 10px;font-size:.75rem">${esc(h)}</span>`).join('')}
+        ${t.hashtags.map(h => `<span style="background:rgba(79,142,247,.12);color:#4f8ef7;border-radius:20px;padding:3px 10px;font-size:.75rem">${esc(h)}</span>`).join('')}
       </div>
     ` : ''}
 

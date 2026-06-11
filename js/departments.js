@@ -20,7 +20,7 @@ function rnDepartments(departments, permissions) {
   if (!grid) return;
 
   const deptColors = {
-    customer_service: '#5b6af0',
+    customer_service: '#4f8ef7',
     orders: '#10b981',
     inventory: '#f59e0b',
     design_publish: '#8b5cf6',
@@ -83,7 +83,7 @@ function rnPendingTasks() {
           <div style="font-size:.76rem;color:var(--text2);margin-bottom:8px">${esc(task.description || '')}</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
             <span style="background:rgba(245,158,11,.12);color:#f59e0b;border-radius:20px;padding:2px 8px;font-size:.68rem">من: ${task.from_dept}</span>
-            <span style="background:rgba(79,142,247,.12);color:#5b6af0;border-radius:20px;padding:2px 8px;font-size:.68rem">إلى: ${task.to_dept}</span>
+            <span style="background:rgba(79,142,247,.12);color:#4f8ef7;border-radius:20px;padding:2px 8px;font-size:.68rem">إلى: ${task.to_dept}</span>
             ${task.requires_owner_approval ? '<span style="background:rgba(239,68,68,.12);color:#ef4444;border-radius:20px;padding:2px 8px;font-size:.68rem">⚠️ يحتاج موافقتك</span>' : ''}
           </div>
           <div style="display:flex;gap:7px">

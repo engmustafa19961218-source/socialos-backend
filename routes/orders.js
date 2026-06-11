@@ -188,6 +188,22 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
                   const payWaUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(payMsg)}`;
                   await pool.query('UPDATE orders SET payment_wa_link=$1 WHERE id=$2', [payWaUrl, req.params.id]).catch(() => {});
 
+                  // 💬 خدمة عملاء → 🏪 مخزن: خصم الكمية بعد تثبيت الطلب
+                  await pool.query(
+                    `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, data, status)
+                     VALUES ($1,'customer_service','inventory','deduct_stock',$2,$3,'pending')`,
+                    [req.user.id, `خصم مخزون للطلب #${req.params.id}`,
+                     JSON.stringify({ order_id: req.params.id })]
+                  ).catch(() => {});
+
+                  // 💬 خدمة عملاء → 📊 تحليل: تسجيل الطلب المؤكد
+                  await pool.query(
+                    `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, data, status)
+                     VALUES ($1,'customer_service','analytics','order_confirmed',$2,$3,'completed')`,
+                    [req.user.id, `طلب مؤكد #${req.params.id}`,
+                     JSON.stringify({ order_id: req.params.id, total: o.total })]
+                  ).catch(() => {});
+
                   // إنشاء مهمة workflow لقسم الطلبات — انتظار وصل الحوالة
                   await pool.query(
                     `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, description, data, status)
