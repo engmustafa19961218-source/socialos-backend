@@ -743,6 +743,7 @@ require('./routes/images')(app, pool, helpers);
 require('./routes/settings')(app, pool, helpers);
 require('./routes/departments')(app, pool, helpers);
 require('./routes/ai_features')(app, pool, helpers);
+require('./routes/team')(app, pool, helpers);
 
 
 // ============================================================

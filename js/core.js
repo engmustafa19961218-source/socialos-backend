@@ -265,7 +265,7 @@ function goOb(n){
   document.getElementById('obs'+obS).classList.remove('active');
   document.getElementById('pd'+obS).classList.remove('active');document.getElementById('pd'+obS).classList.add('done');
   obS=n;
-  if(obS>=4){finOb();return;}
+  if(obS>=5){finOb();return;}
   document.getElementById('obs'+obS).classList.add('active');
   document.getElementById('pd'+obS).classList.add('active');
 }
@@ -396,3 +396,135 @@ async function ldHome(){
   const nb=document.getElementById('nbc');nb.style.display=ub>0?'flex':'none';nb.textContent=ub;
 }
 
+
+// ============================================================
+// ONBOARDING الجديد — 4 مراحل
+// ============================================================
+let _obCards = [];
+
+function prevStep() { if (obS > 0) goOb(obS - 1); }
+
+function updateObPreview() {
+  const name = document.getElementById('ob-store-name')?.value || 'اسم متجرك';
+  const type = document.getElementById('ob-business-type')?.value || 'نوع النشاط';
+  const color = document.getElementById('ob-color1')?.value || '#5b6af0';
+  const el = document.getElementById('ob-prev-name');
+  const el2 = document.getElementById('ob-prev-type');
+  if (el) { el.textContent = name; el.style.color = color; }
+  if (el2) el2.textContent = type;
+}
+
+// مزامنة color pickers
+document.addEventListener('DOMContentLoaded', () => {
+  const pairs = [['ob-color1','ob-color1-hex'],['ob-color2','ob-color2-hex']];
+  pairs.forEach(([pid,hid]) => {
+    const picker = document.getElementById(pid);
+    const hex = document.getElementById(hid);
+    if (picker && hex) {
+      picker.oninput = () => { hex.value = picker.value; updateObPreview(); };
+      hex.oninput = () => { picker.value = hex.value; updateObPreview(); };
+    }
+  });
+});
+
+// المرحلة 1 — نوع العمل
+async function saveOb1New() {
+  const name = document.getElementById('ob-store-name')?.value.trim();
+  const type = document.getElementById('ob-business-type')?.value.trim();
+  if (!name) return toast('⚠️ أدخل اسم المتجر');
+  if (!type) return toast('⚠️ أدخل نوع النشاط');
+  const desc = document.getElementById('ob-business-desc')?.value.trim() || '';
+  await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ store_name: name, business_type: type, business_desc: desc }) });
+  updateObPreview();
+  nextStep();
+}
+
+// إضافة بطاقة في الـ onboarding
+function addObCard() {
+  const type = document.getElementById('ob-card-type')?.value;
+  const number = document.getElementById('ob-card-number')?.value.trim();
+  const holder = document.getElementById('ob-card-holder')?.value.trim();
+  const notes = document.getElementById('ob-card-notes')?.value.trim() || '';
+  if (!number) return toast('⚠️ أدخل رقم البطاقة');
+  if (!holder) return toast('⚠️ أدخل اسم صاحب البطاقة');
+  _obCards.push({ card_type: type, card_number: number, card_holder: holder, notes });
+  rnObCards();
+  document.getElementById('ob-card-number').value = '';
+  document.getElementById('ob-card-holder').value = '';
+  if (document.getElementById('ob-card-notes')) document.getElementById('ob-card-notes').value = '';
+  toast('✅ تمت إضافة البطاقة');
+}
+
+function rnObCards() {
+  const el = document.getElementById('ob-cards-list');
+  if (!el) return;
+  if (!_obCards.length) {
+    el.innerHTML = '<div class="empty" style="padding:16px"><div class="ei" style="font-size:1.6rem">💳</div><p>لم تضف بطاقات بعد</p></div>';
+    return;
+  }
+  el.innerHTML = _obCards.map((c,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border2)">
+      <div style="font-size:1.3rem">💳</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:.85rem">${c.card_type}</div>
+        <div style="font-size:.75rem;color:var(--text2);direction:ltr;text-align:right">${c.card_number}</div>
+        <div style="font-size:.74rem;color:var(--text2)">${c.card_holder}</div>
+      </div>
+      <button class="btn bd bsm" onclick="_obCards.splice(${i},1);rnObCards()">✕</button>
+    </div>`).join('');
+}
+
+// المرحلة 2 — حفظ البطاقات
+async function saveOb2New() {
+  for (const card of _obCards) {
+    await api('/api/payment-cards', { method: 'POST', body: JSON.stringify(card) });
+  }
+  nextStep();
+}
+
+// المرحلة 3 — واتساب
+async function saveOb3New() {
+  const wa = document.getElementById('ob-whatsapp')?.value.trim();
+  if (!wa) return toast('⚠️ أدخل رقم واتساب');
+  const currency = document.getElementById('ob-currency')?.value || 'IQD';
+  const style = document.getElementById('ob-style')?.value || 'ودي وقريب';
+  await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ whatsapp_number: wa, currency, communication_style: style }) });
+  nextStep();
+}
+
+// المرحلة 4 — هوية المتجر
+async function saveOb4New() {
+  const btn = document.querySelector('#obs4 .btn.ba');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري إعداد نظامك...'; }
+  try {
+    const logo = document.getElementById('ob-logo')?.value.trim() || '';
+    const color1 = document.getElementById('ob-color1')?.value || '#5b6af0';
+    const color2 = document.getElementById('ob-color2')?.value || '#f59e0b';
+    const font = document.getElementById('ob-font')?.value || 'Tajawal';
+    const storeName = document.getElementById('ob-store-name')?.value.trim() || '';
+    const businessType = document.getElementById('ob-business-type')?.value.trim() || '';
+    const businessDesc = document.getElementById('ob-business-desc')?.value.trim() || '';
+
+    await api('/api/identity', { method: 'PUT', body: JSON.stringify({ logo_url: logo, primary_color: color1, secondary_color: color2, font_name: font, store_name: storeName }) }).catch(() => {});
+
+    const setup = await api('/api/onboarding/auto-setup', { method: 'POST', body: JSON.stringify({
+      business_type: businessType, business_desc: businessDesc, store_name: storeName,
+      employee_name: 'Mike', user_philosophy: '', user_objection: ''
+    }) }).catch(() => ({ settings: {} }));
+
+    const s = setup?.settings || {};
+    await api('/api/employee', { method: 'PUT', body: JSON.stringify({
+      name: 'Mike',
+      personality: s.personality || `مدير تنفيذي ذكي لـ ${storeName}`,
+      sales_style: s.sales_style || '',
+      philosophy: s.philosophy || '',
+      objection_handling: s.objection_handling || ''
+    }) }).catch(() => {});
+
+    await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ onboarding_done: true, primary_color: color1, font_name: font }) });
+    finOb();
+  } catch(e) {
+    await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ onboarding_done: true }) });
+    finOb();
+  }
+}
