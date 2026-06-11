@@ -745,6 +745,150 @@ tr:hover td{background:rgba(79,142,247,.02);}
   border:1px solid var(--border);flex-shrink:0;
   background:var(--surface2);display:none;
 }
+
+/* ============================================================
+   DARK PRO FINAL OVERRIDE — يطغى على كل شيء
+   ============================================================ */
+
+/* الألوان الأساسية */
+:root {
+  --bg:#0a0a0c!important;
+  --bg2:#0d0d10!important;
+  --surface:#111114!important;
+  --surface2:#18181c!important;
+  --surface3:#222228!important;
+  --border:#28282f!important;
+  --border2:#1e1e24!important;
+  --accent:#5b6af0!important;
+  --accent2:#7c8cf8!important;
+  --text:#f0f0f2!important;
+  --text2:#8888a0!important;
+  --text3:#44445a!important;
+  --green:#22c55e!important;
+  --danger:#ef4444!important;
+}
+
+/* الجسم */
+body { background:#0a0a0c!important; color:#f0f0f2!important; }
+
+/* الكروت */
+.card {
+  background:#111114!important;
+  border:1px solid #28282f!important;
+  border-radius:12px!important;
+  box-shadow:none!important;
+  padding:14px!important;
+  margin-bottom:10px!important;
+}
+
+/* الأزرار */
+.btn.ba, .btn.bp {
+  background:#5b6af0!important;
+  border:1px solid #5b6af0!important;
+  color:white!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.btn.ba:hover { background:#7c8cf8!important; }
+.btn.bo {
+  background:#18181c!important;
+  border:1px solid #28282f!important;
+  color:#8888a0!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+}
+.btn.bo:hover { background:#222228!important; color:#f0f0f2!important; border-color:#28282f!important; }
+
+/* الإدخالات */
+.fi, .ft, .fs {
+  background:#18181c!important;
+  border:1px solid #28282f!important;
+  color:#f0f0f2!important;
+  border-radius:8px!important;
+}
+.fi:focus, .ft:focus, .fs:focus {
+  border-color:#5b6af0!important;
+  box-shadow:0 0 0 3px rgba(91,106,240,.1)!important;
+}
+
+/* الجداول */
+.tw table { border-collapse:collapse!important; width:100%!important; }
+.tw th {
+  background:#18181c!important;
+  color:#44445a!important;
+  font-size:.68rem!important;
+  text-transform:uppercase!important;
+  letter-spacing:.5px!important;
+  padding:8px 10px!important;
+  border-bottom:1px solid #28282f!important;
+  font-weight:700!important;
+}
+.tw td {
+  padding:9px 10px!important;
+  border-bottom:1px solid #1e1e24!important;
+  font-size:.8rem!important;
+  color:#f0f0f2!important;
+}
+.tw tr:hover td { background:#18181c!important; }
+
+/* الشريط الجانبي */
+.sidebar { background:#111114!important; border-color:#28282f!important; }
+.sidebar-logo { border-color:#28282f!important; }
+.sidebar-logo-icon { background:linear-gradient(135deg,#5b6af0,#7c8cf8)!important; box-shadow:none!important; }
+.si-btn.active { background:rgba(91,106,240,.1)!important; color:#7c8cf8!important; }
+.si-btn.active::before { background:#5b6af0!important; }
+.si-btn:hover { background:#18181c!important; }
+.mike-btn { background:rgba(91,106,240,.1)!important; border-color:rgba(91,106,240,.2)!important; }
+.mike-btn.active { background:linear-gradient(135deg,#5b6af0,#7c8cf8)!important; }
+.nav-group-label { color:#44445a!important; }
+.nav-divider { background:#28282f!important; }
+
+/* الـ Topbar */
+.topbar { background:#111114!important; border-color:#28282f!important; }
+
+/* فلاتر الأزرار */
+.fb {
+  background:#18181c!important;
+  border:1px solid #28282f!important;
+  color:#8888a0!important;
+  border-radius:20px!important;
+  padding:5px 12px!important;
+  font-size:.74rem!important;
+  font-weight:700!important;
+}
+.fb.active, .fb:hover {
+  background:rgba(91,106,240,.12)!important;
+  color:#7c8cf8!important;
+  border-color:rgba(91,106,240,.25)!important;
+}
+
+/* الـ page header */
+.pt { padding:12px 16px 8px!important; }
+.pt h1 { font-size:1.15rem!important; font-weight:800!important; }
+
+/* Empty state */
+.empty { padding:32px 20px!important; text-align:center!important; }
+.empty .ei { font-size:2rem!important; opacity:.35!important; margin-bottom:8px!important; display:block!important; }
+.empty p { font-size:.8rem!important; color:#44445a!important; }
+
+/* الـ Bottom Nav */
+#bottom-nav {
+  background:#111114!important;
+  border-top:1px solid #28282f!important;
+  box-shadow:0 -8px 32px rgba(0,0,0,.5)!important;
+}
+.bn-label { font-family:'Tajawal',sans-serif!important; }
+
+/* Page transitions */
+.page { animation:pgIn .15s ease!important; }
+@keyframes pgIn { from{opacity:.5;transform:translateY(3px)} to{opacity:1;transform:none} }
+
+/* إخفاء Mike FAB على موبايل */
+@media(max-width:768px) {
+  #mike-fab { display:none!important; }
+  #mike-float-panel { bottom:82px!important; left:8px!important; width:calc(100vw - 16px)!important; }
+}
 </style>
 </head>
 <body>
@@ -3475,6 +3619,19 @@ tr:hover td{background:rgba(79,142,247,.02);}
   <button class="btn ba" onclick="askExp()" style="width:100%;padding:11px">📤 اسأله</button>
   <div id="expr" style="display:none;margin-top:12px;background:var(--surface2);border-radius:10px;padding:12px;font-size:.85rem;line-height:1.7;white-space:pre-wrap"></div>
 </div></div>
+
+<!-- BOTTOM NAV SCRIPT — يجب أن يكون قبل الشريط -->
+<script>
+function bnSwitch(name, btn) {
+  document.querySelectorAll('.bn-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (name === 'more') {
+    if (typeof openMobileMenu === 'function') openMobileMenu();
+    return;
+  }
+  if (typeof sp === 'function') sp(name, null);
+}
+</script>
 
 <!-- BOTTOM NAV — Dark Pro Mobile -->
 <div id="bottom-nav">
