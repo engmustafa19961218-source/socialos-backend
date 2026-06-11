@@ -27,7 +27,11 @@ function bnSwitch(name, btn) {
     openMobileMenu();
     return;
   }
+  // استدعاء sp مع null للزر
   sp(name, null);
+  // تحديث الـ badge بعد التنقل
+  const bnId = document.getElementById('bn-' + name);
+  if (bnId) bnId.classList.add('active');
 }
   if (ldr[name]) ldr[name]();
   setTimeout(initImgPickers, 100);

@@ -94,7 +94,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 @media(max-width:768px){
   #bottom-nav{display:flex!important;}
   #dashboard>.sidebar{display:none!important;}
-  .main-content,.mwrap{padding-bottom:80px!important;}
+  .main-content,.mwrap,.main,.page{padding-bottom:80px!important;}
 }
 .bn-tab{
   flex:1;
@@ -385,8 +385,8 @@ body::after{
 /* ─── TOPBAR (mobile) ─── */
 .topbar{
   display:none;
-  position:fixed;top:0;right:0;left:0;height:52px;
-  background:rgba(3,5,8,.92);backdrop-filter:blur(20px);
+  position:fixed;top:0;right:0;left:0;height:50px;
+  background:var(--surface);
   border-bottom:1px solid var(--border);
   align-items:center;justify-content:space-between;
   z-index:200;padding:0 14px;
@@ -445,19 +445,21 @@ body::after{
 /* ─── CARDS ─── */
 .card{
   background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:18px;margin-bottom:14px;
+  border-radius:12px;padding:16px;margin-bottom:12px;
+  box-shadow:none;
 }
-.card h3{font-size:.7rem;font-weight:700;margin-bottom:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.9px;}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.card h3{font-size:.72rem;font-weight:700;margin-bottom:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 
 /* ─── BUTTONS ─── */
-.btn{padding:8px 15px;border:none;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:.81rem;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px;}
-.ba{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 3px 12px rgba(79,142,247,.25);}
-.ba:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,142,247,.4);}
-.bo{background:var(--surface);border:1px solid var(--border);color:var(--text2);}
-.bo:hover{border-color:var(--accent);color:var(--accent);background:rgba(79,142,247,.04);}
-.bd{background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.2);color:var(--danger);}
-.bd:hover{background:rgba(255,68,102,.15);}
+.btn{padding:7px 14px;border:1px solid transparent;border-radius:8px;font-family:'Tajawal',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;}
+.ba{background:var(--accent);color:#fff;border-color:var(--accent);}
+.ba:hover{background:var(--accent2);border-color:var(--accent2);}
+.bo{background:var(--surface2);border-color:var(--border);color:var(--text2);}
+.bo:hover{background:var(--surface3);color:var(--text);}
+.bd{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);color:var(--danger);}
+.bd:hover{background:rgba(239,68,68,.14);}
+.bsm{padding:5px 10px;font-size:.73rem;}
 .bsm{padding:5px 10px;font-size:.74rem;}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important;}
 
@@ -624,14 +626,18 @@ tr:hover td{background:rgba(79,142,247,.02);}
   width:54px;height:54px;border-radius:50%;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
   border:none;cursor:pointer;
-  box-shadow:0 6px 28px rgba(79,142,247,.45),0 2px 8px rgba(0,0,0,.4);
+  box-shadow:0 6px 28px rgba(91,106,240,.45),0 2px 8px rgba(0,0,0,.4);
   display:flex;align-items:center;justify-content:center;
   font-size:1.3rem;transition:all .2s;
   animation:fabPulse 3s ease-in-out infinite;
 }
-#mike-fab:hover{transform:scale(1.08);box-shadow:0 8px 36px rgba(79,142,247,.6);}
+@media(max-width:768px){
+  #mike-fab{display:none!important;}
+  #mike-float-panel{bottom:82px!important;left:8px!important;width:calc(100vw - 16px)!important;}
+}
+#mike-fab:hover{transform:scale(1.08);box-shadow:0 8px 36px rgba(91,106,240,.6);}
 #mike-fab.listening{background:linear-gradient(135deg,#f04060,#c0203f);animation:fabListening .6s ease-in-out infinite alternate;}
-@keyframes fabPulse{0%,100%{box-shadow:0 6px 28px rgba(79,142,247,.45)}50%{box-shadow:0 6px 36px rgba(79,142,247,.7)}}
+@keyframes fabPulse{0%,100%{box-shadow:0 6px 28px rgba(91,106,240,.45)}50%{box-shadow:0 6px 36px rgba(91,106,240,.7)}}
 @keyframes fabListening{from{box-shadow:0 6px 24px rgba(240,64,96,.5)}to{box-shadow:0 6px 40px rgba(240,64,96,.9),0 0 0 8px rgba(240,64,96,.15)}}
 #mike-float-panel{
   position:fixed;bottom:90px;left:16px;z-index:499;
@@ -3501,19 +3507,19 @@ tr:hover td{background:rgba(79,142,247,.02);}
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=3"></script>
-<script src="/js/employee.js?v=3"></script>
-<script src="/js/orders.js?v=3"></script>
-<script src="/js/store.js?v=3"></script>
-<script src="/js/social.js?v=3"></script>
-<script src="/js/departments.js?v=1"></script>
-<script src="/js/ai_features.js?v=1"></script>
-<script src="/js/mike.js?v=3"></script>
-<script src="/js/analytics.js?v=3"></script>
-<script src="/js/ads.js?v=3"></script>
-<script src="/js/designer.js?v=3"></script>
-<script src="/js/app.js?v=3"></script>
-<script src="/js/app2.js?v=3"></script>
+<script src="/js/core.js?v=4"></script>
+<script src="/js/employee.js?v=4"></script>
+<script src="/js/orders.js?v=4"></script>
+<script src="/js/store.js?v=4"></script>
+<script src="/js/social.js?v=4"></script>
+<script src="/js/departments.js?v=2"></script>
+<script src="/js/ai_features.js?v=2"></script>
+<script src="/js/mike.js?v=4"></script>
+<script src="/js/analytics.js?v=4"></script>
+<script src="/js/ads.js?v=4"></script>
+<script src="/js/designer.js?v=4"></script>
+<script src="/js/app.js?v=4"></script>
+<script src="/js/app2.js?v=4"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>
