@@ -176,6 +176,13 @@ function setUser(user,tok){
   chkOnboard();
   // تطبيق هوية المتجر
   setTimeout(loadInitialIdentity, 500);
+  // فحص المهام المعلقة كل دقيقة
+  setTimeout(() => {
+    if (typeof ldPendingTasksMike === 'function') ldPendingTasksMike();
+    setInterval(() => {
+      if (typeof ldPendingTasksMike === 'function') ldPendingTasksMike();
+    }, 60000);
+  }, 3000);
 }
 async function chkOnboard(){
   // أولاً نتحقق من localStorage للسرعة

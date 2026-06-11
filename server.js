@@ -569,6 +569,82 @@ try {
       factors TEXT DEFAULT '{}',
       actual_revenue DECIMAL(10,2),
       created_at TIMESTAMP DEFAULT NOW()
+    )`,
+
+    // ============================================================
+    // WORKFLOW TASKS — تدفق المهام بين الأقسام
+    // ============================================================
+    `CREATE TABLE IF NOT EXISTS workflow_tasks (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      from_dept VARCHAR(50),
+      to_dept VARCHAR(50),
+      task_type VARCHAR(100),
+      title TEXT,
+      description TEXT DEFAULT '',
+      data JSONB DEFAULT '{}',
+      priority VARCHAR(20) DEFAULT 'normal',
+      status VARCHAR(20) DEFAULT 'pending',
+      requires_mike_approval BOOLEAN DEFAULT FALSE,
+      requires_owner_approval BOOLEAN DEFAULT FALSE,
+      approved_by VARCHAR(50),
+      approved_at TIMESTAMP,
+      rejection_reason TEXT DEFAULT '',
+      completed_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+
+    // ============================================================
+    // PAYMENT CARDS — بطاقات الدفع
+    // ============================================================
+    `CREATE TABLE IF NOT EXISTS payment_cards (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      card_type VARCHAR(100) NOT NULL,
+      card_number VARCHAR(100) NOT NULL,
+      card_holder VARCHAR(255) NOT NULL,
+      notes TEXT DEFAULT '',
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+
+    // ============================================================
+    // AI FEATURES — جداول الذكاء الاصطناعي
+    // ============================================================
+    `CREATE TABLE IF NOT EXISTS sentiment_analysis (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      text TEXT,
+      source VARCHAR(50) DEFAULT 'manual',
+      customer_phone VARCHAR(50) DEFAULT '',
+      order_id INTEGER,
+      sentiment VARCHAR(20),
+      score DECIMAL(4,3) DEFAULT 0.5,
+      emotion VARCHAR(50),
+      summary TEXT DEFAULT '',
+      action VARCHAR(30) DEFAULT 'reply',
+      suggested_reply TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS chatbot_conversations (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      customer_phone VARCHAR(50),
+      customer_name VARCHAR(255),
+      message TEXT,
+      reply TEXT,
+      action VARCHAR(50) DEFAULT 'none',
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS service_reviews (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      order_id INTEGER,
+      customer_phone VARCHAR(50),
+      customer_name VARCHAR(255),
+      rating INTEGER CHECK(rating BETWEEN 1 AND 5),
+      comment TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT NOW()
     )`
   ];
 
@@ -589,6 +665,17 @@ try {
     pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS deposit_value DECIMAL(10,2) DEFAULT 0`).catch(() => {});
     pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS deposit_note TEXT DEFAULT ''`).catch(() => {});
     pool.query(`ALTER TABLE business_profile ADD COLUMN IF NOT EXISTS deposit_required BOOLEAN DEFAULT FALSE`).catch(() => {});
+    // أعمدة الفاتورة الجديدة
+    pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS delivery_cost DECIMAL(10,2) DEFAULT 0`).catch(() => {});
+    pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS receipt_image TEXT`).catch(() => {});
+    pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit DECIMAL(10,2) DEFAULT 0`).catch(() => {});
+    pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS remaining_amount DECIMAL(10,2) DEFAULT 0`).catch(() => {});
+    pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS order_details TEXT DEFAULT ''`).catch(() => {});
+    // أعمدة الطلبات الجديدة
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS receipt_image TEXT`).catch(() => {});
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_wa_link TEXT`).catch(() => {});
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_wa_link TEXT`).catch(() => {});
+    pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS track_token VARCHAR(64) UNIQUE`).catch(() => {});
   }, 2000);
 
 } catch (e) {
@@ -654,6 +741,8 @@ require('./routes/analytics')(app, pool, helpers);
 require('./routes/mike')(app, pool, helpers);
 require('./routes/images')(app, pool, helpers);
 require('./routes/settings')(app, pool, helpers);
+require('./routes/departments')(app, pool, helpers);
+require('./routes/ai_features')(app, pool, helpers);
 
 
 // ============================================================

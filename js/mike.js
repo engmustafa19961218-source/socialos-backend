@@ -13,6 +13,12 @@ function ldMike() {
     addCm('mike-msgs', 'ai', `مرحباً! أنا Mike ⚡ مساعدك التنفيذي الذكي.\n\nأستطيع تنفيذ أي أمر مباشرة — جرب قل لي:\n• "أضف طلب جديد لأحمد بمبلغ 50000"\n• "انشر بوست على Instagram"\n• "شو إيراداتي هذا الشهر؟"\n\nما الذي تريد تنفيذه؟`);
   }
   document.getElementById('mike-input').focus();
+  // تحميل صلاحيات Mike وعرضها
+  api('/api/mike/permissions').then(d => {
+    if (d.success) renderMikePermissions(d.permissions);
+  });
+  // تحميل المهام المعلقة
+  ldPendingTasks();
 }
 
 async function sendMike(text) {
@@ -107,9 +113,17 @@ let mikeGalleryImages = [], mikeGalleryFilter = 'all';
 function switchMikeTab(tab, btn) {
   document.getElementById('mike-tab-chat').style.display = tab === 'chat' ? '' : 'none';
   document.getElementById('mike-tab-gallery').style.display = tab === 'gallery' ? '' : 'none';
+  document.getElementById('mike-tab-tasks').style.display = tab === 'tasks' ? '' : 'none';
+  document.getElementById('mike-tab-permissions').style.display = tab === 'permissions' ? '' : 'none';
   document.querySelectorAll('#page-mike .fb').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   if (tab === 'gallery') ldMikeGallery();
+  if (tab === 'tasks') ldPendingTasksMike();
+  if (tab === 'permissions') {
+    api('/api/mike/permissions').then(d => {
+      if (d.success) renderMikePermissions(d.permissions);
+    });
+  }
 }
 
 async function ldMikeGallery() {

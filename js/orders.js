@@ -29,6 +29,10 @@ function rnOrds(ords){
           </select>
           <button class="btn bo bsm" onclick="waInv(${o.id})" style="margin-top:3px;width:100%">📱 واتساب</button>
           <button class="btn bo bsm" onclick="notifyCustomer(${o.id},'${o.status||'confirmed'}')" style="margin-top:3px;width:100%;font-size:.68rem">🔔 إشعار</button>
+          ${o.status==='confirmed'?`<label class="btn bo bsm" style="margin-top:3px;width:100%;font-size:.68rem;cursor:pointer;text-align:center">📸 وصل حوالة<input type="file" accept="image/*" style="display:none" onchange="uploadReceipt(${o.id},this.files[0])"></label>`:''}
+          ${o.payment_wa_link?`<button class="btn bo bsm" onclick="window.open('${o.payment_wa_link}','_blank')" style="margin-top:3px;width:100%;font-size:.65rem;background:rgba(37,211,102,.1);color:#25D366">💳 أرسل بطاقات</button>`:''}
+          ${o.status==='delivered'?`<button class="btn bo bsm" onclick="sendReviewLink(${o.id})" style="margin-top:3px;width:100%;font-size:.65rem;background:rgba(245,158,11,.1);color:#f59e0b">⭐ رابط تقييم</button>`:''}
+          <button class="btn bo bsm" onclick="sendTrackLink(${o.id},'${o.customer_phone}','${o.customer_name}')" style="margin-top:3px;width:100%;font-size:.65rem">🔍 رابط تتبع</button>
         </td>
       </tr>`;
     }).join('')}

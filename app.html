@@ -14,29 +14,135 @@
    Dark luxury • Glassmorphism • Fluid motion
 ============================================================ */
 :root {
-  --bg: #060910;
-  --bg2: #080c14;
-  --surface: #0d1120;
-  --surface2: #111827;
-  --surface3: #161e2e;
-  --border: #1e2a3d;
-  --border2: #253447;
-  --accent: #4f8ef7;
-  --accent2: #7c3aed;
-  --accent3: #f59e0b;
-  --accent4: #00d4aa;
-  --mike: #4f8ef7;
-  --text: #e2e8f5;
-  --text2: #64748b;
-  --text3: #334155;
-  --danger: #f04060;
-  --green: #00c896;
-  --radius: 14px;
-  --sidebar: 64px;
+  --bg:        #0a0a0c;
+  --bg2:       #0d0d10;
+  --surface:   #111114;
+  --surface2:  #18181c;
+  --surface3:  #222228;
+  --border:    #28282f;
+  --border2:   #1e1e24;
+  --accent:    #5b6af0;
+  --accent2:   #7c8cf8;
+  --accent3:   #f59e0b;
+  --accent4:   #22c55e;
+  --mike:      #5b6af0;
+  --text:      #f0f0f2;
+  --text2:     #8888a0;
+  --text3:     #44445a;
+  --danger:    #ef4444;
+  --green:     #22c55e;
+  --radius:    12px;
+  --sidebar:   60px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ─── DARK PRO OVERRIDES ─── */
+/* Cards */
+.card{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:none!important;}
+/* Inputs */
+.fi,.ft,.fs{background:var(--surface2)!important;border-color:var(--border)!important;color:var(--text)!important;border-radius:8px!important;}
+.fi:focus,.ft:focus,.fs:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(91,106,240,.12)!important;background:var(--surface2)!important;}
+/* Buttons */
+.btn.ba,.btn.bp{background:var(--accent)!important;border-color:var(--accent)!important;color:white!important;border-radius:8px!important;}
+.btn.ba:hover,.btn.bp:hover{background:var(--accent2)!important;}
+.btn.bo{background:var(--surface2)!important;border-color:var(--border)!important;color:var(--text2)!important;border-radius:8px!important;}
+.btn.bo:hover{background:var(--surface3)!important;color:var(--text)!important;}
+/* Tables */
+.tw table{border-collapse:collapse!important;}
+.tw th{background:var(--surface2)!important;color:var(--text3)!important;font-size:.7rem!important;text-transform:uppercase!important;letter-spacing:.5px!important;padding:8px 12px!important;border-bottom:1px solid var(--border)!important;}
+.tw td{padding:9px 12px!important;border-bottom:1px solid var(--border2)!important;font-size:.82rem!important;}
+.tw tr:hover td{background:var(--surface2)!important;}
+/* Badges */
+.badge{border-radius:6px!important;font-size:.68rem!important;font-weight:700!important;padding:2px 8px!important;}
+/* Page titles */
+.pt h1{font-size:1.2rem!important;font-weight:800!important;letter-spacing:-.3px!important;}
+/* Empty states */
+.empty{padding:40px 20px!important;text-align:center!important;}
+.empty .ei{font-size:2.2rem!important;margin-bottom:8px!important;opacity:.4!important;}
+.empty p{font-size:.82rem!important;color:var(--text3)!important;}
+/* Tabs / filter bars */
+.fbar{display:flex!important;gap:6px!important;flex-wrap:wrap!important;}
+.fb{background:var(--surface2)!important;border:1px solid var(--border)!important;color:var(--text2)!important;border-radius:20px!important;padding:5px 12px!important;font-size:.75rem!important;font-weight:700!important;cursor:pointer!important;transition:all .15s!important;}
+.fb.active,.fb:hover{background:rgba(91,106,240,.15)!important;color:var(--accent2)!important;border-color:rgba(91,106,240,.3)!important;}
+/* Stat cards */
+.stat-box{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:12px!important;}
+/* Modals */
+.modal-box,.modal-inner{background:var(--surface)!important;border:1px solid var(--border)!important;border-radius:16px!important;}
+.modal-header{border-bottom:1px solid var(--border)!important;padding:14px 16px!important;}
+/* Section headers */
+.sec-hd{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;}
+.sec-hd h3,.sec-hd h2{font-size:.9rem!important;font-weight:700!important;color:var(--text)!important;}
+/* Scrollbars */
+*::-webkit-scrollbar{width:4px!important;height:4px!important;}
+*::-webkit-scrollbar-track{background:transparent!important;}
+*::-webkit-scrollbar-thumb{background:var(--surface3)!important;border-radius:2px!important;}
+
+/* ─── BOTTOM NAV (Mobile) ─── */
+#bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  height:72px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  display:none;
+  align-items:flex-start;
+  padding-top:8px;
+  z-index:200;
+  box-shadow:0 -4px 30px rgba(0,0,0,.4);
+}
+@media(max-width:768px){
+  #bottom-nav{display:flex!important;}
+  #dashboard>.sidebar{display:none!important;}
+  .main-content,.mwrap{padding-bottom:80px!important;}
+}
+.bn-tab{
+  flex:1;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;padding:2px 0;
+  position:relative;
+}
+.bn-icon{
+  width:40px;height:26px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:12px;font-size:17px;
+  transition:all .2s;
+}
+.bn-tab.active .bn-icon{background:rgba(91,106,240,.15);}
+.bn-label{font-size:9.5px;font-weight:700;color:var(--text3);transition:color .2s;font-family:'Tajawal',sans-serif;}
+.bn-tab.active .bn-label{color:var(--accent2);}
+.bn-badge{
+  position:absolute;top:-2px;right:calc(50% - 20px);
+  background:var(--danger);color:white;
+  border-radius:10px;padding:1px 5px;
+  font-size:8.5px;font-weight:700;
+  border:2px solid var(--surface);
+  min-width:14px;text-align:center;
+  display:none;
+}
+.bn-badge.show{display:block!important;}
+
+/* ─── TOPBAR DARK PRO ─── */
+.topbar{
+  background:var(--surface)!important;
+  border-bottom:1px solid var(--border)!important;
+  height:46px!important;
+}
+
+/* ─── SIDEBAR DARK PRO ─── */
+.sidebar{background:var(--surface)!important;border-color:var(--border)!important;}
+.sidebar-logo{border-color:var(--border)!important;}
+.sidebar-logo-icon{background:linear-gradient(135deg,var(--accent),var(--accent2))!important;}
+.si-btn.active{background:rgba(91,106,240,.1)!important;color:var(--accent2)!important;}
+.si-btn.active::before{background:var(--accent)!important;}
+.mike-btn{background:linear-gradient(135deg,rgba(91,106,240,.15),rgba(124,140,248,.1))!important;border-color:rgba(91,106,240,.25)!important;}
+.mike-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent2))!important;}
+.nav-group-label{color:var(--text3)!important;}
+.nav-divider{background:var(--border)!important;}
+
+/* ─── PAGE TRANSITION ─── */
+.page{animation:fadeIn .15s ease!important;}
+@keyframes fadeIn{from{opacity:.6;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
 /* ─── NOISE OVERLAY ─── */
 body::before{
@@ -800,6 +906,10 @@ tr:hover td{background:rgba(79,142,247,.02);}
       <button class="si-btn" onclick="sp('delivery',this)"><span class="si-icon">🚚</span><span class="si-label">التوصيل</span></button>
 
       <div class="nav-divider"></div>
+      <div class="nav-group-label">🏢 الشركة الرقمية</div>
+      <button class="si-btn" onclick="sp('departments',this)" style="position:relative"><span class="si-icon">🏢</span><span class="si-label">الأقسام</span><span id="nav-pending-badge" style="position:absolute;top:6px;left:6px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:.6rem;font-weight:700;display:none;align-items:center;justify-content:center"></span></button>
+
+      <div class="nav-divider"></div>
       <div class="nav-group-label">النشر والترويج</div>
       <button class="si-btn" onclick="sp('posts',this)"><span class="si-icon">📱</span><span class="si-label">المنشورات</span></button>
       <button class="si-btn" onclick="sp('comments',this)"><span class="si-icon">💬</span><span class="si-label">التعليقات</span></button>
@@ -818,6 +928,7 @@ tr:hover td{background:rgba(79,142,247,.02);}
 
       <div class="nav-divider"></div>
       <div class="nav-group-label">التحليل والمراقبة</div>
+      <button class="si-btn" onclick="sp('ai',this)"><span class="si-icon">🤖</span><span class="si-label">الذكاء الاصطناعي</span></button>
       <button class="si-btn" onclick="sp('analytics',this)"><span class="si-icon">📊</span><span class="si-label">التحليلات</span></button>
       <button class="si-btn" onclick="sp('analytics-adv',this)"><span class="si-icon">📈</span><span class="si-label">تحليلات متقدمة</span></button>
 
@@ -965,6 +1076,8 @@ tr:hover td{background:rgba(79,142,247,.02);}
         <div class="fbar" style="margin-bottom:12px">
           <button class="fb active" onclick="switchMikeTab('chat',this)">💬 المحادثة</button>
           <button class="fb" onclick="switchMikeTab('gallery',this)">🖼️ معرض الصور</button>
+          <button class="fb" onclick="switchMikeTab('tasks',this)" style="position:relative">⏳ المهام<span id="mike-tab-badge" style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:white;border-radius:50%;width:14px;height:14px;font-size:.55rem;font-weight:700;display:none;align-items:center;justify-content:center"></span></button>
+          <button class="fb" onclick="switchMikeTab('permissions',this)">🔑 الصلاحيات</button>
         </div>
 
         <!-- تبويب المحادثة -->
@@ -989,6 +1102,25 @@ tr:hover td{background:rgba(79,142,247,.02);}
               </div>
               <div class="mike-hint" id="mike-hint-text">Mike يستطيع: إضافة طلبات · منتجات · عملاء · نشر على المنصات · إرسال واتساب · تقارير فورية</div>
             </div>
+          </div>
+        </div>
+
+        <!-- تبويب المهام المعلقة -->
+        <div id="mike-tab-tasks" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-weight:700;font-size:.88rem">⏳ مهام تحتاج موافقتك</div>
+            <button class="btn bo bsm" onclick="ldPendingTasks()">🔄 تحديث</button>
+          </div>
+          <div id="pending-tasks-list-mike">
+            <div class="empty"><div class="ei">✅</div><p>لا توجد مهام معلقة</p></div>
+          </div>
+        </div>
+
+        <!-- تبويب الصلاحيات -->
+        <div id="mike-tab-permissions" style="display:none">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:12px">🔑 صلاحيات Mike — المدير العام</div>
+          <div id="mike-permissions-section">
+            <div class="empty"><div class="ei">🔄</div><p>جاري التحميل...</p></div>
           </div>
         </div>
 
@@ -1464,8 +1596,135 @@ tr:hover td{background:rgba(79,142,247,.02);}
       <div id="invlist"><div class="empty"><div class="ei">✅</div><p>المخزون طبيعي</p></div></div>
     </div>
 
-    <!-- ANALYTICS -->
-    <div class="page" id="page-analytics">
+    <!-- AI FEATURES — ميزات الذكاء الاصطناعي -->
+    <div class="page" id="page-ai">
+      <div class="pt"><div><h1>🤖 الذكاء الاصطناعي</h1><p>تحليل · توقع · تصميم · تواصل</p></div></div>
+
+      <!-- تبويبات -->
+      <div class="fbar" style="margin-bottom:16px;flex-wrap:wrap;gap:6px">
+        <button class="fb active" onclick="switchAITab('sentiment',this)">😊 المشاعر</button>
+        <button class="fb" onclick="switchAITab('forecast',this)">📈 التوقعات</button>
+        <button class="fb" onclick="switchAITab('pricing',this)">💰 التسعير</button>
+        <button class="fb" onclick="switchAITab('weaknesses',this)">🔍 نقاط الضعف</button>
+        <button class="fb" onclick="switchAITab('reviews',this)">⭐ التقييمات</button>
+        <button class="fb" onclick="switchAITab('design',this)">🎨 قوالب التصميم</button>
+        <button class="fb" onclick="switchAITab('chatbot',this)">💬 ChatBot</button>
+      </div>
+
+      <!-- تحليل المشاعر -->
+      <div id="ai-tab-sentiment">
+        <div class="card">
+          <h3 style="margin-bottom:12px">😊 تحليل مشاعر الزبائن</h3>
+          <div class="fg"><label class="fl">نص التعليق أو الرسالة</label>
+            <textarea class="ft" id="sentiment-text" placeholder="الصق هنا تعليق الزبون أو رسالته..." style="min-height:80px"></textarea>
+          </div>
+          <div class="g2" style="margin-bottom:10px">
+            <input class="fi" id="sentiment-phone" placeholder="رقم هاتف الزبون (اختياري)" dir="ltr">
+            <select class="fs" id="sentiment-source">
+              <option value="comment">تعليق</option>
+              <option value="whatsapp">واتساب</option>
+              <option value="review">تقييم</option>
+              <option value="manual">يدوي</option>
+            </select>
+          </div>
+          <button class="btn ba" id="sentiment-btn" onclick="analyzeSentiment(document.getElementById('sentiment-text').value, document.getElementById('sentiment-source').value, document.getElementById('sentiment-phone').value)" style="width:100%;padding:11px">🔍 تحليل المشاعر</button>
+        </div>
+        <div id="sentiment-result" style="display:none;margin-bottom:14px"></div>
+        <div class="card">
+          <h3 style="margin-bottom:10px">📋 سجل التحليلات</h3>
+          <div id="sentiment-history"><div class="empty"><div class="ei">🔍</div><p>لا سجل بعد</p></div></div>
+        </div>
+      </div>
+
+      <!-- التوقعات -->
+      <div id="ai-tab-forecast" style="display:none">
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3>📈 توقع المبيعات — 7 أيام</h3>
+            <button class="btn ba bsm" onclick="ldForecast()" style="padding:8px 14px">🔄 تحديث</button>
+          </div>
+          <div id="forecast-result"><div class="empty"><div class="ei">📈</div><p>اضغط تحديث لرؤية التوقعات</p></div></div>
+        </div>
+      </div>
+
+      <!-- التسعير -->
+      <div id="ai-tab-pricing" style="display:none">
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3>💰 اقتراحات التسعير الذكي</h3>
+            <button class="btn ba bsm" onclick="ldPricing()" style="padding:8px 14px">🔄 تحليل</button>
+          </div>
+          <div id="pricing-result"><div class="empty"><div class="ei">💰</div><p>اضغط تحليل لاقتراحات الأسعار</p></div></div>
+        </div>
+      </div>
+
+      <!-- نقاط الضعف -->
+      <div id="ai-tab-weaknesses" style="display:none">
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3>🔍 تشخيص نقاط ضعف العمل</h3>
+            <button class="btn ba bsm" onclick="ldWeaknesses()" style="padding:8px 14px">🔄 تشخيص</button>
+          </div>
+          <div id="weaknesses-result"><div class="empty"><div class="ei">🔍</div><p>اضغط تشخيص لتحليل نقاط الضعف</p></div></div>
+        </div>
+      </div>
+
+      <!-- التقييمات -->
+      <div id="ai-tab-reviews" style="display:none">
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3>⭐ تقييمات الزبائن</h3>
+            <div id="reviews-avg" style="font-size:.9rem;font-weight:700;color:#f59e0b"></div>
+          </div>
+          <div id="reviews-list"><div class="empty"><div class="ei">⭐</div><p>لا تقييمات بعد</p></div></div>
+        </div>
+      </div>
+
+      <!-- قوالب التصميم -->
+      <div id="ai-tab-design" style="display:none">
+        <div class="card" style="margin-bottom:14px">
+          <h3 style="margin-bottom:12px">🎨 قوالب تصميم ذكية</h3>
+          <div class="g2" style="margin-bottom:10px">
+            <div class="fg" style="margin:0"><label class="fl">نوع البوست</label>
+              <select class="fs" id="dt-type">
+                <option>منتج جديد</option>
+                <option>عرض وتخفيض</option>
+                <option>إعلان</option>
+                <option>محتوى تعليمي</option>
+                <option>مناسبة</option>
+                <option>تفاعل</option>
+              </select>
+            </div>
+            <div class="fg" style="margin:0"><label class="fl">المناسبة (اختياري)</label>
+              <input class="fi" id="dt-occasion" placeholder="عيد، رمضان، أطفال الخير...">
+            </div>
+          </div>
+          <div class="g2" style="margin-bottom:12px">
+            <input class="fi" id="dt-product" placeholder="اسم المنتج (اختياري)">
+            <input class="fi" id="dt-price" placeholder="السعر (اختياري)" dir="ltr">
+          </div>
+          <button class="btn ba" onclick="generateDesignTemplate()" style="width:100%;padding:11px">✨ توليد القالب</button>
+        </div>
+        <div id="dt-result"></div>
+      </div>
+
+      <!-- ChatBot -->
+      <div id="ai-tab-chatbot" style="display:none">
+        <div class="card" style="margin-bottom:14px">
+          <h3 style="margin-bottom:12px">💬 اختبار ChatBot</h3>
+          <div style="font-size:.78rem;color:var(--text2);margin-bottom:12px;background:rgba(79,142,247,.08);border-radius:8px;padding:10px">
+            هذا ChatBot ذكي يرد على زبائنك تلقائياً. يمكنك تجربته هنا ثم ربطه بـ WhatsApp Business API.
+          </div>
+          <div id="chatbot-msgs" style="min-height:200px;max-height:350px;overflow-y:auto;background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px">
+            <input class="fi" id="chatbot-input" placeholder="اكتب رسالة تجريبية..." style="flex:1" onkeydown="if(event.key==='Enter')testChatbot()">
+            <button class="btn ba" onclick="testChatbot()" style="padding:10px 16px">إرسال</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->\n    <div class="page" id="page-analytics">
       <div class="pt"><div><h1>📊 التحليلات</h1></div><div class="pas"><select class="fs" style="width:auto;padding:7px 10px" id="aper" onchange="loadAna()"><option value="7">7 أيام</option><option value="30">30 يوم</option><option value="365">سنة</option></select></div></div>
       <div class="sg" id="anast"></div>
       <div id="ana-biz-kpi"></div>
@@ -2625,8 +2884,63 @@ tr:hover td{background:rgba(79,142,247,.02);}
       </div>
     </div>
 
-    <!-- NOTIFICATIONS -->
-    <div class="page" id="page-notifications">
+    <!-- DEPARTMENTS — الأقسام الستة -->
+    <div class="page" id="page-departments">
+      <div class="pt">
+        <div><h1>🏢 الأقسام</h1><p>الشركة الرقمية الكاملة</p></div>
+        <div class="pas">
+          <button class="btn ba bsm" onclick="loadDepartmentsPage()">🔄 تحديث</button>
+        </div>
+      </div>
+
+      <!-- Mike — المدير العام -->
+      <div class="card" style="border-color:rgba(108,99,255,.3);margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#6C63FF,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">🤖</div>
+          <div>
+            <div style="font-weight:800;font-size:1rem">Mike — المدير العام</div>
+            <div style="font-size:.76rem;color:var(--text2)">يراقب الأقسام ويوافق على المهام</div>
+          </div>
+          <div style="margin-right:auto;position:relative">
+            <button class="btn ba bsm" onclick="showPage('page-mike')" style="padding:8px 14px">لوحة Mike</button>
+            <span id="pending-tasks-badge" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;border-radius:50%;width:18px;height:18px;font-size:.65rem;font-weight:700;display:none;align-items:center;justify-content:center"></span>
+          </div>
+        </div>
+
+        <!-- المهام المعلقة -->
+        <div style="font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">⏳ مهام تحتاج موافقتك</div>
+        <div id="pending-tasks-list">
+          <div class="empty" style="padding:16px"><div class="ei" style="font-size:1.5rem">✅</div><p>لا توجد مهام معلقة</p></div>
+        </div>
+      </div>
+
+      <!-- صلاحيات Mike -->
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">🔑 صلاحيات Mike</div>
+      <div id="mike-permissions-section"></div>
+
+      <!-- الأقسام الستة -->
+      <div style="font-size:.85rem;font-weight:700;margin:16px 0 10px">🏢 الأقسام الستة</div>
+      <div id="dept-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+
+      <!-- سجل المهام -->
+      <div id="workflow-history-section" style="margin-top:20px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="font-size:.85rem;font-weight:700">📋 سجل المهام</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn fb dept-filter-btn active" data-dept="all" onclick="filterWorkflow('all',this)">الكل</button>
+            <button class="btn fb dept-filter-btn" data-dept="customer_service" onclick="filterWorkflow('customer_service',this)">💬 خدمة عملاء</button>
+            <button class="btn fb dept-filter-btn" data-dept="orders" onclick="filterWorkflow('orders',this)">📦 طلبات</button>
+            <button class="btn fb dept-filter-btn" data-dept="inventory" onclick="filterWorkflow('inventory',this)">🏪 مخزن</button>
+            <button class="btn fb dept-filter-btn" data-dept="design_publish" onclick="filterWorkflow('design_publish',this)">🎨 تصميم</button>
+            <button class="btn fb dept-filter-btn" data-dept="promotion" onclick="filterWorkflow('promotion',this)">📢 ترويج</button>
+            <button class="btn fb dept-filter-btn" data-dept="analytics" onclick="filterWorkflow('analytics',this)">📊 تحليل</button>
+          </div>
+        </div>
+        <div id="workflow-history"></div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->\n    <div class="page" id="page-notifications">
       <div class="pt"><div><h1>🔔 الإشعارات</h1></div><div class="pas"><button class="btn bo bsm" onclick="mrkRead()">✓ الكل مقروء</button></div></div>
 
       <!-- Push Notifications Card -->
@@ -2744,6 +3058,12 @@ tr:hover td{background:rgba(79,142,247,.02);}
   <div class="fg">
     <label class="fl">السعر الكلي *</label>
     <input class="fi" type="number" id="inv-total-calc" placeholder="0" min="0" oninput="calcInvRemaining()" dir="ltr">
+  </div>
+
+  <!-- تكلفة التوصيل -->
+  <div class="fg">
+    <label class="fl">تكلفة التوصيل</label>
+    <input class="fi" type="number" id="inv-delivery" placeholder="0" min="0" value="0" oninput="calcInvRemaining()" dir="ltr">
   </div>
 
   <!-- العربون -->
@@ -3150,12 +3470,44 @@ tr:hover td{background:rgba(79,142,247,.02);}
   <div id="expr" style="display:none;margin-top:12px;background:var(--surface2);border-radius:10px;padding:12px;font-size:.85rem;line-height:1.7;white-space:pre-wrap"></div>
 </div></div>
 
+<!-- BOTTOM NAV — Dark Pro Mobile -->
+<div id="bottom-nav">
+  <div class="bn-tab active" id="bn-home" onclick="bnSwitch('home',this)">
+    <div class="bn-icon">🏠</div>
+    <div class="bn-label">الرئيسية</div>
+  </div>
+  <div class="bn-tab" id="bn-orders" onclick="bnSwitch('orders',this)" style="position:relative">
+    <div class="bn-icon">🛒</div>
+    <div class="bn-label">الطلبات</div>
+    <div class="bn-badge" id="bn-orders-badge">5</div>
+  </div>
+  <div class="bn-tab" id="bn-products" onclick="bnSwitch('products',this)">
+    <div class="bn-icon">📦</div>
+    <div class="bn-label">المنتجات</div>
+  </div>
+  <div class="bn-tab" id="bn-mike" onclick="bnSwitch('mike',this)" style="position:relative">
+    <div class="bn-icon">🤖</div>
+    <div class="bn-label">Mike</div>
+    <div class="bn-badge" id="bn-mike-badge" style="background:var(--accent2)"></div>
+  </div>
+  <div class="bn-tab" id="bn-analytics" onclick="bnSwitch('analytics',this)">
+    <div class="bn-icon">📊</div>
+    <div class="bn-label">التحليل</div>
+  </div>
+  <div class="bn-tab" id="bn-more" onclick="bnSwitch('more',this)">
+    <div class="bn-icon" style="font-size:1.4rem;letter-spacing:-2px">•••</div>
+    <div class="bn-label">المزيد</div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script src="/js/core.js?v=3"></script>
 <script src="/js/employee.js?v=3"></script>
 <script src="/js/orders.js?v=3"></script>
 <script src="/js/store.js?v=3"></script>
 <script src="/js/social.js?v=3"></script>
+<script src="/js/departments.js?v=1"></script>
+<script src="/js/ai_features.js?v=1"></script>
 <script src="/js/mike.js?v=3"></script>
 <script src="/js/analytics.js?v=3"></script>
 <script src="/js/ads.js?v=3"></script>

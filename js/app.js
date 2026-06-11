@@ -17,7 +17,18 @@ function sp(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'mike') document.getElementById('mike-nav-btn')?.classList.add('active');
   closeMobileMenu();
-  const ldr = {home:ldHome,mike:ldMike,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs};
+  const ldr = {home:ldHome,mike:ldMike,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs,departments:loadDepartmentsPage,ai:loadAIPage,more:()=>{}};
+
+// Bottom Nav Switch
+function bnSwitch(name, btn) {
+  document.querySelectorAll('.bn-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (name === 'more') {
+    openMobileMenu();
+    return;
+  }
+  sp(name, null);
+}
   if (ldr[name]) ldr[name]();
   setTimeout(initImgPickers, 100);
   // إخفاء/إظهار الـ FAB حسب الصفحة
@@ -36,7 +47,7 @@ function goBack() {
   document.querySelectorAll('.si-btn').forEach(b => b.classList.remove('active'));
   const pg = document.getElementById('page-' + prev);
   if (pg) pg.classList.add('active');
-  const ldr = {home:ldHome,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,'team-meeting':ldTeamMeeting,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,comments:ldCommentsPosts,invoices:ldInvoices,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs,delivery:ldDelivery,retargeting:ldRetargeting,'employee-log':ldEmpLog,'session-detail':()=>{}};
+  const ldr = {home:ldHome,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'digital-team':ldDTeam,'team-meeting':ldTeamMeeting,coupons:ldCoups,loyalty:ldLoy,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,comments:ldCommentsPosts,invoices:ldInvoices,identity:ldIdentity,designer:ldDesigner,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs,delivery:ldDelivery,retargeting:ldRetargeting,'employee-log':ldEmpLog,'session-detail':()=>{},departments:loadDepartmentsPage,ai:loadAIPage};
   if (ldr[prev]) ldr[prev]();
 }
 

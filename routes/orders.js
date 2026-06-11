@@ -141,6 +141,66 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
             const waPhone = phone.startsWith('0') ? '964' + phone.slice(1) : phone;
             const cur = bp.currency || 'IQD';
             const store = bp.store_name || 'متجرنا';
+
+            // ===================================================
+            // عند تثبيت الطلب — موظف خدمة العملاء يرسل بطاقات الدفع تلقائياً
+            // ===================================================
+            if (updates.status === 'confirmed') {
+              try {
+                const cardsR = await pool.query(
+                  'SELECT * FROM payment_cards WHERE user_id=$1 AND is_active=true ORDER BY id',
+                  [req.user.id]
+                );
+                const cards = cardsR.rows;
+                if (cards.length > 0) {
+                  const fullOrderR = await pool.query('SELECT * FROM orders WHERE id=$1', [req.params.id]);
+                  const fo = fullOrderR.rows[0] || o;
+                  const dep = parseFloat(fo.deposit) || 0;
+                  const tot = parseFloat(fo.total) || 0;
+
+                  let payMsg = `💳 *أرقام الدفع — ${store}*\n\n`;
+                  payMsg += `أهلاً ${escapeHtml(o.customer_name||'')} 😊\n`;
+                  payMsg += `📦 طلب رقم: *#${req.params.id}*\n`;
+                  payMsg += `💵 المبلغ الكلي: *${Number(tot).toLocaleString()} ${cur}*\n`;
+                  if (dep > 0) payMsg += `💰 العربون المطلوب: *${Number(dep).toLocaleString()} ${cur}*\n`;
+                  payMsg += `\n📋 *أرقام الحوالة:*\n`;
+                  cards.forEach(card => {
+                    payMsg += `\n━━━━━━━━━━━━━━\n`;
+                    payMsg += `💳 ${card.card_type}\n`;
+                    payMsg += `🔢 ${card.card_number}\n`;
+                    payMsg += `👤 ${card.card_holder}\n`;
+                    if (card.notes) payMsg += `📝 ${card.notes}\n`;
+                  });
+                  payMsg += `\n━━━━━━━━━━━━━━\n`;
+                  payMsg += `📸 *بعد التحويل أرسل لنا صورة وصل الحوالة لإكمال الطلب*\n`;
+                  payMsg += `\nشكراً لثقتك ⚡ ${store}`;
+
+                  // إرسال تلقائي عبر WhatsApp API
+                  if (waR.rows[0]?.access_token && waR.rows[0]?.whatsapp_phone_id) {
+                    await fetch(`https://graph.facebook.com/v19.0/${waR.rows[0].whatsapp_phone_id}/messages`, {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${waR.rows[0].access_token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ messaging_product: 'whatsapp', to: waPhone, type: 'text', text: { body: payMsg } })
+                    }).catch(() => {});
+                  }
+
+                  // حفظ رابط الإرسال اليدوي
+                  const payWaUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(payMsg)}`;
+                  await pool.query('UPDATE orders SET payment_wa_link=$1 WHERE id=$2', [payWaUrl, req.params.id]).catch(() => {});
+
+                  // إنشاء مهمة workflow لقسم الطلبات — انتظار وصل الحوالة
+                  await pool.query(
+                    `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, description, data, status)
+                     VALUES ($1, 'customer_service', 'orders', 'awaiting_receipt', $2, $3, $4, 'pending')`,
+                    [req.user.id,
+                     `انتظار وصل الحوالة — طلب #${req.params.id}`,
+                     `تم إرسال بطاقات الدفع لـ ${escapeHtml(o.customer_name||'')} — في انتظار صورة الوصل`,
+                     JSON.stringify({ order_id: req.params.id, customer_name: o.customer_name, customer_phone: o.customer_phone })]
+                  ).catch(() => {});
+                }
+              } catch(e) { /* لا نوقف العملية */ }
+            }
+
             const statusMsgs = {
               confirmed: `✅ *تم تأكيد طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 😊\nطلبك رقم *#${req.params.id}* مؤكد.\n💰 ${Number(o.total||0).toLocaleString()} ${cur}\n⚡ ${store}`,
               shipped:   `🚚 *تم شحن طلبك!*\n\nأهلاً ${escapeHtml(o.customer_name||'')} 📦\nطلبك في الطريق${o.delivery_company?'\n🏢 '+escapeHtml(o.delivery_company):''}${o.delivery_link?'\n🔍 تتبع: *'+escapeHtml(o.delivery_link)+'*':''}\n⚡ ${store}`,
@@ -166,6 +226,45 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
       return res.json({ success: true });
     }
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// استقبال وصل الحوالة — يرسله لقسم الطلبات لإضافته للفاتورة
+// ============================================================
+app.post('/api/orders/:id/receipt', authenticateToken, async (req, res) => {
+  const { receipt_image } = req.body;
+  if (!receipt_image) return res.status(400).json({ success: false, message: 'صورة الوصل مطلوبة' });
+  try {
+    if (!pool) return res.status(503).json({ success: false, message: 'DB غير متاحة' });
+
+    // حفظ صورة الوصل في الطلب
+    await pool.query('UPDATE orders SET receipt_image=$1 WHERE id=$2 AND user_id=$3', [receipt_image, req.params.id, req.user.id]);
+
+    // إضافة الوصل للفاتورة المرتبطة إن وجدت
+    await pool.query('UPDATE invoices SET receipt_image=$1 WHERE order_id=$2 AND user_id=$3', [receipt_image, req.params.id, req.user.id]);
+
+    // تحديث مهمة workflow — تم استلام الوصل
+    await pool.query(
+      `UPDATE workflow_tasks SET status='completed', completed_at=NOW(), data=data||$1
+       WHERE user_id=$2 AND task_type='awaiting_receipt' AND (data->>'order_id')=$3 AND status='pending'`,
+      [JSON.stringify({ receipt_received: true }), req.user.id, String(req.params.id)]
+    ).catch(() => {});
+
+    // إنشاء مهمة جديدة لقسم الطلبات — أضف الوصل للفاتورة
+    await pool.query(
+      `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, description, data, status)
+       VALUES ($1, 'customer_service', 'orders', 'receipt_received', $2, $3, $4, 'pending')`,
+      [req.user.id,
+       `📸 وصل حوالة جديد — طلب #${req.params.id}`,
+       'تم استلام صورة وصل الحوالة من الزبون — يرجى إضافته للفاتورة',
+       JSON.stringify({ order_id: req.params.id, receipt_image: receipt_image.substring(0, 100) + '...' })]
+    ).catch(() => {});
+
+    // إشعار للتاجر
+    await notify(req.user.id, '📸 وصل حوالة جديد!', `تم استلام وصل الحوالة للطلب #${req.params.id}`, 'receipt');
+
+    res.json({ success: true, message: 'تم استلام الوصل وإرساله لقسم الطلبات' });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.delete('/api/orders/:id', authenticateToken, async (req, res) => {

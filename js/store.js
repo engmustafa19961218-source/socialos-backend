@@ -585,11 +585,16 @@ function clearReceiptImage() {
 
 function calcInvRemaining() {
   const total = parseFloat(document.getElementById('inv-total-calc')?.value) || 0;
+  const delivery = parseFloat(document.getElementById('inv-delivery')?.value) || 0;
   const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
-  const remaining = Math.max(0, total - deposit);
+  const grandTotal = total + delivery;
+  const remaining = Math.max(0, grandTotal - deposit);
   const cur = document.getElementById('inv-currency')?.value || 'IQD';
   const fmt = n => n.toLocaleString('ar-IQ') + ' ' + cur;
   if (document.getElementById('inv-remaining')) document.getElementById('inv-remaining').textContent = fmt(remaining);
+  // عرض الإجمالي مع التوصيل
+  const totalEl = document.getElementById('inv-grand-total');
+  if (totalEl) totalEl.textContent = fmt(grandTotal);
 }
 
 async function saveInvoice(print = false) {
@@ -609,6 +614,8 @@ async function saveInvoice(print = false) {
     tax_rate: 0,
     discount: 0,
     deposit: deposit,
+    delivery_cost: parseFloat(document.getElementById('inv-delivery')?.value) || 0,
+    order_details: document.getElementById('inv-details')?.value.trim() || '',
     receipt_image: invReceiptBase64 || null,
     notes: document.getElementById('inv-notes')?.value.trim(),
     due_date: document.getElementById('inv-duedate')?.value || null,
@@ -627,6 +634,7 @@ async function saveInvoice(print = false) {
     document.getElementById('inv-total-calc').value = '';
     document.getElementById('inv-deposit').value = '0';
     document.getElementById('inv-remaining').textContent = '0';
+    if (document.getElementById('inv-delivery')) document.getElementById('inv-delivery').value = '0';
     ldInvoices();
     if (print) printInvoice(d.invoice);
   } else toast('❌ ' + (d.message || 'خطأ'));
