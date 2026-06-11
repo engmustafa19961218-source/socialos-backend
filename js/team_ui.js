@@ -441,9 +441,7 @@ async function publishPost() {
 
   if (!content) return toast('⚠️ أدخل محتوى البوست');
 
-  const fullContent = hashtags ? content + '
-
-' + hashtags : content;
+  const fullContent = hashtags ? content + '\n\n' + hashtags : content;
 
   const btn = document.getElementById('pub-publish-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري النشر...'; }
@@ -498,4 +496,90 @@ async function ldPublishedPosts() {
         </div>
       </div>
     </div>`).join('');
+}
+
+// ============================================================
+// 🚀 تصميم + نشر في خطوة واحدة
+// ============================================================
+async function designAndPublish() {
+  const product = document.getElementById('dap-product')?.value.trim();
+  const platform = document.getElementById('dap-platform')?.value;
+  const bg = document.getElementById('dap-bg')?.value.trim();
+  const price = document.getElementById('dap-price')?.value.trim();
+  const instructions = document.getElementById('dap-instructions')?.value.trim();
+
+  if (!product) return toast('⚠️ أدخل اسم المنتج');
+
+  const btn = document.getElementById('dap-btn');
+  const resultEl = document.getElementById('dap-result');
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري التصميم والنشر...'; }
+  if (resultEl) resultEl.innerHTML = `
+    <div style="text-align:center;padding:20px">
+      <div style="font-size:2rem;margin-bottom:10px">⏳</div>
+      <div style="font-size:.85rem;color:var(--text2)">جاري التصميم بـ DALL-E وكتابة البوست ونشره...</div>
+    </div>`;
+
+  const d = await api('/api/team/design-and-publish', {
+    method: 'POST',
+    body: JSON.stringify({
+      product_name: product,
+      platform,
+      background_style: bg,
+      price,
+      custom_instructions: instructions
+    })
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = '🚀 صمم وانشر الآن'; }
+
+  if (!d.success) {
+    if (resultEl) resultEl.innerHTML = `<div class="empty"><div class="ei">❌</div><p>${esc(d.message||'خطأ')}</p></div>`;
+    return toast('❌ ' + (d.message || 'خطأ'));
+  }
+
+  // عرض النتيجة
+  if (resultEl) {
+    resultEl.innerHTML = `
+      <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <div style="font-size:1.4rem">${d.published ? '✅' : '🎨'}</div>
+          <div>
+            <div style="font-weight:700;font-size:.88rem">${d.published ? 'تم النشر بنجاح!' : 'تم التصميم — جاهز للنشر'}</div>
+            <div style="font-size:.74rem;color:var(--text2)">${platform} · ${product}</div>
+          </div>
+        </div>
+
+        ${d.image_url ? `
+          <img src="${d.image_url}" style="width:100%;border-radius:10px;margin-bottom:12px;max-height:300px;object-fit:cover" alt="تصميم ${esc(product)}">
+        ` : `
+          <div style="background:var(--s2);border-radius:10px;padding:12px;margin-bottom:12px">
+            <div style="font-size:.72rem;color:var(--text2);margin-bottom:5px">🎨 Prompt للتصميم:</div>
+            <div style="font-size:.78rem;direction:ltr;text-align:left">${esc(d.image_prompt||'')}</div>
+          </div>
+        `}
+
+        <div style="background:var(--s2);border-radius:10px;padding:12px;margin-bottom:10px">
+          <div style="font-size:.72rem;color:var(--text2);margin-bottom:5px">📝 نص البوست:</div>
+          <div style="font-size:.83rem;line-height:1.7;white-space:pre-wrap">${esc(d.caption||'')}</div>
+          ${d.hashtags?.length ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">${d.hashtags.map(h => `<span style="background:rgba(91,106,240,.1);color:var(--accent2);border-radius:20px;padding:2px 8px;font-size:.7rem">${esc(h)}</span>`).join('')}</div>` : ''}
+        </div>
+
+        ${d.story_text ? `<div style="background:rgba(91,106,240,.06);border-radius:8px;padding:10px;margin-bottom:10px;font-size:.78rem"><span style="color:var(--text2)">📖 ستوري: </span>${esc(d.story_text)}</div>` : ''}
+
+        <div style="display:flex;gap:8px">
+          <button class="btn bo bsm" onclick="navigator.clipboard.writeText(${JSON.stringify(d.full_caption||'')}).then(()=>toast('✅ تم النسخ'))" style="flex:1">📋 نسخ البوست</button>
+          ${!d.published ? `<button class="btn ba bsm" onclick="publishCopiedPost('${platform}',${JSON.stringify(d.full_caption||'')},${JSON.stringify(d.image_url||'')})" style="flex:1">🚀 نشر الآن</button>` : ''}
+        </div>
+      </div>`;
+  }
+}
+
+async function publishCopiedPost(platform, caption, imageUrl) {
+  const d = await api('/api/team/publish/post', {
+    method: 'POST',
+    body: JSON.stringify({ platform, content: caption, media_url: imageUrl || null })
+  });
+  if (d.success) toast('✅ تم النشر!');
+  else toast('❌ ' + (d.message || 'خطأ في النشر'));
 }

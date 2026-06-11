@@ -1895,9 +1895,43 @@ tr:hover td{background:rgba(79,142,247,.02);}
       <!-- ══ تصميم ونشر ══ -->
       <div id="team-tab-design" class="team-tab-content" style="display:none">
 
+        <!-- صمم وانشر في خطوة واحدة -->
+        <div class="card" style="border-color:rgba(34,197,94,.25);margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--green));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🚀</div>
+            <div>
+              <div style="font-weight:800;font-size:.9rem">صمم وانشر في خطوة واحدة</div>
+              <div style="font-size:.74rem;color:var(--text2)">DALL-E يصمم + AI يكتب البوست + ينشر تلقائياً</div>
+            </div>
+          </div>
+
+          <div class="fg"><label class="fl">اسم المنتج *</label><input class="fi" id="dap-product" placeholder="مثال: قميص كاجوال أزرق"></div>
+
+          <div class="g2">
+            <div class="fg" style="margin:0">
+              <label class="fl">المنصة</label>
+              <select class="fs" id="dap-platform">
+                <option value="instagram">📸 Instagram</option>
+                <option value="facebook">👤 Facebook</option>
+                <option value="tiktok">🎵 TikTok</option>
+              </select>
+            </div>
+            <div class="fg" style="margin:0">
+              <label class="fl">السعر (اختياري)</label>
+              <input class="fi" id="dap-price" placeholder="0" dir="ltr">
+            </div>
+          </div>
+
+          <div class="fg"><label class="fl">نوع الخلفية (اختياري)</label><input class="fi" id="dap-bg" placeholder="خلفية بيضاء، ورد، طبيعة، أسود..."></div>
+          <div class="fg"><label class="fl">تعليمات خاصة (اختياري)</label><input class="fi" id="dap-instructions" placeholder="مثال: أضف نص خصم 20%، اجعلها بألوان متجري..."></div>
+
+          <button class="btn ba bfull" id="dap-btn" onclick="designAndPublish()" style="padding:12px;font-size:.88rem">🚀 صمم وانشر الآن</button>
+          <div id="dap-result" style="margin-top:12px"></div>
+        </div>
+
         <!-- تصميم صور -->
         <div class="card" style="margin-bottom:10px">
-          <h3>🎨 تصميم مجموعة صور</h3>
+          <h3>🎨 تصميم مجموعة صور فقط</h3>
           <div class="fg"><label class="fl">اسم المنتج *</label><input class="fi" id="design-product" placeholder="مثال: قميص كاجوال أزرق"></div>
           <div class="fg"><label class="fl">نوع الخلفية</label><input class="fi" id="design-bg" placeholder="خلفية بيضاء، ورد، طبيعة..."></div>
           <div class="fg"><label class="fl">عدد التصاميم</label>
@@ -3580,20 +3614,20 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=13"></script>
-<script src="/js/employee.js?v=13"></script>
-<script src="/js/orders.js?v=13"></script>
-<script src="/js/store.js?v=13"></script>
-<script src="/js/social.js?v=13"></script>
-<script src="/js/departments.js?v=13"></script>
-<script src="/js/team_ui.js?v=13"></script>
-<script src="/js/ai_features.js?v=13"></script>
-<script src="/js/mike.js?v=13"></script>
-<script src="/js/analytics.js?v=13"></script>
-<script src="/js/ads.js?v=13"></script>
-<script src="/js/designer.js?v=13"></script>
-<script src="/js/app.js?v=13"></script>
-<script src="/js/app2.js?v=13"></script>
+<script src="/js/core.js?v=14"></script>
+<script src="/js/employee.js?v=14"></script>
+<script src="/js/orders.js?v=14"></script>
+<script src="/js/store.js?v=14"></script>
+<script src="/js/social.js?v=14"></script>
+<script src="/js/departments.js?v=14"></script>
+<script src="/js/team_ui.js?v=14"></script>
+<script src="/js/ai_features.js?v=14"></script>
+<script src="/js/mike.js?v=14"></script>
+<script src="/js/analytics.js?v=14"></script>
+<script src="/js/ads.js?v=14"></script>
+<script src="/js/designer.js?v=14"></script>
+<script src="/js/app.js?v=14"></script>
+<script src="/js/app2.js?v=14"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>

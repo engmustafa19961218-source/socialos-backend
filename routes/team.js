@@ -649,4 +649,167 @@ app.post('/api/team/publish/generate', authenticateToken, rateLimit(20, 60000), 
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+
+// ============================================================
+// 🚀 تصميم + كتابة بوست + نشر — كل شيء في خطوة واحدة
+// ============================================================
+app.post('/api/team/design-and-publish', authenticateToken, rateLimit(5, 60000), async (req, res) => {
+  const { product_name, background_style, platform, post_type, price, custom_instructions } = req.body;
+  if (!product_name) return res.status(400).json({ success: false, message: 'اسم المنتج مطلوب' });
+
+  const key = OPENROUTER_KEY();
+  if (!key) return res.status(503).json({ success: false, message: 'AI غير متاح' });
+
+  try {
+    const bp = await getBP(req.user.id);
+    const storeName = bp.store_name || 'متجرنا';
+    const currency = bp.currency || 'IQD';
+    const phone = bp.whatsapp_number || '';
+    const primaryColor = bp.primary_color || '#5b6af0';
+    const targetPlatform = platform || 'instagram';
+
+    // الخطوة 1: توليد prompt للصورة + محتوى البوست معاً
+    const combined = await askAIJSON(
+      `أنت مصمم محتوى محترف لمتجر "${storeName}" (${bp.business_type || ''}).
+       العملة: ${currency}
+       أسلوب التواصل: ${bp.communication_style || 'ودي'}
+       المنصة: ${targetPlatform}`,
+      `المنتج: ${product_name}
+       ${price ? `السعر: ${price} ${currency}` : ''}
+       ${background_style ? `الخلفية: ${background_style}` : ''}
+       ${custom_instructions ? `تعليمات خاصة: ${custom_instructions}` : ''}
+       
+       أنشئ:
+       1. prompt لـ DALL-E لتصميم صورة احترافية للمنتج
+       2. نص البوست الكامل مع إيموجي
+       3. هاشتاقات مناسبة
+       
+       أجب بـ JSON:
+       {
+         "image_prompt": "وصف الصورة بالإنجليزي لـ DALL-E",
+         "caption": "نص البوست الكامل بالعربية مع إيموجي",
+         "hashtags": ["#هاشتاق1", "#هاشتاق2", "#هاشتاق3"],
+         "story_text": "نص قصير للستوري",
+         "cta": "نص الدعوة للتصرف",
+         "watermark": "${storeName} | ${phone}"
+       }`,
+      800
+    );
+
+    if (!combined) throw new Error('فشل توليد المحتوى');
+
+    // الخطوة 2: توليد الصورة بـ DALL-E
+    let imageUrl = null;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (openaiKey && combined.image_prompt) {
+      try {
+        const imgRes = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt: `${combined.image_prompt}. Professional product photo, high quality, commercial photography style. Add subtle text overlay: "${storeName}"`,
+            size: '1024x1024',
+            quality: 'standard',
+            n: 1
+          })
+        });
+        const imgData = await imgRes.json();
+        imageUrl = imgData.data?.[0]?.url || null;
+      } catch(e) { /* نكمل بدون صورة */ }
+    }
+
+    // الخطوة 3: النشر على المنصة
+    const fullCaption = combined.caption + '\n\n' + (combined.hashtags || []).join(' ');
+    let publishResult = { status: 'pending', external_id: '' };
+
+    if (pool) {
+      // حفظ البوست في DB
+      const postR = await pool.query(
+        `INSERT INTO posts (user_id, platform, content, media_url, media_type, status)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [req.user.id, targetPlatform, fullCaption.substring(0,2200),
+         imageUrl, imageUrl ? 'image' : 'text', 'pending']
+      );
+
+      // محاولة النشر الفعلي على المنصة
+      const acc = await pool.query(
+        'SELECT access_token, page_id FROM social_accounts WHERE user_id=$1 AND platform=$2 AND is_connected=true',
+        [req.user.id, targetPlatform]
+      );
+
+      if (acc.rows.length && acc.rows[0].access_token) {
+        const { access_token, page_id } = acc.rows[0];
+        try {
+          if (targetPlatform === 'facebook' && page_id) {
+            const fbBody = { message: fullCaption.substring(0,2200), access_token };
+            if (imageUrl) fbBody.link = imageUrl;
+            const fbRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/feed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(fbBody)
+            });
+            const fbData = await fbRes.json();
+            if (fbData.id) {
+              publishResult = { status: 'published', external_id: fbData.id };
+              await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3',
+                ['published', fbData.id, postR.rows[0].id]);
+            }
+          } else if (targetPlatform === 'instagram' && page_id && imageUrl) {
+            const containerRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/media`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image_url: imageUrl, caption: fullCaption.substring(0,2200), access_token })
+            });
+            const container = await containerRes.json();
+            if (container.id) {
+              const publishRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/media_publish`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ creation_id: container.id, access_token })
+              });
+              const pub = await publishRes.json();
+              if (pub.id) {
+                publishResult = { status: 'published', external_id: pub.id };
+                await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3',
+                  ['published', pub.id, postR.rows[0].id]);
+              }
+            }
+          }
+        } catch(e) { /* فشل النشر - نبقي كـ pending */ }
+      }
+
+      // workflow: تصميم ونشر → تحليل
+      await pool.query(
+        `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, data, status)
+         VALUES ($1,'design_publish','analytics','design_and_publish',$2,$3,'completed')`,
+        [req.user.id,
+         `تصميم ونشر: ${product_name} على ${targetPlatform}`,
+         JSON.stringify({ product_name, platform: targetPlatform, image_url: imageUrl, published: publishResult.status === 'published' })]
+      ).catch(() => {});
+
+      // إشعار
+      await notify(req.user.id,
+        publishResult.status === 'published' ? `✅ تم نشر ${product_name}` : `🎨 تم تصميم ${product_name}`,
+        `على ${targetPlatform} — ${publishResult.status === 'published' ? 'نُشر بنجاح' : 'جاهز للنشر'}`,
+        'design_publish'
+      );
+    }
+
+    res.json({
+      success: true,
+      image_url: imageUrl,
+      image_prompt: combined.image_prompt,
+      caption: combined.caption,
+      hashtags: combined.hashtags,
+      story_text: combined.story_text,
+      full_caption: fullCaption,
+      platform: targetPlatform,
+      published: publishResult.status === 'published',
+      publish_status: publishResult
+    });
+
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 };
