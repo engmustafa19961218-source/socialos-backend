@@ -302,6 +302,8 @@ async function ldSets(){
   biz = p;
   // تحميل سياسة العربون
   ldDepositPolicy();
+  // تحميل بطاقات الدفع
+  ldPaymentCards();
 }
 
 async function saveSets(){
@@ -651,10 +653,10 @@ function printInvoice(inv) {
   <style>body{font-family:'Tajawal',Arial,sans-serif;padding:30px;color:#111;direction:rtl}
   h1{font-size:1.4rem;margin:0}table{width:100%;border-collapse:collapse;margin:14px 0}
   th,td{border:1px solid #ddd;padding:8px;text-align:right}th{background:#f5f5f5}
-  .total{font-weight:700;font-size:1.1rem}.logo{font-size:1.8rem;font-weight:900;color:#5b6af0}
+  .total{font-weight:700;font-size:1.1rem}.logo{font-size:1.8rem;font-weight:900;color:#4f8ef7}
   .meta{color:#666;font-size:.85rem}.footer{margin-top:20px;text-align:center;color:#aaa;font-size:.75rem}
   @media print{button{display:none}}</style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #5b6af0;padding-bottom:14px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #4f8ef7;padding-bottom:14px">
     <div><div class="logo">SocialOS</div><div class="meta">نظام إدارة الأعمال</div></div>
     <div style="text-align:left"><h1>فاتورة</h1><div class="meta">${esc(inv.invoice_number)}</div>
     <div class="meta">${new Date(inv.created_at).toLocaleDateString('ar-IQ')}</div></div>
@@ -670,11 +672,11 @@ function printInvoice(inv) {
     <div style="display:flex;justify-content:space-between;padding:4px 0"><span>المجموع الفرعي:</span><span>${fmt(inv.subtotal)}</span></div>
     ${inv.tax_rate>0?`<div style="display:flex;justify-content:space-between;padding:4px 0"><span>ضريبة (${inv.tax_rate}%):</span><span>${fmt(inv.tax_amount)}</span></div>`:''}
     ${inv.discount>0?`<div style="display:flex;justify-content:space-between;padding:4px 0"><span>خصم:</span><span>- ${fmt(inv.discount)}</span></div>`:''}
-    <div class="total" style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #5b6af0;margin-top:6px"><span>الإجمالي:</span><span>${fmt(inv.total)}</span></div>
+    <div class="total" style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #4f8ef7;margin-top:6px"><span>الإجمالي:</span><span>${fmt(inv.total)}</span></div>
   </div>
   ${inv.notes?`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border-radius:8px"><b>ملاحظات:</b> ${esc(inv.notes)}</div>`:''}
   <div class="footer">شكراً لتعاملكم معنا • SocialOS</div>
-  <div style="text-align:center;margin-top:16px"><button onclick="window.print()" style="padding:10px 24px;background:#5b6af0;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1rem">🖨️ طباعة</button></div>
+  <div style="text-align:center;margin-top:16px"><button onclick="window.print()" style="padding:10px 24px;background:#4f8ef7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1rem">🖨️ طباعة</button></div>
   </body></html>`);
   w.document.close();
 }
@@ -804,3 +806,60 @@ async function speakResponse(text) {
   }
 }
 
+
+// ============================================================
+// بطاقات الدفع — في صفحة الإعدادات
+// ============================================================
+async function ldPaymentCards() {
+  const d = await api('/api/payment-cards');
+  const el = document.getElementById('payment-cards-list');
+  if (!el) return;
+  if (!d.success || !d.cards?.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">💳</div><p>لا توجد بطاقات بعد — أضف بطاقة لإرسالها للزبائن تلقائياً</p></div>';
+    return;
+  }
+  el.innerHTML = d.cards.map(c => `
+    <div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;background:rgba(91,106,240,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">💳</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:.88rem">${esc(c.card_type)}</div>
+        <div style="font-size:.78rem;color:var(--text2);direction:ltr;text-align:right">${esc(c.card_number)}</div>
+        <div style="font-size:.75rem;color:var(--text2)">${esc(c.card_holder)}</div>
+        ${c.notes ? `<div style="font-size:.72rem;color:var(--text3)">${esc(c.notes)}</div>` : ''}
+      </div>
+      <button class="btn bd bsm" onclick="deletePaymentCard(${c.id})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function showAddCardModal() {
+  document.getElementById('card-type').value = 'Visa';
+  document.getElementById('card-number').value = '';
+  document.getElementById('card-holder').value = '';
+  document.getElementById('card-notes').value = '';
+  openModal('modal-add-card');
+}
+
+async function savePaymentCard() {
+  const card_type = document.getElementById('card-type').value;
+  const card_number = document.getElementById('card-number').value.trim();
+  const card_holder = document.getElementById('card-holder').value.trim();
+  const notes = document.getElementById('card-notes').value.trim();
+  if (!card_number || !card_holder) return toast('⚠️ رقم البطاقة واسم الحامل مطلوبان');
+  const d = await api('/api/payment-cards', {
+    method: 'POST',
+    body: JSON.stringify({ card_type, card_number, card_holder, notes })
+  });
+  if (d.success) {
+    toast('✅ تم إضافة البطاقة');
+    closeModal('modal-add-card');
+    ldPaymentCards();
+  } else toast('❌ ' + (d.message || 'خطأ'));
+}
+
+async function deletePaymentCard(id) {
+  if (!confirm('حذف هذه البطاقة؟')) return;
+  const d = await api(`/api/payment-cards/${id}`, { method: 'DELETE' });
+  if (d.success) { toast('🗑️ تم الحذف'); ldPaymentCards(); }
+  else toast('❌ ' + (d.message || 'خطأ'));
+}

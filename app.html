@@ -2770,6 +2770,58 @@ img.prod-img { width: 38px; height: 38px; border-radius: 10px; object-fit: cover
           </div>
         </div>
       </div>
+
+      <!-- بطاقات الدفع -->
+      <div class="card" style="border-color:rgba(91,106,240,.2);margin-top:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3>💳 بطاقات الدفع</h3>
+          <button class="btn ba bsm" onclick="showAddCardModal()">+ إضافة بطاقة</button>
+        </div>
+        <div style="font-size:.78rem;color:var(--text2);margin-bottom:12px;background:rgba(91,106,240,.06);border-radius:8px;padding:10px">
+          عند تثبيت أي طلب، يرسل الموظف الرقمي هذه البطاقات تلقائياً للزبون على WhatsApp
+        </div>
+        <div id="payment-cards-list">
+          <div class="empty"><div class="ei">💳</div><p>لا توجد بطاقات بعد</p></div>
+        </div>
+      </div>
+
+      <!-- Modal إضافة بطاقة -->
+      <div class="mo" id="modal-add-card">
+        <div class="modal-box">
+          <div class="modal-header">
+            <h2>💳 إضافة بطاقة دفع</h2>
+            <button class="btn bo bsm" onclick="closeModal('modal-add-card')">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="fg">
+              <label class="fl">نوع البطاقة</label>
+              <select class="fs" id="card-type">
+                <option>Visa</option>
+                <option>MasterCard</option>
+                <option>ZainCash</option>
+                <option>Asia Hawala</option>
+                <option>QiCard</option>
+                <option>FastPay</option>
+                <option>FIB</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">رقم البطاقة / الحساب</label>
+              <input class="fi" id="card-number" placeholder="0000 0000 0000 0000" dir="ltr">
+            </div>
+            <div class="fg">
+              <label class="fl">اسم صاحب البطاقة</label>
+              <input class="fi" id="card-holder" placeholder="الاسم الكامل">
+            </div>
+            <div class="fg">
+              <label class="fl">ملاحظة (اختياري)</label>
+              <input class="fi" id="card-notes" placeholder="مثال: للتحويل من الساعة 9 صباحاً">
+            </div>
+            <button class="btn ba bfull" onclick="savePaymentCard()">💾 حفظ البطاقة</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- DEPARTMENTS — الأقسام الستة -->
@@ -3402,19 +3454,19 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=7"></script>
-<script src="/js/employee.js?v=7"></script>
-<script src="/js/orders.js?v=7"></script>
-<script src="/js/store.js?v=7"></script>
-<script src="/js/social.js?v=7"></script>
-<script src="/js/departments.js?v=7"></script>
-<script src="/js/ai_features.js?v=7"></script>
-<script src="/js/mike.js?v=7"></script>
-<script src="/js/analytics.js?v=7"></script>
-<script src="/js/ads.js?v=7"></script>
-<script src="/js/designer.js?v=7"></script>
-<script src="/js/app.js?v=7"></script>
-<script src="/js/app2.js?v=7"></script>
+<script src="/js/core.js?v=8"></script>
+<script src="/js/employee.js?v=8"></script>
+<script src="/js/orders.js?v=8"></script>
+<script src="/js/store.js?v=8"></script>
+<script src="/js/social.js?v=8"></script>
+<script src="/js/departments.js?v=8"></script>
+<script src="/js/ai_features.js?v=8"></script>
+<script src="/js/mike.js?v=8"></script>
+<script src="/js/analytics.js?v=8"></script>
+<script src="/js/ads.js?v=8"></script>
+<script src="/js/designer.js?v=8"></script>
+<script src="/js/app.js?v=8"></script>
+<script src="/js/app2.js?v=8"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>
