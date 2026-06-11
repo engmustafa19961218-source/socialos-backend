@@ -4,8 +4,8 @@ async function ldIdentity(){
   const id = d.identity || {};
   document.getElementById('id-logo').value = id.logo_url||'';
   document.getElementById('id-cover').value = id.cover_url||'';
-  document.getElementById('id-c1').value = id.primary_color||'#4f8ef7';
-  document.getElementById('id-c1t').value = id.primary_color||'#4f8ef7';
+  document.getElementById('id-c1').value = id.primary_color||'#5b6af0';
+  document.getElementById('id-c1t').value = id.primary_color||'#5b6af0';
   document.getElementById('id-c2').value = id.secondary_color||'#7c3aed';
   document.getElementById('id-c2t').value = id.secondary_color||'#7c3aed';
   document.getElementById('id-c3').value = id.accent_color||'#00d4aa';
@@ -16,7 +16,7 @@ async function ldIdentity(){
   document.getElementById('id-wmp').value = id.watermark_position||'bottom-right';
   document.getElementById('id-wmo').value = id.watermark_opacity||0.8;
   document.getElementById('id-wmo-val').textContent = id.watermark_opacity||0.8;
-  document.getElementById('prv-c1').style.background = id.primary_color||'#4f8ef7';
+  document.getElementById('prv-c1').style.background = id.primary_color||'#5b6af0';
   document.getElementById('prv-c2').style.background = id.secondary_color||'#7c3aed';
   document.getElementById('prv-c3').style.background = id.accent_color||'#00d4aa';
   if (id.logo_url) prvLogo();
@@ -379,7 +379,7 @@ function renderCanvas(){
   if (canvasImg) {
     ctx.drawImage(canvasImg, 0, 0, canvas.width, canvas.height);
   } else {
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#18181c';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#4a5a7a';
     ctx.font = '16px Tajawal';
@@ -412,10 +412,10 @@ function renderCanvas(){
       ctx.globalAlpha = 0.75;
       if (t.bg === 'black') ctx.fillStyle = '#000000';
       else if (t.bg === 'white') ctx.fillStyle = '#ffffff';
-      else if (t.bg === 'accent') ctx.fillStyle = '#4f8ef7';
+      else if (t.bg === 'accent') ctx.fillStyle = '#5b6af0';
       else if (t.bg === 'gradient') {
         const grad = ctx.createLinearGradient(bx, by, bx+bw, by);
-        grad.addColorStop(0, '#4f8ef7'); grad.addColorStop(1, '#7c3aed');
+        grad.addColorStop(0, '#5b6af0'); grad.addColorStop(1, '#7c3aed');
         ctx.fillStyle = grad;
       }
       ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 8) : ctx.fillRect(bx, by, bw, bh);
@@ -629,7 +629,7 @@ async function batchSuggestDecor() {
     prv.style.display = 'block';
     prv.innerHTML = `
       <div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">
-        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(${d.decor.gradient_direction||'135deg'},${(d.decor.bg_colors||['#4f8ef7','#7c3aed']).join(',')});flex-shrink:0"></div>
+        <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(${d.decor.gradient_direction||'135deg'},${(d.decor.bg_colors||['#5b6af0','#7c3aed']).join(',')});flex-shrink:0"></div>
         <div><div style="font-weight:700;font-size:.84rem">${esc(d.decor.style_name||'')}</div><div style="font-size:.75rem;color:var(--text2)">${esc(d.decor.description||'')}</div></div>
       </div>
       ${d.decor.texts?.length ? `<div style="font-size:.75rem;color:var(--text2)">نصوص مقترحة: ${d.decor.texts.map(t=>esc(t.text)).join(' · ')}</div>` : ''}
@@ -645,7 +645,7 @@ function applyDecorToCanvas(canvas, imgEl, config, extraText) {
 
   // ─── الخلفية ───
   if (config.bg_type === 'gradient' || !config.bg_type) {
-    const colors = config.bg_colors || ['#4f8ef7', '#7c3aed'];
+    const colors = config.bg_colors || ['#5b6af0', '#7c3aed'];
     const angle = parseFloat(config.gradient_direction||'135deg') * Math.PI / 180;
     const x1 = w/2 - Math.cos(angle) * w/2, y1 = h/2 - Math.sin(angle) * h/2;
     const x2 = w/2 + Math.cos(angle) * w/2, y2 = h/2 + Math.sin(angle) * h/2;
@@ -654,7 +654,7 @@ function applyDecorToCanvas(canvas, imgEl, config, extraText) {
     grad.addColorStop(1, colors[1] || colors[0]);
     ctx.fillStyle = grad;
   } else if (config.bg_type === 'solid') {
-    ctx.fillStyle = config.bg_colors?.[0] || '#4f8ef7';
+    ctx.fillStyle = config.bg_colors?.[0] || '#5b6af0';
   } else if (config.bg_type === 'pattern') {
     // نمط نقاط
     ctx.fillStyle = config.bg_colors?.[0] || '#1a2234';
@@ -720,10 +720,10 @@ function applyDecorToCanvas(canvas, imgEl, config, extraText) {
       else if (t.bg === 'white') ctx.fillStyle = '#ffffff';
       else if (t.bg === 'gradient') {
         const g = ctx.createLinearGradient(tx-tw/2-12, 0, tx+tw/2+12, 0);
-        g.addColorStop(0, config.bg_colors?.[0]||'#4f8ef7');
+        g.addColorStop(0, config.bg_colors?.[0]||'#5b6af0');
         g.addColorStop(1, config.bg_colors?.[1]||'#7c3aed');
         ctx.fillStyle = g;
-      } else ctx.fillStyle = '#4f8ef7';
+      } else ctx.fillStyle = '#5b6af0';
       const bh = fs + 12;
       if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(tx-tw/2-12, ty-fs-4, tw+24, bh, 8); ctx.fill(); }
       else ctx.fillRect(tx-tw/2-12, ty-fs-4, tw+24, bh);
@@ -742,7 +742,7 @@ function getCurrentDecor() {
   return {
     bg_type: 'gradient',
     bg_colors: [
-      document.getElementById('batch-color1-hex')?.value || '#4f8ef7',
+      document.getElementById('batch-color1-hex')?.value || '#5b6af0',
       document.getElementById('batch-color2-hex')?.value || '#7c3aed'
     ],
     gradient_direction: '135deg',

@@ -179,7 +179,7 @@ body::after{
 .auth-feat-text b{color:var(--text);display:block;font-size:.86rem;margin-bottom:1px;}
 
 .auth-card{
-  background:#0d1120;
+  background:#111114;
   border:1px solid var(--border2);
   border-radius:22px;
   padding:34px 30px;
@@ -266,7 +266,7 @@ body::after{
 /* ─── SIDEBAR ─── */
 .sidebar{
   position:fixed;top:0;right:0;bottom:0;width:var(--sidebar);
-  background:#080c14;
+  background:#111114;
   border-left:1px solid var(--border);
   display:flex;flex-direction:column;align-items:center;
   z-index:300;
@@ -485,7 +485,7 @@ body::after{
 .mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:400;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(6px);}
 .mo.show{display:flex;}
 .mdl{
-  background:#0d1120;border:1px solid var(--border2);border-radius:20px;
+  background:#111114;border:1px solid var(--border2);border-radius:20px;
   padding:24px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;
   animation:slideUp .25s cubic-bezier(.16,1,.3,1);
   box-shadow:0 32px 80px rgba(0,0,0,.6);
@@ -637,7 +637,7 @@ tr:hover td{background:rgba(79,142,247,.02);}
 #mike-float-panel{
   position:fixed;bottom:90px;left:16px;z-index:499;
   width:340px;max-width:calc(100vw - 32px);
-  background:#0d1120;border:1px solid var(--border2);border-radius:20px;
+  background:#111114;border:1px solid var(--border2);border-radius:20px;
   box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,247,.1);
   display:none;flex-direction:column;overflow:hidden;
   animation:floatIn .25s cubic-bezier(.16,1,.3,1);
@@ -1150,10 +1150,10 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 
   <!-- MOBILE MENU — قائمة كاملة -->
   <div id="mobile-menu" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:350;backdrop-filter:blur(8px)" onclick="if(event.target===this)closeMobileMenu()">
-    <div style="position:absolute;top:0;right:0;bottom:0;width:290px;background:#080c14;border-left:1px solid var(--border);overflow-y:auto;animation:slideInRight .3s cubic-bezier(.16,1,.3,1)">
+    <div style="position:absolute;top:0;right:0;bottom:0;width:290px;background:#111114;border-left:1px solid var(--border);overflow-y:auto;animation:slideInRight .3s cubic-bezier(.16,1,.3,1)">
 
       <!-- Header -->
-      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#080c14;z-index:1">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#111114;z-index:1">
         <div style="display:flex;align-items:center;gap:9px">
           <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:.8rem">⚡</div>
           <span style="font-weight:900;font-size:.9rem">SocialOS</span>
@@ -2220,14 +2220,14 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           <div class="card">
             <h3>🎨 الألوان</h3>
             <div class="g2">
-              <div class="fg"><label class="fl">اللون الرئيسي</label><div style="display:flex;gap:6px;align-items:center"><input type="color" id="id-c1" value="#4f8ef7" style="width:40px;height:36px;border:none;border-radius:8px;cursor:pointer"><input class="fi" id="id-c1t" value="#4f8ef7" style="flex:1;font-family:monospace;font-size:.82rem" oninput="syncColor('id-c1','id-c1t')"></div></div>
+              <div class="fg"><label class="fl">اللون الرئيسي</label><div style="display:flex;gap:6px;align-items:center"><input type="color" id="id-c1" value="#5b6af0" style="width:40px;height:36px;border:none;border-radius:8px;cursor:pointer"><input class="fi" id="id-c1t" value="#5b6af0" style="flex:1;font-family:monospace;font-size:.82rem" oninput="syncColor('id-c1','id-c1t')"></div></div>
               <div class="fg"><label class="fl">اللون الثانوي</label><div style="display:flex;gap:6px;align-items:center"><input type="color" id="id-c2" value="#7c3aed" style="width:40px;height:36px;border:none;border-radius:8px;cursor:pointer"><input class="fi" id="id-c2t" value="#7c3aed" style="flex:1;font-family:monospace;font-size:.82rem" oninput="syncColor('id-c2','id-c2t')"></div></div>
               <div class="fg"><label class="fl">لون التمييز</label><div style="display:flex;gap:6px;align-items:center"><input type="color" id="id-c3" value="#00d4aa" style="width:40px;height:36px;border:none;border-radius:8px;cursor:pointer"><input class="fi" id="id-c3t" value="#00d4aa" style="flex:1;font-family:monospace;font-size:.82rem" oninput="syncColor('id-c3','id-c3t')"></div></div>
             </div>
             <div style="margin-top:8px;padding:12px;border-radius:10px;background:var(--surface2)">
               <div style="font-size:.78rem;color:var(--text2);margin-bottom:7px">معاينة الألوان</div>
               <div style="display:flex;gap:7px">
-                <div id="prv-c1" style="flex:1;height:32px;border-radius:8px;background:#4f8ef7"></div>
+                <div id="prv-c1" style="flex:1;height:32px;border-radius:8px;background:#5b6af0"></div>
                 <div id="prv-c2" style="flex:1;height:32px;border-radius:8px;background:#7c3aed"></div>
                 <div id="prv-c3" style="flex:1;height:32px;border-radius:8px;background:#00d4aa"></div>
               </div>
@@ -2299,7 +2299,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           <div class="card" style="border-color:rgba(79,142,247,.2)">
             <h3>👁️ معاينة الهوية</h3>
             <div id="id-preview" style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
-              <div id="id-prv-logo" style="width:60px;height:60px;border-radius:12px;background:linear-gradient(135deg,#4f8ef7,#7c3aed);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🏪</div>
+              <div id="id-prv-logo" style="width:60px;height:60px;border-radius:12px;background:linear-gradient(135deg,#5b6af0,#7c3aed);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🏪</div>
               <div id="id-prv-name" style="font-weight:900;font-size:1rem;margin-bottom:4px">اسم متجرك</div>
               <div id="id-prv-style" style="font-size:.75rem;color:var(--text2)">ودي وقريب</div>
             </div>
@@ -2371,8 +2371,8 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
               <div class="g2">
                 <div class="fg"><label class="fl">لون الخلفية الأساسي</label>
                   <div style="display:flex;gap:5px;align-items:center">
-                    <input type="color" id="batch-color1" value="#4f8ef7" style="width:38px;height:36px;border:none;border-radius:8px;cursor:pointer">
-                    <input class="fi" id="batch-color1-hex" value="#4f8ef7" style="flex:1;font-family:monospace;font-size:.8rem">
+                    <input type="color" id="batch-color1" value="#5b6af0" style="width:38px;height:36px;border:none;border-radius:8px;cursor:pointer">
+                    <input class="fi" id="batch-color1-hex" value="#5b6af0" style="flex:1;font-family:monospace;font-size:.8rem">
                   </div>
                 </div>
                 <div class="fg"><label class="fl">اللون الثانوي</label>
@@ -2473,7 +2473,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
               </div>
               <div id="rm-bg-result" style="display:none;margin-top:12px">
                 <div style="font-size:.78rem;color:var(--green);margin-bottom:7px">✅ تمت إزالة الخلفية</div>
-                <img id="rm-bg-img" style="max-width:100%;border-radius:10px;border:1px solid var(--border);background:repeating-conic-gradient(#1e2a3d 0% 25%,#111827 0% 50%) 0 0/20px 20px">
+                <img id="rm-bg-img" style="max-width:100%;border-radius:10px;border:1px solid var(--border);background:repeating-conic-gradient(#28282f 0% 25%,#18181c 0% 50%) 0 0/20px 20px">
                 <!-- Product Placement -->
                 <div style="margin-top:12px;padding:12px;background:var(--surface2);border-radius:10px">
                   <div style="font-weight:700;font-size:.85rem;margin-bottom:8px">🏠 ضع المنتج في بيئة</div>
@@ -2521,7 +2521,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
                 </div>
               </div>
               <!-- Canvas -->
-              <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:repeating-conic-gradient(#1e2a3d 0% 25%,#111827 0% 50%) 0 0/16px 16px;margin-bottom:10px;text-align:center">
+              <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:repeating-conic-gradient(#28282f 0% 25%,#18181c 0% 50%) 0 0/16px 16px;margin-bottom:10px;text-align:center">
                 <canvas id="des-canvas" style="max-width:100%;display:block;margin:0 auto;cursor:crosshair"></canvas>
               </div>
               <div style="display:flex;gap:7px">

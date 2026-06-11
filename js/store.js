@@ -651,10 +651,10 @@ function printInvoice(inv) {
   <style>body{font-family:'Tajawal',Arial,sans-serif;padding:30px;color:#111;direction:rtl}
   h1{font-size:1.4rem;margin:0}table{width:100%;border-collapse:collapse;margin:14px 0}
   th,td{border:1px solid #ddd;padding:8px;text-align:right}th{background:#f5f5f5}
-  .total{font-weight:700;font-size:1.1rem}.logo{font-size:1.8rem;font-weight:900;color:#4f8ef7}
+  .total{font-weight:700;font-size:1.1rem}.logo{font-size:1.8rem;font-weight:900;color:#5b6af0}
   .meta{color:#666;font-size:.85rem}.footer{margin-top:20px;text-align:center;color:#aaa;font-size:.75rem}
   @media print{button{display:none}}</style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #4f8ef7;padding-bottom:14px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:2px solid #5b6af0;padding-bottom:14px">
     <div><div class="logo">SocialOS</div><div class="meta">نظام إدارة الأعمال</div></div>
     <div style="text-align:left"><h1>فاتورة</h1><div class="meta">${esc(inv.invoice_number)}</div>
     <div class="meta">${new Date(inv.created_at).toLocaleDateString('ar-IQ')}</div></div>
@@ -670,11 +670,11 @@ function printInvoice(inv) {
     <div style="display:flex;justify-content:space-between;padding:4px 0"><span>المجموع الفرعي:</span><span>${fmt(inv.subtotal)}</span></div>
     ${inv.tax_rate>0?`<div style="display:flex;justify-content:space-between;padding:4px 0"><span>ضريبة (${inv.tax_rate}%):</span><span>${fmt(inv.tax_amount)}</span></div>`:''}
     ${inv.discount>0?`<div style="display:flex;justify-content:space-between;padding:4px 0"><span>خصم:</span><span>- ${fmt(inv.discount)}</span></div>`:''}
-    <div class="total" style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #4f8ef7;margin-top:6px"><span>الإجمالي:</span><span>${fmt(inv.total)}</span></div>
+    <div class="total" style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #5b6af0;margin-top:6px"><span>الإجمالي:</span><span>${fmt(inv.total)}</span></div>
   </div>
   ${inv.notes?`<div style="margin-top:14px;padding:10px;background:#f9f9f9;border-radius:8px"><b>ملاحظات:</b> ${esc(inv.notes)}</div>`:''}
   <div class="footer">شكراً لتعاملكم معنا • SocialOS</div>
-  <div style="text-align:center;margin-top:16px"><button onclick="window.print()" style="padding:10px 24px;background:#4f8ef7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1rem">🖨️ طباعة</button></div>
+  <div style="text-align:center;margin-top:16px"><button onclick="window.print()" style="padding:10px 24px;background:#5b6af0;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1rem">🖨️ طباعة</button></div>
   </body></html>`);
   w.document.close();
 }
