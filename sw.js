@@ -1,28 +1,20 @@
-const CACHE = 'socialos-v8';
-const STATIC = ['/', '/app.html'];
+// SocialOS SW v10 - يمسح كل كاش قديم
+const CACHE = 'sos-v10';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)).catch(()=>{}));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+      Promise.all(keys.map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Network only - لا كاش إطلاقاً
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('/api/')) return;
-  // Network first — لا كاش للـ HTML
-  if (e.request.url.includes('.html') || e.request.url.endsWith('/')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match('/')));
-    return;
-  }
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request).then(r => r || caches.match('/')))
-  );
+  if (e.request.method !== 'GET') return;
+  e.respondWith(fetch(e.request).catch(() => new Response('offline')));
 });
