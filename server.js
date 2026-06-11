@@ -636,6 +636,37 @@ try {
       action VARCHAR(50) DEFAULT 'none',
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    `CREATE TABLE IF NOT EXISTS referral_settings (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE,
+      is_active BOOLEAN DEFAULT TRUE,
+      referrer_reward_type VARCHAR(20) DEFAULT 'points',
+      referrer_reward_value DECIMAL(10,2) DEFAULT 500,
+      referee_reward_type VARCHAR(20) DEFAULT 'discount',
+      referee_reward_value DECIMAL(10,2) DEFAULT 10,
+      min_order DECIMAL(10,2) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS referral_codes (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      customer_phone VARCHAR(50),
+      customer_name VARCHAR(255) DEFAULT '',
+      code VARCHAR(20) UNIQUE NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS referral_uses (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      code VARCHAR(20),
+      referrer_phone VARCHAR(50),
+      new_customer_phone VARCHAR(50),
+      order_id INTEGER,
+      reward_given DECIMAL(10,2) DEFAULT 0,
+      status VARCHAR(20) DEFAULT 'completed',
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(code, new_customer_phone)
+    )`,
     `CREATE TABLE IF NOT EXISTS service_reviews (
       id SERIAL PRIMARY KEY,
       user_id INTEGER,
@@ -743,7 +774,7 @@ require('./routes/images')(app, pool, helpers);
 require('./routes/settings')(app, pool, helpers);
 require('./routes/departments')(app, pool, helpers);
 require('./routes/ai_features')(app, pool, helpers);
-require('./routes/team')(app, pool, helpers);
+require('./routes/referral')(app, pool, helpers);
 
 
 // ============================================================
