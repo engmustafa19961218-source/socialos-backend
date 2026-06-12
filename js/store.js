@@ -784,7 +784,7 @@ async function deleteInvoice(id) {
 // ============================================================
 // VOICE TRAINING — الصوت في التدريب
 // ============================================================
-let mediaRecorder = null, audioChunks = [], isRecording = false, voiceMode = false;
+let mediaRecorder = null, audioChunks = [], isRecording = false;
 
 async function toggleVoiceMode() {
   voiceMode = !voiceMode;

@@ -936,6 +936,7 @@ function applyBrandColors(){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const ti = document.getElementById('txt-input');
   if (ti) ti.addEventListener('input', loadCanvasImg);
   // مزامنة لون النص
   const tc = document.getElementById('txt-color');
