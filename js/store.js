@@ -299,10 +299,15 @@ async function ldSets(){
   document.getElementById('sw').value = p.whatsapp_number||'';
   document.getElementById('sst').value = p.communication_style||'ودي وقريب';
   document.getElementById('sp2').value = p.policies||'';
+  // الحقول الجديدة
+  const sw2 = document.getElementById('sw2');
+  if (sw2) sw2.value = p.whatsapp_number||'';
+  const sst2 = document.getElementById('sst2');
+  if (sst2) sst2.value = p.communication_style||'ودي وقريب';
+  const swelcome = document.getElementById('swelcome');
+  if (swelcome) swelcome.value = p.welcome_message||'';
   biz = p;
-  // تحميل سياسة العربون
   ldDepositPolicy();
-  // تحميل بطاقات الدفع
   ldPaymentCards();
 }
 
@@ -379,11 +384,11 @@ function updateDepositPreview(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px">
       <div style="background:var(--surface);border-radius:9px;padding:9px;text-align:center">
         <div style="font-size:.68rem;color:var(--text2);margin-bottom:3px">العربون</div>
-        <div style="font-weight:900;color:var(--accent3)">${dep.toLocaleString('ar-IQ')}</div>
+        <div style="font-weight:900;color:var(--accent3)">${dep.toLocaleString('en')}</div>
       </div>
       <div style="background:var(--surface);border-radius:9px;padding:9px;text-align:center">
         <div style="font-size:.68rem;color:var(--text2);margin-bottom:3px">المتبقي</div>
-        <div style="font-weight:900">${(example-dep).toLocaleString('ar-IQ')}</div>
+        <div style="font-weight:900">${(example-dep).toLocaleString('en')}</div>
       </div>
     </div>
     ${required ? '<div style="font-size:.74rem;color:var(--danger);margin-bottom:5px">⚠️ العربون إلزامي</div>' : ''}
@@ -415,8 +420,8 @@ async function autoCalcDeposit(){
 
   if (wrap) wrap.style.display = 'block';
   const cur = biz?.currency || 'د.ع';
-  document.getElementById('deposit-calc-amount').textContent = Number(d.deposit).toLocaleString('ar-IQ') + ' ' + cur;
-  document.getElementById('deposit-calc-remaining').textContent = Number(d.remaining).toLocaleString('ar-IQ') + ' ' + cur;
+  document.getElementById('deposit-calc-amount').textContent = Number(d.deposit).toLocaleString('en') + ' ' + cur;
+  document.getElementById('deposit-calc-remaining').textContent = Number(d.remaining).toLocaleString('en') + ' ' + cur;
 
   const badge = document.getElementById('deposit-policy-badge');
   if (badge) badge.textContent = d.policy === 'fixed' ? 'مبلغ ثابت' : 'نسبة مئوية';
@@ -511,7 +516,7 @@ async function ldComments(postId, title, el) {
   }
   list.innerHTML = d.comments.map(c => {
     const name = c.from?.name || 'مجهول';
-    const date = c.created_time ? new Date(c.created_time).toLocaleString('ar-IQ') : '';
+    const date = c.created_time ? new Date(c.created_time).toLocaleString('en') : '';
     return `<div class="card" style="margin-bottom:10px" id="comment-${esc(c.id)}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div>
@@ -563,13 +568,24 @@ function loadReceiptImage(input) {
   const reader = new FileReader();
   reader.onloadend = () => {
     invReceiptBase64 = reader.result;
+    const preview = document.getElementById('inv-receipt-preview');
     const img = document.getElementById('inv-receipt-img');
     const clearBtn = document.getElementById('inv-receipt-clear');
     if (img) {
-      img.setAttribute('src', invReceiptBase64);
-      img.style.cssText = 'display:block;width:100%;max-height:150px;object-fit:contain;border-radius:8px;border:1px solid var(--border);margin-top:8px';
+      img.src = invReceiptBase64;
+      img.style.display = 'block';
+      img.style.width = '100%';
+      img.style.maxHeight = '200px';
+      img.style.objectFit = 'contain';
+      img.style.borderRadius = '8px';
+      img.style.border = '1px solid var(--border)';
+      img.style.marginTop = '8px';
     }
     if (clearBtn) clearBtn.style.display = 'inline-block';
+    if (preview) {
+      preview.style.display = 'block';
+      preview.style.marginBottom = '10px';
+    }
     toast('✅ تم تحميل صورة الوصل');
   };
   reader.readAsDataURL(file);
@@ -586,27 +602,30 @@ function clearReceiptImage() {
 }
 
 function calcInvRemaining() {
-  const total = parseFloat(document.getElementById('inv-total-calc')?.value) || 0;
-  const delivery = parseFloat(document.getElementById('inv-delivery')?.value) || 0;
-  const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
+  const getRaw = id => parseFloat(String(document.getElementById(id)?.dataset?.raw || document.getElementById(id)?.value || '0').replace(/[^0-9.]/g, '')) || 0;
+  const total = getRaw('inv-total-calc');
+  const delivery = getRaw('inv-delivery');
+  const deposit = getRaw('inv-deposit');
   const grandTotal = total + delivery;
   const remaining = Math.max(0, grandTotal - deposit);
   const cur = document.getElementById('inv-currency')?.value || 'IQD';
-  const fmt = n => n.toLocaleString('ar-IQ') + ' ' + cur;
-  if (document.getElementById('inv-remaining')) document.getElementById('inv-remaining').textContent = fmt(remaining);
-  // عرض الإجمالي مع التوصيل
-  const totalEl = document.getElementById('inv-grand-total');
-  if (totalEl) totalEl.textContent = fmt(grandTotal);
+  const sym = { IQD:'د.ع', SAR:'ر.س', AED:'د.إ', USD:'$', KWD:'د.ك' }[cur] || cur;
+  const fmt = n => n.toLocaleString('en') + ' ' + sym;
+  const remEl = document.getElementById('inv-remaining');
+  if (remEl) remEl.textContent = fmt(remaining);
+  const gtEl = document.getElementById('inv-grand-total');
+  if (gtEl) gtEl.textContent = fmt(grandTotal);
 }
 
 async function saveInvoice(print = false) {
   const cname = document.getElementById('inv-cname')?.value.trim();
   const details = document.getElementById('inv-details')?.value.trim();
-  const total = parseFloat(document.getElementById('inv-total-calc')?.value) || 0;
+  const getRaw = id => parseFloat(String(document.getElementById(id)?.dataset?.raw || document.getElementById(id)?.value || '0').replace(/[^0-9.]/g, '')) || 0;
+  const total = getRaw('inv-total-calc');
   if (!cname) return toast('⚠️ اسم الزبون مطلوب');
   if (!details) return toast('⚠️ تفاصيل الطلب مطلوبة');
   if (total <= 0) return toast('⚠️ السعر الكلي يجب أن يكون أكبر من صفر');
-  const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
+  const deposit = getRaw('inv-deposit');
   const body = {
     customer_name: cname,
     customer_phone: document.getElementById('inv-cphone')?.value.trim(),
@@ -616,7 +635,7 @@ async function saveInvoice(print = false) {
     tax_rate: 0,
     discount: 0,
     deposit: deposit,
-    delivery_cost: parseFloat(document.getElementById('inv-delivery')?.value) || 0,
+    delivery_cost: getRaw('inv-delivery'),
     order_details: document.getElementById('inv-details')?.value.trim() || '',
     receipt_image: invReceiptBase64 || null,
     notes: document.getElementById('inv-notes')?.value.trim(),
@@ -646,7 +665,7 @@ function saveAndPrintInvoice() { saveInvoice(true); }
 
 function printInvoice(inv) {
   const cur = inv.currency || 'IQD';
-  const fmt = n => parseFloat(n||0).toLocaleString('ar-IQ') + ' ' + cur;
+  const fmt = n => parseFloat(n||0).toLocaleString('en') + ' ' + cur;
   const items = (typeof inv.items === 'string' ? JSON.parse(inv.items) : inv.items) || [];
   const w = window.open('', '_blank');
   w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>فاتورة ${esc(inv.invoice_number)}</title>
@@ -692,7 +711,7 @@ async function ldInvoices() {
   document.getElementById('inv-paid').textContent = all.filter(i=>i.status==='paid').length;
   document.getElementById('inv-pending').textContent = all.filter(i=>i.status==='sent'||i.status==='draft').length;
   const totalAmt = all.reduce((s,i)=>s+parseFloat(i.total||0),0);
-  document.getElementById('inv-amount').textContent = totalAmt.toLocaleString('ar-IQ');
+  document.getElementById('inv-amount').textContent = totalAmt.toLocaleString('en');
   const filtered = invFilter === 'all' ? all : all.filter(i=>i.status===invFilter);
   if (!filtered.length) { el.innerHTML = '<div class="empty"><div class="ei">🧾</div><p>لا فواتير</p></div>'; return; }
   const statusMap = {draft:'📝 مسودة',sent:'📤 مرسلة',paid:'✅ مدفوعة',cancelled:'❌ ملغاة'};
@@ -707,7 +726,7 @@ async function ldInvoices() {
           <div style="font-size:.78rem;color:var(--text2)">${new Date(inv.created_at).toLocaleDateString('ar-IQ')} • ${items.length} منتج</div>
         </div>
         <div style="text-align:left">
-          <div style="font-weight:700;color:var(--accent)">${parseFloat(inv.total||0).toLocaleString('ar-IQ')} ${inv.currency}</div>
+          <div style="font-weight:700;color:var(--accent)">${parseFloat(inv.total||0).toLocaleString('en')} ${inv.currency}</div>
           <div style="font-size:.75rem;color:${statusColor[inv.status]||'var(--text2)'}">${statusMap[inv.status]||inv.status}</div>
         </div>
       </div>
@@ -785,7 +804,7 @@ async function processVoiceInput() {
   reader.onloadend = async () => {
     const base64 = reader.result.split(',')[1];
     toast('⏳ جاري تحويل الصوت...');
-    const d = await api('/api/voice/transcribe', 'POST', { audio_base64: base64, mime_type: 'audio/webm' });
+    const d = await api('/api/voice/transcribe', { method: 'POST', body: JSON.stringify({ audio_base64: base64, mime_type: 'audio/webm' }) });
     if (d.success && d.text) {
       const inp = document.getElementById('tinput');
       if (inp) { inp.value = d.text; }
@@ -799,7 +818,7 @@ async function processVoiceInput() {
 
 async function speakResponse(text) {
   if (!voiceMode || !text) return;
-  const d = await api('/api/voice/speak', 'POST', { text });
+  const d = await api('/api/voice/speak', { method: 'POST', body: JSON.stringify({ text }) });
   if (d.success) {
     const audio = new Audio(`data:${d.mime_type};base64,${d.audio_base64}`);
     audio.play();
@@ -862,4 +881,37 @@ async function deletePaymentCard(id) {
   const d = await api(`/api/payment-cards/${id}`, { method: 'DELETE' });
   if (d.success) { toast('🗑️ تم الحذف'); ldPaymentCards(); }
   else toast('❌ ' + (d.message || 'خطأ'));
+}
+
+// ============================================================
+// إعدادات إضافية
+// ============================================================
+async function saveWhatsappSettings() {
+  const wa = document.getElementById('sw2')?.value.trim();
+  const style = document.getElementById('sst2')?.value;
+  const welcome = document.getElementById('swelcome')?.value.trim();
+  if (!wa) return toast('⚠️ أدخل رقم واتساب');
+  const d = await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({
+    whatsapp_number: wa, communication_style: style, welcome_message: welcome
+  })});
+  if (d.success) toast('✅ تم حفظ إعدادات واتساب');
+  else toast('❌ ' + (d.message || 'خطأ'));
+}
+
+async function changePassword() {
+  const oldPass = document.getElementById('sec-old-pass')?.value;
+  const newPass = document.getElementById('sec-new-pass')?.value;
+  const confPass = document.getElementById('sec-conf-pass')?.value;
+  if (!oldPass || !newPass) return toast('⚠️ أدخل كلمة المرور الحالية والجديدة');
+  if (newPass !== confPass) return toast('⚠️ كلمة المرور الجديدة غير متطابقة');
+  if (newPass.length < 6) return toast('⚠️ كلمة المرور 6 أحرف على الأقل');
+  const d = await api('/api/auth/change-password', { method: 'POST', body: JSON.stringify({
+    old_password: oldPass, new_password: newPass
+  })});
+  if (d.success) {
+    toast('✅ تم تغيير كلمة المرور');
+    ['sec-old-pass','sec-new-pass','sec-conf-pass'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+  } else toast('❌ ' + (d.message || 'خطأ'));
 }

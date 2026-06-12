@@ -3722,13 +3722,13 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
   <!-- السعر الكلي -->
   <div class="fg">
     <label class="fl">السعر الكلي *</label>
-    <input class="fi" type="number" id="inv-total-calc" placeholder="0" min="0" oninput="calcInvRemaining()" dir="ltr">
+    <input class="fi price-field" id="inv-total-calc" placeholder="0" inputmode="numeric" oninput="calcInvRemaining()" dir="ltr">
   </div>
 
   <!-- تكلفة التوصيل -->
   <div class="fg">
     <label class="fl">تكلفة التوصيل</label>
-    <input class="fi" type="number" id="inv-delivery" placeholder="0" min="0" value="0" oninput="calcInvRemaining()" dir="ltr">
+    <input class="fi price-field" id="inv-delivery" placeholder="0" inputmode="numeric" value="" oninput="calcInvRemaining()" dir="ltr">
   </div>
 
   <!-- العربون -->
@@ -3736,7 +3736,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:10px">
       <div class="fg" style="flex:1;margin:0">
         <label class="fl">العربون الواصل</label>
-        <input class="fi price-field" type="number" id="inv-deposit" value="0" min="0" placeholder="0" oninput="calcInvRemaining()" onchange="calcInvRemaining()">
+        <input class="fi price-field" id="inv-deposit" placeholder="0" inputmode="numeric" value="" oninput="calcInvRemaining()" dir="ltr">
       </div>
       <div style="text-align:center;padding-bottom:4px">
         <!-- زر رفع صورة الوصل -->
@@ -4186,22 +4186,22 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=37"></script>
-<script src="/js/employee.js?v=37"></script>
-<script src="/js/orders.js?v=37"></script>
-<script src="/js/store.js?v=37"></script>
-<script src="/js/social.js?v=37"></script>
-<script src="/js/video.js?v=37"></script>
-<script src="/js/referral.js?v=37"></script>
-<script src="/js/departments.js?v=37"></script>
-<script src="/js/team_ui.js?v=37"></script>
-<script src="/js/ai_features.js?v=37"></script>
-<script src="/js/mike.js?v=37"></script>
-<script src="/js/analytics.js?v=37"></script>
-<script src="/js/ads.js?v=37"></script>
-<script src="/js/designer.js?v=37"></script>
-<script src="/js/app.js?v=37"></script>
-<script src="/js/app2.js?v=37"></script>
+<script src="/js/core.js?v=38"></script>
+<script src="/js/employee.js?v=38"></script>
+<script src="/js/orders.js?v=38"></script>
+<script src="/js/store.js?v=38"></script>
+<script src="/js/social.js?v=38"></script>
+<script src="/js/video.js?v=38"></script>
+<script src="/js/referral.js?v=38"></script>
+<script src="/js/departments.js?v=38"></script>
+<script src="/js/team_ui.js?v=38"></script>
+<script src="/js/ai_features.js?v=38"></script>
+<script src="/js/mike.js?v=38"></script>
+<script src="/js/analytics.js?v=38"></script>
+<script src="/js/ads.js?v=38"></script>
+<script src="/js/designer.js?v=38"></script>
+<script src="/js/app.js?v=38"></script>
+<script src="/js/app2.js?v=38"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>
