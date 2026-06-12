@@ -530,7 +530,6 @@ app.delete('/api/mike/gallery/:id', authenticateToken, async (req, res) => {
 });
 
 
-};
 
 // ============================================================
 // API الذاكرة الدائمة
@@ -579,3 +578,4 @@ app.delete('/api/mike/memory', authenticateToken, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
+};
