@@ -49,26 +49,24 @@ app.post('/api/video/mike-create', authenticateToken, rateLimit(10, 60000), asyn
   const { idea, images } = req.body;
   if (!idea && !images?.length) return res.status(400).json({ success: false, message: 'اكتب فكرة أو أرسل صوراً' });
 
-  const aiKey = OPENROUTER_KEY();
-
   try {
     const bp = await getBP(req.user.id);
     const storeName = bp.store_name || 'متجرنا';
     const color = bp.primary_color || '#5b6af0';
     const currency = bp.currency || 'IQD';
     const businessType = bp.business_type || '';
+    const aiKey = OPENROUTER_KEY();
 
-    let plan;
+    // plan يُعرّف هنا — خارج أي block
+    let plan = null;
 
     if (!aiKey) {
-      // بدون AI — اختر قالب بناءً على كلمات مفتاحية
+      // بدون AI — اختر بناءً على كلمات مفتاحية
       const ideaLower = (idea || '').toLowerCase();
       let templateKey = 'product-hero-discount';
-      if (ideaLower.includes('تقييم') || ideaLower.includes('زبون') || ideaLower.includes('مراجعة')) {
-        templateKey = 'animated-review';
-      } else if (ideaLower.includes('حملة') || ideaLower.includes('ترويج') || ideaLower.includes('إطلاق') || ideaLower.includes('جديد')) {
-        templateKey = 'matrix-promotion';
-      }
+      if (ideaLower.includes('تقييم') || ideaLower.includes('زبون') || ideaLower.includes('مراجعة')) templateKey = 'animated-review';
+      else if (ideaLower.includes('حملة') || ideaLower.includes('ترويج') || ideaLower.includes('إطلاق')) templateKey = 'matrix-promotion';
+
       plan = {
         template: templateKey,
         reasoning: 'تم اختيار القالب تلقائياً',
@@ -81,121 +79,66 @@ app.post('/api/video/mike-create', authenticateToken, rateLimit(10, 60000), asyn
           'CTA': 'اطلب الآن',
           'Customer Name': 'زبون راضٍ',
           'Review Text': idea || 'منتج رائع!',
-          'Rating': '⭐⭐⭐⭐⭐',
-          'Primary Color': color,
-          'Background Color': color
+          'Rating': '⭐⭐⭐⭐⭐'
         },
         platform: 'instagram',
-        mike_note: 'تم اختيار القالب تلقائياً بدون AI'
+        mike_note: 'تم الاختيار تلقائياً'
       };
     } else {
+      // مع AI
+      const prompt = `أنت Mike مخرج فيديو لمتجر "${storeName}".
+القوالب: product-hero-discount (منتج+خصم) | matrix-promotion (ترويج) | animated-review (تقييم)
+الفكرة: "${idea || 'فيديو من الصور'}"
+أجب بـ JSON فقط: {"template":"...","reasoning":"...","modifications":{"Product Name":"","Price":"","Discount":"","Store Name":"${storeName}","Headline":"","Subtext":"","CTA":"اطلب الآن","Customer Name":"","Review Text":"","Rating":"⭐⭐⭐⭐⭐"},"platform":"instagram","mike_note":"..."}`;
 
-    // Mike يحلل الفكرة ويختار القالب المناسب
-    const prompt = `أنت Mike، مخرج فيديو ذكي لمتجر "${storeName}" (${businessType}).
-العملة: ${currency}
-اللون الرئيسي للمتجر: ${color}
+      const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${aiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'anthropic/claude-haiku-4-5', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
+      });
+      const aiData = await aiRes.json();
+      const raw = aiData.choices?.[0]?.message?.content || '{}';
 
-القوالب المتاحة:
-1. product-hero-discount — لعرض منتج مع خصم وسعر
-2. matrix-promotion — لحملات ترويجية وإطلاق منتجات
-3. animated-review — لعرض تقييمات الزبائن
+      try { plan = JSON.parse(raw.replace(/```json|```/g, '').trim()); }
+      catch(e) { plan = null; }
+    }
 
-الفكرة: "${idea || 'فيديو من الصور المرفقة'}"
-${images?.length ? `الصور المرسلة: ${images.length} صورة` : ''}
-
-حلل الفكرة واختر أنسب قالب واستخرج البيانات.
-أجب بـ JSON فقط:
-{
-  "template": "product-hero-discount | matrix-promotion | animated-review",
-  "reasoning": "سبب اختيار هذا القالب",
-  "modifications": {
-    "للـ product-hero-discount": {"Product Name":"","Price":"","Discount":"","Store Name":"${storeName}"},
-    "للـ matrix-promotion": {"Headline":"","Subtext":"","CTA":"","Store Name":"${storeName}"},
-    "للـ animated-review": {"Customer Name":"","Review Text":"","Rating":"⭐⭐⭐⭐⭐","Product Name":"","Store Name":"${storeName}"}
-  },
-  "platform": "instagram | tiktok | facebook",
-  "mike_note": "ملاحظة Mike للتاجر"
-}`;
-
-    const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${aiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'anthropic/claude-haiku-4-5',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const aiData = await aiRes.json();
-    const raw = aiData.choices?.[0]?.message?.content || '{}';
-    let plan;
-    try { plan = JSON.parse(raw.replace(/```json|```/g, '').trim()); }
-    catch(e) {
-      // إذا فشل Mike في تحليل JSON، استخدم قالب افتراضي
+    // fallback إذا plan فارغ أو template غير صحيح
+    if (!plan || !plan.template || !TEMPLATES[plan.template]) {
       plan = {
         template: 'product-hero-discount',
-        reasoning: 'اخترت قالب المنتج الافتراضي',
-        modifications: {
-          'Product Name': idea || 'منتجنا',
-          'Price': '',
-          'Discount': '',
-          'Store Name': storeName
-        },
+        reasoning: 'قالب افتراضي',
+        modifications: { 'Product Name': idea || 'منتجنا', 'Store Name': storeName, 'Headline': idea || storeName, 'CTA': 'اطلب الآن' },
         platform: 'instagram',
-        mike_note: 'تم اختيار القالب الافتراضي'
+        mike_note: ''
       };
     }
 
-    } // end else (aiKey)
+    const template = TEMPLATES[plan.template];
+    let modifications = { ...plan.modifications };
 
-    const template = TEMPLATES[plan.template] || TEMPLATES['product-hero-discount'];
-
-    // إضافة صورة المنتج إن وجدت
-    let modifications = plan.modifications || {};
-    if (images?.length) {
-      modifications['Product Image'] = images[0];
-    }
-
-    // إضافة اللون التلقائي
+    // إضافة صورة وألوان
+    if (images?.length) modifications['Product Image'] = images[0];
     modifications['Primary Color'] = color;
     modifications['Background Color'] = color;
+    modifications['Store Name'] = storeName;
 
-    // إنشاء الفيديو
     const result = await createRender(modifications, template.id);
     if (!result || result.error) {
-      const errMsg = result?.error || result?.message || 'خطأ في Creatomate';
-      return res.status(400).json({ success: false, message: errMsg });
+      return res.status(400).json({ success: false, message: result?.error || result?.message || 'خطأ في Creatomate' });
     }
 
     const renderId = Array.isArray(result) ? result[0]?.id : result.id;
+    if (!renderId) return res.status(400).json({ success: false, message: 'لم يتم إنشاء الفيديو' });
 
-    if (pool && renderId) {
+    if (pool) {
       await pool.query(
-        `INSERT INTO video_renders (user_id, render_id, type, platform, product_name, status)
-         VALUES ($1,$2,$3,$4,$5,'rendering')`,
-        [req.user.id, renderId, plan.template, plan.platform||'instagram',
-         sanitize(idea?.substring(0,100) || 'فيديو')]
-      ).catch(() => {});
-
-      // workflow: تصميم ونشر
-      await pool.query(
-        `INSERT INTO workflow_tasks (user_id, from_dept, to_dept, task_type, title, data, status)
-         VALUES ($1,'design_publish','analytics','video_created',$2,$3,'completed')`,
-        [req.user.id, `Mike صنع فيديو: ${template.name_ar}`,
-         JSON.stringify({ idea, template: plan.template, render_id: renderId })]
+        `INSERT INTO video_renders (user_id, render_id, type, platform, product_name, status) VALUES ($1,$2,$3,$4,$5,'rendering')`,
+        [req.user.id, renderId, plan.template, plan.platform||'instagram', sanitize(idea?.substring(0,100)||'')]
       ).catch(() => {});
     }
 
-    res.json({
-      success: true,
-      render_id: renderId,
-      template_used: template.name_ar,
-      reasoning: plan.reasoning,
-      mike_note: plan.mike_note,
-      platform: plan.platform || 'instagram',
-      status: 'rendering'
-    });
+    res.json({ success: true, render_id: renderId, template_used: template.name_ar, reasoning: plan.reasoning, mike_note: plan.mike_note, platform: plan.platform||'instagram', status: 'rendering' });
 
   } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
