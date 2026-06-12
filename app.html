@@ -2075,6 +2075,51 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 
       <!-- تصميم ونشر -->
       <div id="team-tab-design" class="team-tab-content" style="display:none">
+
+        <!-- Mike مصمم الفيديو -->
+        <div class="card" style="border-color:rgba(167,139,250,.25);margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">🎬</div>
+            <div>
+              <div style="font-weight:800;font-size:.88rem">Mike — مصمم الفيديو الذكي</div>
+              <div style="font-size:.72rem;color:var(--text2)">اكتب الفكرة أو أرسل صوراً وMike يصنع الفيديو</div>
+            </div>
+          </div>
+
+          <div class="fg">
+            <label class="fl">💡 فكرة الفيديو</label>
+            <textarea class="ft" id="team-video-idea" placeholder="مثال:
+• فيديو لقميص أزرق بسعر 35 ألف مع خصم 20%
+• حملة ترويجية لوصول منتجات جديدة
+• عرض تقييم زبون راضٍ عن الخدمة" style="min-height:80px"></textarea>
+          </div>
+
+          <div class="fg">
+            <label class="fl">📸 صور المنتج (اختياري)</label>
+            <div style="display:flex;gap:8px">
+              <input class="fi" id="team-video-img" placeholder="رابط الصورة https://..." dir="ltr" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addTeamVideoImage()}">
+              <button class="btn bo bsm" onclick="addTeamVideoImage()">+</button>
+            </div>
+            <div id="team-video-imgs-preview" style="margin-top:6px"></div>
+          </div>
+
+          <div class="fg">
+            <label class="fl">المنصة</label>
+            <select class="fs" id="team-video-platform">
+              <option value="instagram">📸 Instagram Reels</option>
+              <option value="tiktok">🎵 TikTok</option>
+              <option value="facebook">👤 Facebook</option>
+            </select>
+          </div>
+
+          <!-- Mike thinking -->
+          <div id="team-mike-video-thinking" style="display:none;margin-bottom:10px"></div>
+
+          <button class="btn ba bfull" id="team-video-btn" onclick="teamMikeCreateVideo()" style="padding:11px">🎬 Mike اصنع الفيديو</button>
+
+          <div id="team-video-result" style="margin-top:10px"></div>
+        </div>
+
         <div class="card" style="border-color:rgba(34,197,94,.2);margin-bottom:10px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
             <div style="width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--green));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">🚀</div>
@@ -2303,7 +2348,97 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 
     <!-- RETARGETING — إعادة الاستهداف -->
     <!-- REFERRAL — برنامج الإحالة -->
-    <div class="page" id="page-referral">
+    <!-- VIDEO DESIGNER — Mike مخرج الفيديو الذكي -->
+    <div class="page" id="page-video">
+      <div class="pt">
+        <div>
+          <h1>🎬 مصمم الفيديو</h1>
+          <p>Mike يختار القالب ويصنع الفيديو تلقائياً</p>
+        </div>
+        <div class="pas">
+          <button class="btn bo bsm" onclick="ldVideoGallery();document.getElementById('video-gallery-section').scrollIntoView({behavior:'smooth'})">🎬 معرضي</button>
+        </div>
+      </div>
+
+      <!-- Mike thinking -->
+      <div id="mike-video-thinking" style="display:none"></div>
+
+      <!-- نموذج الطلب -->
+      <div class="card" style="border-color:rgba(91,106,240,.2);margin-bottom:12px">
+
+        <!-- Mike header -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border2)">
+          <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🤖</div>
+          <div>
+            <div style="font-weight:800;font-size:.9rem">Mike — مخرج الفيديو الذكي</div>
+            <div style="font-size:.74rem;color:var(--text2)">اكتب الفكرة أو أرسل صوراً وأنا أتولى الباقي</div>
+          </div>
+        </div>
+
+        <!-- الفكرة -->
+        <div class="fg">
+          <label class="fl">💡 اكتب فكرتك</label>
+          <textarea class="ft" id="video-idea" placeholder="مثال:
+• فيديو لقميص أزرق بسعر 35 ألف مع خصم 20%
+• حملة ترويجية لإطلاق مجموعة صيف جديدة
+• عرض تقييم زبون اسمه أحمد قال المنتج ممتاز
+• فيديو للصور المرفقة مع اسم المتجر والسعر" style="min-height:100px"></textarea>
+        </div>
+
+        <!-- إضافة صور -->
+        <div class="fg">
+          <label class="fl">📸 أو أضف صور المنتج (اختياري)</label>
+          <div style="display:flex;gap:8px">
+            <input class="fi" id="video-img-url" placeholder="رابط الصورة https://..." dir="ltr" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addVideoImage()}">
+            <button class="btn bo bsm" onclick="addVideoImage()">+ إضافة</button>
+          </div>
+        </div>
+
+        <!-- معاينة الصور -->
+        <div id="video-images-preview"></div>
+
+        <!-- المنصة -->
+        <div class="fg">
+          <label class="fl">📱 المنصة</label>
+          <select class="fs" id="video-platform">
+            <option value="instagram">📸 Instagram Reels</option>
+            <option value="tiktok">🎵 TikTok</option>
+            <option value="facebook">👤 Facebook</option>
+          </select>
+        </div>
+
+        <!-- القوالب المتاحة -->
+        <div style="background:var(--s2);border-radius:10px;padding:10px;margin-bottom:14px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--text2);margin-bottom:8px">🎬 القوالب المتاحة — Mike يختار الأنسب تلقائياً</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <span style="background:rgba(91,106,240,.1);color:var(--accent2);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:600">🛍️ منتج مع خصم</span>
+            <span style="background:rgba(239,68,68,.08);color:var(--red);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:600">📢 حملة ترويجية</span>
+            <span style="background:rgba(245,158,11,.1);color:var(--yellow);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:600">⭐ تقييم متحرك</span>
+          </div>
+        </div>
+
+        <button class="btn ba bfull" id="video-create-btn" onclick="mikeCreateVideo()" style="padding:13px;font-size:.9rem">
+          🎬 Mike اصنع الفيديو
+        </button>
+      </div>
+
+      <!-- نتيجة الفيديو -->
+      <div id="video-result" style="margin-bottom:14px"></div>
+
+      <!-- معرض الفيديوهات -->
+      <div id="video-gallery-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:.88rem;font-weight:700">🎬 فيديوهاتي</div>
+          <button class="btn bo bsm" onclick="ldVideoGallery()">🔄 تحديث</button>
+        </div>
+        <div id="video-gallery">
+          <div class="empty"><div class="ei">🎬</div><p>لا فيديوهات بعد</p></div>
+        </div>
+      </div>
+
+    </div>
+
+        <div class="page" id="page-referral">
       <div class="pt">
         <div><h1>🔗 برنامج الإحالة</h1><p>زبائنك يجلبون زبائن جدد</p></div>
         <div class="pas"><button class="btn ba bsm" onclick="saveReferralSettings()">💾 حفظ</button></div>
@@ -3974,21 +4109,22 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=17"></script>
-<script src="/js/employee.js?v=17"></script>
-<script src="/js/orders.js?v=17"></script>
-<script src="/js/store.js?v=17"></script>
-<script src="/js/social.js?v=17"></script>
-<script src="/js/referral.js?v=17"></script>
-<script src="/js/departments.js?v=17"></script>
-<script src="/js/team_ui.js?v=17"></script>
-<script src="/js/ai_features.js?v=17"></script>
-<script src="/js/mike.js?v=17"></script>
-<script src="/js/analytics.js?v=17"></script>
-<script src="/js/ads.js?v=17"></script>
-<script src="/js/designer.js?v=17"></script>
-<script src="/js/app.js?v=17"></script>
-<script src="/js/app2.js?v=17"></script>
+<script src="/js/core.js?v=21"></script>
+<script src="/js/employee.js?v=21"></script>
+<script src="/js/orders.js?v=21"></script>
+<script src="/js/store.js?v=21"></script>
+<script src="/js/social.js?v=21"></script>
+<script src="/js/video.js?v=21"></script>
+<script src="/js/referral.js?v=21"></script>
+<script src="/js/departments.js?v=21"></script>
+<script src="/js/team_ui.js?v=21"></script>
+<script src="/js/ai_features.js?v=21"></script>
+<script src="/js/mike.js?v=21"></script>
+<script src="/js/analytics.js?v=21"></script>
+<script src="/js/ads.js?v=21"></script>
+<script src="/js/designer.js?v=21"></script>
+<script src="/js/app.js?v=21"></script>
+<script src="/js/app2.js?v=21"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>

@@ -583,3 +583,124 @@ async function publishCopiedPost(platform, caption, imageUrl) {
   if (d.success) toast('✅ تم النشر!');
   else toast('❌ ' + (d.message || 'خطأ في النشر'));
 }
+
+// ============================================================
+// 🎬 مصمم الفيديو داخل قسم التصميم والنشر
+// ============================================================
+let _teamVideoImages = [];
+
+function addTeamVideoImage() {
+  const url = document.getElementById('team-video-img')?.value.trim();
+  if (!url) return toast('⚠️ أدخل رابط الصورة');
+  if (_teamVideoImages.length >= 5) return toast('⚠️ الحد الأقصى 5 صور');
+  _teamVideoImages.push(url);
+  document.getElementById('team-video-img').value = '';
+  renderTeamVideoImages();
+}
+
+function renderTeamVideoImages() {
+  const el = document.getElementById('team-video-imgs-preview');
+  if (!el) return;
+  if (!_teamVideoImages.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">
+    ${_teamVideoImages.map((url,i) => `
+      <div style="position:relative">
+        <img src="${url}" style="width:48px;height:48px;object-fit:cover;border-radius:7px;border:1px solid var(--border)" onerror="this.style.opacity='.3'">
+        <button onclick="_teamVideoImages.splice(${i},1);renderTeamVideoImages()" style="position:absolute;top:-5px;left:-5px;width:16px;height:16px;background:var(--red);border:none;border-radius:50%;color:white;font-size:.55rem;cursor:pointer">✕</button>
+      </div>`).join('')}
+  </div>`;
+}
+
+async function teamMikeCreateVideo() {
+  const idea = document.getElementById('team-video-idea')?.value.trim();
+  if (!idea && !_teamVideoImages.length) return toast('⚠️ اكتب فكرة أو أضف صوراً');
+
+  const btn = document.getElementById('team-video-btn');
+  const thinkEl = document.getElementById('team-mike-video-thinking');
+  const resultEl = document.getElementById('team-video-result');
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Mike يفكر...'; }
+
+  if (thinkEl) {
+    thinkEl.style.display = 'block';
+    thinkEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;padding:10px;background:rgba(91,106,240,.08);border-radius:10px">
+        <div style="font-size:1.2rem">🤖</div>
+        <div style="font-size:.8rem;color:var(--accent2)">Mike يحلل الفكرة ويختار القالب...</div>
+      </div>`;
+  }
+
+  const platform = document.getElementById('team-video-platform')?.value || 'instagram';
+  const d = await api('/api/video/mike-create', {
+    method: 'POST',
+    body: JSON.stringify({ idea, images: _teamVideoImages })
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = '🎬 Mike اصنع الفيديو'; }
+
+  if (!d.success) {
+    if (thinkEl) thinkEl.style.display = 'none';
+    return toast('❌ ' + (d.message || 'خطأ'));
+  }
+
+  if (thinkEl) {
+    thinkEl.innerHTML = `
+      <div style="background:rgba(91,106,240,.08);border:1px solid rgba(91,106,240,.15);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="font-weight:700;font-size:.82rem;color:var(--accent2);margin-bottom:3px">🤖 Mike اختار: ${esc(d.template_used)}</div>
+        <div style="font-size:.76rem;color:var(--text2)">${esc(d.reasoning||'')}</div>
+        ${d.mike_note ? `<div style="font-size:.76rem;color:var(--green);margin-top:3px">💡 ${esc(d.mike_note)}</div>` : ''}
+      </div>`;
+  }
+
+  // progress bar
+  if (resultEl) {
+    resultEl.innerHTML = `
+      <div style="background:var(--s2);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:6px">🎬</div>
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:4px">Creatomate يصنع الفيديو...</div>
+        <div style="font-size:.72rem;color:var(--text2);margin-bottom:10px">30-60 ثانية</div>
+        <div style="background:var(--s3);border-radius:4px;height:5px;overflow:hidden">
+          <div id="team-render-bar" style="height:100%;background:var(--accent);border-radius:4px;width:5%;transition:width 2s"></div>
+        </div>
+      </div>`;
+  }
+
+  // polling
+  let progress = 5;
+  const poll = setInterval(async () => {
+    progress = Math.min(progress + 7, 92);
+    const bar = document.getElementById('team-render-bar');
+    if (bar) bar.style.width = progress + '%';
+
+    const s = await api(`/api/video/status/${d.render_id}`);
+    if (s.ready && s.url) {
+      clearInterval(poll);
+      if (resultEl) {
+        resultEl.innerHTML = `
+          <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px">
+            <div style="font-weight:700;font-size:.85rem;color:var(--green);margin-bottom:8px">🎬 الفيديو جاهز!</div>
+            <video controls style="width:100%;border-radius:8px;max-height:300px;background:#000;margin-bottom:8px" src="${s.url}"></video>
+            <div style="display:flex;gap:6px">
+              <a href="${s.url}" download class="btn ba bsm" style="flex:1;text-align:center;text-decoration:none">⬇️ تحميل</a>
+              <button class="btn bo bsm" onclick="navigator.clipboard.writeText('${s.url}').then(()=>toast('✅ تم نسخ الرابط'))" style="flex:1">📋 نسخ</button>
+              <button class="btn ba bsm" onclick="publishTeamVideo('${s.url}','${platform}')" style="flex:1">📱 نشر</button>
+            </div>
+          </div>`;
+      }
+      toast('🎬 الفيديو جاهز!');
+    } else if (s.status === 'failed') {
+      clearInterval(poll);
+      if (resultEl) resultEl.innerHTML = `<div class="empty"><div class="ei">❌</div><p>فشل — حاول مرة أخرى</p></div>`;
+    }
+  }, 3000);
+}
+
+async function publishTeamVideo(videoUrl, platform) {
+  const caption = document.getElementById('team-video-idea')?.value || '';
+  const d = await api('/api/team/publish/post', {
+    method: 'POST',
+    body: JSON.stringify({ platform: platform || 'instagram', content: caption, media_url: videoUrl })
+  });
+  if (d.success) toast(`✅ تم نشر الفيديو على ${platform}!`);
+  else toast('❌ ' + (d.message || 'خطأ'));
+}
