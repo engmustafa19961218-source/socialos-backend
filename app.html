@@ -922,8 +922,8 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           <button id="l-email-tab" class="auth-tab active" onclick="switchLoginType('email')" style="flex:1;padding:6px;font-size:.76rem">📧 بريد</button>
           <button id="l-phone-tab" class="auth-tab" onclick="switchLoginType('phone')" style="flex:1;padding:6px;font-size:.76rem">📱 هاتف</button>
         </div>
-        <div class="fg" id="l-email-field"><label class="fl">البريد الإلكتروني</label><input class="fi" type="email" id="le" placeholder="example@mail.com" autocomplete="email"></div>
-        <div class="fg" id="l-phone-field" style="display:none"><label class="fl">رقم الهاتف</label><input class="fi" type="tel" id="lph" placeholder="07701234567" dir="ltr"></div>
+        <div class="fg" id="l-email-field"><label class="fl">البريد الإلكتروني أو رقم الهاتف</label><input class="fi" id="le" placeholder="example@mail.com أو 07xxxxxxxx" autocomplete="username"></div>
+        <div class="fg" id="l-phone-field" style="display:none"><label class="fl">رقم الهاتف أو البريد الإلكتروني</label><input class="fi" id="lph" placeholder="07xxxxxxxx أو example@mail.com" dir="ltr"></div>
         <div class="fg"><label class="fl">كلمة المرور</label>
           <div style="position:relative"><input class="fi" type="password" id="lp" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()" style="padding-left:38px"><button onclick="togglePass('lp')" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);font-size:.82rem">👁</button></div>
         </div>
@@ -4077,22 +4077,22 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=32"></script>
-<script src="/js/employee.js?v=32"></script>
-<script src="/js/orders.js?v=32"></script>
-<script src="/js/store.js?v=32"></script>
-<script src="/js/social.js?v=32"></script>
-<script src="/js/video.js?v=32"></script>
-<script src="/js/referral.js?v=32"></script>
-<script src="/js/departments.js?v=32"></script>
-<script src="/js/team_ui.js?v=32"></script>
-<script src="/js/ai_features.js?v=32"></script>
-<script src="/js/mike.js?v=32"></script>
-<script src="/js/analytics.js?v=32"></script>
-<script src="/js/ads.js?v=32"></script>
-<script src="/js/designer.js?v=32"></script>
-<script src="/js/app.js?v=32"></script>
-<script src="/js/app2.js?v=32"></script>
+<script src="/js/core.js?v=33"></script>
+<script src="/js/employee.js?v=33"></script>
+<script src="/js/orders.js?v=33"></script>
+<script src="/js/store.js?v=33"></script>
+<script src="/js/social.js?v=33"></script>
+<script src="/js/video.js?v=33"></script>
+<script src="/js/referral.js?v=33"></script>
+<script src="/js/departments.js?v=33"></script>
+<script src="/js/team_ui.js?v=33"></script>
+<script src="/js/ai_features.js?v=33"></script>
+<script src="/js/mike.js?v=33"></script>
+<script src="/js/analytics.js?v=33"></script>
+<script src="/js/ads.js?v=33"></script>
+<script src="/js/designer.js?v=33"></script>
+<script src="/js/app.js?v=33"></script>
+<script src="/js/app2.js?v=33"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>

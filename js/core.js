@@ -71,15 +71,19 @@ function switchTab(t){
 async function doLogin(){
   const pass=document.getElementById('lp').value;
   let body={password:pass};
+  // اكتشاف تلقائي للنوع
+  let identifier = '';
   if(loginType==='email'){
-    const email=document.getElementById('le').value.trim();
-    if(!email||!pass) return shErr('يرجى ملء جميع الحقول');
-    body.email=email;
+    identifier = document.getElementById('le').value.trim();
   } else {
-    const phone=document.getElementById('lph').value.trim();
-    if(!phone||!pass) return shErr('يرجى ملء جميع الحقول');
-    body.phone=phone;
+    identifier = document.getElementById('lph').value.trim();
   }
+  // إذا كان يشبه هاتف (أرقام فقط أو يبدأ بـ 0 أو +)
+  if(!identifier) return shErr('يرجى ملء جميع الحقول');
+  if(!pass) return shErr('يرجى إدخال كلمة المرور');
+  const isPhone = /^[0-9+\s-]{7,}$/.test(identifier);
+  if(isPhone) body.phone = identifier;
+  else body.email = identifier;
   const btn=document.getElementById('lbtn');btn.disabled=true;btn.textContent='⏳...';
   const d=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>({}));
   btn.disabled=false;btn.textContent='دخول ←';
