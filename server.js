@@ -198,6 +198,28 @@ try {
       session_date DATE DEFAULT CURRENT_DATE,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    // Mike Memory — ذاكرة Mike الدائمة
+    `CREATE TABLE IF NOT EXISTS mike_memory (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      memory_type VARCHAR(50) DEFAULT 'general',
+      content TEXT NOT NULL,
+      importance INTEGER DEFAULT 1,
+      source VARCHAR(50) DEFAULT 'conversation',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )`,
+    // Employee Memory — ذاكرة الموظف الرقمي
+    `CREATE TABLE IF NOT EXISTS employee_memory (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      memory_type VARCHAR(50) DEFAULT 'general',
+      content TEXT NOT NULL,
+      importance INTEGER DEFAULT 1,
+      source VARCHAR(50) DEFAULT 'training',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )`,
     // Voice Profile — ملف الصوت
     `CREATE TABLE IF NOT EXISTS voice_profile (
       id SERIAL PRIMARY KEY,

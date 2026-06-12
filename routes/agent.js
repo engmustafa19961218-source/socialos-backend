@@ -1,4 +1,57 @@
 module.exports = function(app, pool, helpers) {
+// ============================================================
+// نظام الذاكرة الدائمة للموظف الرقمي
+// ============================================================
+
+async function getEmployeeMemory(userId) {
+  if (!pool) return '';
+  try {
+    const r = await pool.query(
+      'SELECT content, memory_type FROM employee_memory WHERE user_id=$1 ORDER BY importance DESC, created_at DESC LIMIT 40',
+      [userId]
+    );
+    if (!r.rows.length) return '';
+    let memText = '\n\n=== تعليماتي المحفوظة ===\n';
+    r.rows.forEach(m => { memText += `- ${m.content}\n`; });
+    return memText;
+  } catch(e) { return ''; }
+}
+
+async function saveEmployeeMemory(userId, content, type = 'general', importance = 1) {
+  if (!pool || !content) return;
+  try {
+    await pool.query(
+      'INSERT INTO employee_memory (user_id, content, memory_type, importance) VALUES ($1,$2,$3,$4)',
+      [userId, content.substring(0, 500), type, importance]
+    );
+  } catch(e) {}
+}
+
+async function extractEmployeeMemory(userId, userMsg, empReply, apiKey) {
+  if (!apiKey) return;
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: `هل تحتوي هذه المحادثة على تعليمات أو معلومات يجب أن يتذكرها الموظف دائماً؟
+رسالة: "${userMsg}"
+الرد: "${empReply}"
+JSON فقط: {"save": true/false, "content": "ما يجب حفظه", "type": "policy|customer|product|general", "importance": 1-3}` }]
+      })
+    });
+    const data = await r.json();
+    const raw = data.choices?.[0]?.message?.content || '{}';
+    const parsed = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g, '').trim());
+    if (parsed.save && parsed.content) {
+      await saveEmployeeMemory(userId, parsed.content, parsed.type || 'general', parsed.importance || 1);
+    }
+  } catch(e) {}
+}
+
+
 const { escapeHtml, sanitize, authenticateToken, rateLimit, notify, auditLog, esc } = helpers;
 
 // ============================================================
@@ -20,8 +73,10 @@ app.post('/api/agent/chat', authenticateToken, rateLimit(25, 60*1000), async (re
   const safeMessage = message.substring(0, 2000);
 
   let bp = {}, emp = {}, knowledge = [], decisions = [], products = [], emergency = null;
+  let employeeMemoryText = '';
   try {
     if (pool) {
+      employeeMemoryText = await getEmployeeMemory(userId);
       const [bpR, empR, kbR, dmR, prodR, ordR, emR] = await Promise.all([
         pool.query('SELECT * FROM business_profile WHERE user_id=$1', [userId]),
         pool.query('SELECT * FROM digital_employee WHERE user_id=$1', [userId]),
@@ -134,6 +189,16 @@ ${decisions.map(d => `• ${d.decision} ← ${d.reason}`).join('\n') || 'لا ت
     if (lm.includes('طلب') && (lm.includes('أضف')||lm.includes('جديد'))) action = { type: 'new_order' };
     else if (lm.includes('منشور')||lm.includes('اكتب')||lm.includes('محتوى')) action = { type: 'create_post', content: response };
     else if (lm.includes('تقرير')||lm.includes('إحصائيات')) action = { type: 'report' };
+
+    // حفظ الذاكرة تلقائياً
+    const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+    extractEmployeeMemory(userId, safeMessage, response, OPENROUTER_KEY).catch(() => {});
+
+    // حفظ صريح عند "تذكر" أو "احفظ"
+    const memTriggers = ['احفظ', 'تذكر', 'لا تنسى', 'دائماً', 'من الآن'];
+    if (memTriggers.some(t => safeMessage.includes(t))) {
+      await saveEmployeeMemory(userId, safeMessage, 'policy', 3);
+    }
 
     return res.json({ success: true, response, action, needs_human: needsHuman, transfer_reason: transferReason });
   } catch (e) { return res.status(500).json({ success: false, message: e.message }); }

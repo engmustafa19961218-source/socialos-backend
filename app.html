@@ -884,28 +884,6 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
   #mike-fab { display:none!important; }
   #mike-float-panel { bottom:82px!important; left:8px!important; width:calc(100vw - 16px)!important; }
 }
-
-/* ── DARK PRO FINAL ── */
-.btn.ba{background:#5b6af0!important;border:1px solid #5b6af0!important;color:#fff!important;border-radius:8px!important;box-shadow:none!important;transform:none!important;}
-.btn.ba:hover{background:#7c8cf8!important;border-color:#7c8cf8!important;}
-.btn.bo{background:#18181c!important;border:1px solid #28282f!important;color:#8888a0!important;border-radius:8px!important;box-shadow:none!important;}
-.btn.bo:hover{background:#222228!important;color:#f0f0f2!important;}
-.btn.bd{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.2)!important;color:#ef4444!important;}
-.card{background:#111114!important;border:1px solid #28282f!important;border-radius:12px!important;padding:14px!important;margin-bottom:10px!important;box-shadow:none!important;}
-.card h3{font-size:.72rem!important;font-weight:700!important;color:#8888a0!important;text-transform:uppercase!important;letter-spacing:.8px!important;}
-.fi,.ft,.fs{background:#18181c!important;border:1px solid #28282f!important;color:#f0f0f2!important;border-radius:8px!important;}
-.fi:focus,.ft:focus,.fs:focus{border-color:#5b6af0!important;box-shadow:0 0 0 3px rgba(91,106,240,.1)!important;}
-.fb{background:#18181c!important;border:1px solid #28282f!important;color:#8888a0!important;border-radius:20px!important;padding:5px 12px!important;font-size:.74rem!important;font-weight:700!important;}
-.fb.active,.fb:hover{background:rgba(91,106,240,.12)!important;color:#7c8cf8!important;border-color:rgba(91,106,240,.25)!important;}
-.tw th{background:#18181c!important;color:#44445a!important;font-size:.68rem!important;text-transform:uppercase!important;letter-spacing:.5px!important;padding:8px 10px!important;border-bottom:1px solid #28282f!important;}
-.tw td{padding:9px 10px!important;border-bottom:1px solid #1e1e24!important;font-size:.8rem!important;}
-.tw tr:hover td{background:#18181c!important;}
-.empty .ei{opacity:.3!important;}
-.empty p{color:#44445a!important;}
-.pt h1{font-size:1.15rem!important;font-weight:800!important;}
-.page{animation:pgIn .15s ease!important;}
-@keyframes pgIn{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:none}}
-
 </style>
 </head>
 <body>
@@ -944,8 +922,8 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           <button id="l-email-tab" class="auth-tab active" onclick="switchLoginType('email')" style="flex:1;padding:6px;font-size:.76rem">📧 بريد</button>
           <button id="l-phone-tab" class="auth-tab" onclick="switchLoginType('phone')" style="flex:1;padding:6px;font-size:.76rem">📱 هاتف</button>
         </div>
-        <div class="fg" id="l-email-field"><label class="fl">البريد الإلكتروني</label><input class="fi" type="email" id="le" placeholder="example@mail.com" autocomplete="email"></div>
-        <div class="fg" id="l-phone-field" style="display:none"><label class="fl">رقم الهاتف</label><input class="fi" type="tel" id="lph" placeholder="07701234567" dir="ltr"></div>
+        <div class="fg" id="l-email-field"><label class="fl">البريد الإلكتروني أو رقم الهاتف</label><input class="fi" id="le" placeholder="example@mail.com أو 07xxxxxxxx" autocomplete="username"></div>
+        <div class="fg" id="l-phone-field" style="display:none"><label class="fl">رقم الهاتف أو البريد الإلكتروني</label><input class="fi" id="lph" placeholder="07xxxxxxxx أو example@mail.com" dir="ltr"></div>
         <div class="fg"><label class="fl">كلمة المرور</label>
           <div style="position:relative"><input class="fi" type="password" id="lp" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()" style="padding-left:38px"><button onclick="togglePass('lp')" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);font-size:.82rem">👁</button></div>
         </div>
@@ -987,55 +965,121 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 <!-- ONBOARDING -->
 <div id="onboarding">
   <div class="obc">
-    <div class="pdots"><div class="pd active" id="pd0"></div><div class="pd" id="pd1"></div><div class="pd" id="pd2"></div><div class="pd" id="pd3"></div></div>
+    <div class="pdots">
+      <div class="pd active" id="pd0"></div>
+      <div class="pd" id="pd1"></div>
+      <div class="pd" id="pd2"></div>
+      <div class="pd" id="pd3"></div>
+      <div class="pd" id="pd4"></div>
+    </div>
+
     <div class="obs active" id="obs0">
-      <div class="shd"><div style="font-size:2.8rem;margin-bottom:10px">🚀</div><h2>مرحباً في SocialOS!</h2><p>سنعد نظامك الذكي في دقيقتين</p></div>
-      <div class="card" style="text-align:center;padding:24px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:16px">
-          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">🧠</div><div style="font-weight:700;font-size:.81rem">موظف رقمي ذكي</div></div>
-          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">📚</div><div style="font-weight:700;font-size:.81rem">مركز المعرفة</div></div>
-          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">🏛️</div><div style="font-weight:700;font-size:.81rem">مجلس الإدارة</div></div>
-          <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="font-size:1.5rem;margin-bottom:4px">🗂️</div><div style="font-weight:700;font-size:.81rem">سجل القرارات</div></div>
+      <div class="shd"><div style="font-size:3rem;margin-bottom:12px">⚡</div><h2>مرحباً في SocialOS!</h2><p>سنعد شركتك الرقمية في 4 خطوات</p></div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:1.6rem;margin-bottom:5px">🤖</div><div style="font-weight:700;font-size:.8rem">Mike المدير العام</div><div style="font-size:.7rem;color:var(--text2);margin-top:2px">ينفذ أوامرك</div></div>
+          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:1.6rem;margin-bottom:5px">🏢</div><div style="font-weight:700;font-size:.8rem">6 أقسام رقمية</div><div style="font-size:.7rem;color:var(--text2);margin-top:2px">فريق متكامل</div></div>
+          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:1.6rem;margin-bottom:5px">💬</div><div style="font-weight:700;font-size:.8rem">خدمة عملاء</div><div style="font-size:.7rem;color:var(--text2);margin-top:2px">24/7 تلقائي</div></div>
+          <div style="background:var(--s2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:1.6rem;margin-bottom:5px">🎬</div><div style="font-weight:700;font-size:.8rem">مصمم فيديو</div><div style="font-size:.7rem;color:var(--text2);margin-top:2px">بالذكاء الاصطناعي</div></div>
         </div>
-        <button class="btn ba" onclick="nextStep()" style="width:100%;padding:12px;font-size:.92rem">ابدأ الإعداد ←</button>
       </div>
+      <button class="btn ba bfull" onclick="nextStep()" style="padding:13px;font-size:.95rem">ابدأ الإعداد ←</button>
     </div>
+
     <div class="obs" id="obs1">
-      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">🏪</div><h2>ما نوع عملك؟</h2><p>اختر من القائمة أو اشرح بكلماتك الخاصة</p></div>
-
-      <!-- اختيار سريع -->
-      <div class="btg" id="btg"></div>
-
-      <!-- أو اكتب بحرية -->
-      <div class="card" style="margin-top:4px;border-color:rgba(79,142,247,.15)">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
-          <div style="width:2px;height:16px;background:var(--accent);border-radius:2px"></div>
-          <span style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">أو صف عملك بكلماتك</span>
-        </div>
-        <textarea class="ft" id="ob1-custom" placeholder="مثال: عندي محل ملابس رجالية في البصرة، أبيع بالتجزئة وأحياناً بالجملة، عملائي من 20-45 سنة، أركز على الجودة وسعر مناسب..." style="min-height:100px"></textarea>
-        <div style="font-size:.72rem;color:var(--text2);margin-top:5px">💡 كلما كان الوصف أدق، كلما تعلم الذكاء الاصطناعي عنك أكثر</div>
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:10px">🏪</div><h2>ما نوع عملك؟</h2><p>اكتب بكلماتك — Mike سيتكيف معك</p></div>
+      <div class="card">
+        <div class="fg"><label class="fl">اسم المتجر / النشاط *</label><input class="fi" id="ob-store-name" placeholder="مثال: متجر الأناقة، مطعم البيت..."></div>
+        <div class="fg"><label class="fl">نوع النشاط التجاري *</label><input class="fi" id="ob-business-type" placeholder="مثال: ملابس نسائية، مطعم، صيدلية..."></div>
+        <div class="fg"><label class="fl">صف عملك (اختياري)</label><textarea class="ft" id="ob-business-desc" placeholder="مثال: أبيع ملابس نسائية في البصرة..." style="min-height:80px"></textarea></div>
       </div>
-
-      <button class="btn ba" onclick="saveOb1()" style="width:100%;padding:12px;margin-top:12px">التالي ←</button>
+      <button class="btn ba bfull" onclick="saveOb1New()" style="padding:12px">التالي ←</button>
     </div>
+
     <div class="obs" id="obs2">
-      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">✍️</div><h2>صف عملك</h2><p>كأنك تشرح لموظف جديد</p></div>
-      <div class="card">
-        <div class="fg"><label class="fl">اسم متجرك *</label><input class="fi" id="obsn" placeholder="متجر النور، مطعم الأصيل..."></div>
-        <div class="fg"><label class="fl">صف عملك</label><textarea class="ft" id="obsd" placeholder="أبيع ملابس نسائية للنساء 18-35..."></textarea></div>
-        <div class="fg"><label class="fl">واتساب (اختياري)</label><input class="fi" id="obsw" placeholder="07xxxxxxxxxx" dir="ltr"></div>
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:10px">💳</div><h2>أرقام الدفع</h2><p>يرسلها الموظف الرقمي للزبائن تلقائياً</p></div>
+      <div class="card" id="ob-cards-list"><div class="empty" style="padding:16px"><div class="ei" style="font-size:1.6rem">💳</div><p>لم تضف بطاقات بعد</p></div></div>
+      <div class="card" style="border-color:rgba(91,106,240,.2)">
+        <div class="fg"><label class="fl">نوع البطاقة</label>
+          <select class="fs" id="ob-card-type">
+            <option>ZainCash</option><option>Asia Hawala</option><option>QiCard</option><option>FastPay</option><option>FIB</option><option>Visa</option><option>MasterCard</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">رقم البطاقة *</label><input class="fi" id="ob-card-number" placeholder="07xxxxxxxxxx" dir="ltr"></div>
+        <div class="fg"><label class="fl">اسم صاحب البطاقة *</label><input class="fi" id="ob-card-holder" placeholder="الاسم الكامل"></div>
+        <div class="fg"><label class="fl">ملاحظة (اختياري)</label><input class="fi" id="ob-card-notes" placeholder="للتحويل 9ص-9م"></div>
+        <button class="btn ba bfull" onclick="addObCard()" style="padding:10px">+ إضافة البطاقة</button>
       </div>
-      <button class="btn ba" onclick="saveOb2()" style="width:100%;padding:12px">التالي ←</button>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn bo" onclick="prevStep()" style="flex:1;padding:11px">← رجوع</button>
+        <button class="btn ba" onclick="saveOb2New()" style="flex:2;padding:11px">التالي ←</button>
+      </div>
     </div>
+
     <div class="obs" id="obs3">
-      <div class="shd"><div style="font-size:2.4rem;margin-bottom:9px">🧠</div><h2>علّم موظفك الرقمي</h2><p>أخبره بفلسفتك</p></div>
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:10px">📱</div><h2>واتساب التجاري</h2><p>الرقم الذي يتواصل منه الموظف مع الزبائن</p></div>
       <div class="card">
-        <div class="fg"><label class="fl">اسم الموظف</label><input class="fi" id="oen" placeholder="مساعدي، سارة، أحمد..."></div>
-        <div class="fg"><label class="fl">فلسفتك مع العملاء</label><textarea class="ft" id="oep" placeholder="أؤمن بالصدق. لا أبيع ما لا يناسب العميل..."></textarea></div>
-        <div class="fg"><label class="fl">كيف تتعامل مع طلب الخصم؟</label><textarea class="ft" id="oeo" placeholder="أشرح القيمة أولاً، ثم للعملاء الدائمين خصم 10%..."></textarea></div>
+        <div class="fg"><label class="fl">رقم واتساب *</label><input class="fi" id="ob-whatsapp" placeholder="07xxxxxxxxxx" dir="ltr" type="tel"></div>
+        <div class="fg"><label class="fl">العملة</label>
+          <select class="fs" id="ob-currency">
+            <option value="IQD">د.ع — دينار عراقي</option><option value="SAR">ر.س — ريال سعودي</option><option value="AED">د.إ — درهم</option><option value="USD">$ — دولار</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">أسلوب التواصل</label>
+          <select class="fs" id="ob-style">
+            <option value="ودي وقريب">ودي وقريب 😊</option><option value="عراقي">عراقي أصيل 🇮🇶</option><option value="خليجي">خليجي راقي</option><option value="رسمي">رسمي</option>
+          </select>
+        </div>
       </div>
-      <button class="btn ba" onclick="saveOb3()" style="width:100%;padding:12px">إنهاء الإعداد 🎉</button>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn bo" onclick="prevStep()" style="flex:1;padding:11px">← رجوع</button>
+        <button class="btn ba" onclick="saveOb3New()" style="flex:2;padding:11px">التالي ←</button>
+      </div>
     </div>
+
+    <div class="obs" id="obs4">
+      <div class="shd"><div style="font-size:2.4rem;margin-bottom:10px">🎨</div><h2>هوية متجرك</h2><p>Mike وفريقه سيستخدمونها في التصاميم</p></div>
+      <div class="card">
+        <div class="fg"><label class="fl">شعار المتجر (اختياري)</label>
+          <div style="display:flex;gap:7px;margin-bottom:7px">
+            <label style="flex:1;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:8px;text-align:center;cursor:pointer;font-size:.76rem;color:var(--text2)">
+              📱 رفع من الهاتف
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImgToField(this,'ob-logo')">
+            </label>
+          </div>
+          <input class="fi" id="ob-logo" placeholder="أو رابط https://..." dir="ltr">
+        </div>
+        <div class="g2">
+          <div class="fg" style="margin:0"><label class="fl">اللون الرئيسي</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="ob-color1" value="#5b6af0" style="width:44px;height:36px;border-radius:8px;border:1px solid var(--border);cursor:pointer">
+              <input class="fi" id="ob-color1-hex" value="#5b6af0" dir="ltr" style="flex:1">
+            </div>
+          </div>
+          <div class="fg" style="margin:0"><label class="fl">اللون الثانوي</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="ob-color2" value="#f59e0b" style="width:44px;height:36px;border-radius:8px;border:1px solid var(--border);cursor:pointer">
+              <input class="fi" id="ob-color2-hex" value="#f59e0b" dir="ltr" style="flex:1">
+            </div>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">الخط</label>
+          <select class="fs" id="ob-font">
+            <option value="Tajawal">Tajawal — عصري</option><option value="Cairo">Cairo — واضح</option><option value="Almarai">Almarai — أنيق</option>
+          </select>
+        </div>
+      </div>
+      <div id="ob-preview" style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
+        <div style="font-size:2rem;margin-bottom:6px">⚡</div>
+        <div id="ob-prev-name" style="font-weight:900;font-size:1.1rem">اسم متجرك</div>
+        <div id="ob-prev-type" style="font-size:.78rem;color:var(--text2);margin-top:3px">نوع النشاط</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn bo" onclick="prevStep()" style="flex:1;padding:11px">← رجوع</button>
+        <button class="btn ba" onclick="saveOb4New()" style="flex:2;padding:13px;font-size:.95rem">🚀 ابدأ مع SocialOS</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1084,6 +1128,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
       <button class="si-btn" onclick="sp('bulk-wa',this)"><span class="si-icon">📢</span><span class="si-label">حملات واتساب</span></button>
       <button class="si-btn" onclick="sp('coupons',this)"><span class="si-icon">🎟️</span><span class="si-label">الكوبونات</span></button>
       <button class="si-btn" onclick="sp('loyalty',this)"><span class="si-icon">💎</span><span class="si-label">نقاط الولاء</span></button>
+      <button class="si-btn" onclick="sp('referral',this)"><span class="si-icon">🔗</span><span class="si-label">برنامج الإحالة</span></button>
       <button class="si-btn" onclick="sp('retargeting',this)"><span class="si-icon">🎯</span><span class="si-label">إعادة الاستهداف</span></button>
       <button class="si-btn" onclick="sp('social',this)"><span class="si-icon">🔗</span><span class="si-label">ربط المنصات</span></button>
       <button class="si-btn" onclick="sp('marketplace',this)"><span class="si-icon">🏪</span><span class="si-label">متجري العام</span></button>
@@ -1098,6 +1143,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
       <button class="si-btn" onclick="sp('ai',this)"><span class="si-icon">🤖</span><span class="si-label">الذكاء الاصطناعي</span></button>
       <button class="si-btn" onclick="sp('analytics',this)"><span class="si-icon">📊</span><span class="si-label">التحليلات</span></button>
       <button class="si-btn" onclick="sp('analytics-adv',this)"><span class="si-icon">📈</span><span class="si-label">تحليلات متقدمة</span></button>
+      <button class="si-btn" onclick="sp('heatmap',this)"><span class="si-icon">🔥</span><span class="si-label">خريطة المبيعات</span></button>
 
       <div class="nav-divider"></div>
       <div class="nav-group-label">الفريق الرقمي</div>
@@ -1141,6 +1187,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     <div class="tright">
       <button class="nbtn" onclick="sp('mike',null)" style="background:linear-gradient(135deg,rgba(79,142,247,.2),rgba(124,58,237,.2));border-color:rgba(79,142,247,.3);color:var(--accent)">⚡</button>
       <button class="nbtn" onclick="sp('notifications',null)">🔔<span class="nbadge" id="nbc" style="display:none">0</span></button>
+      <button class="nbtn" onclick="logout()" style="color:var(--danger);border-color:rgba(239,68,68,.2);background:rgba(239,68,68,.08)" title="تسجيل الخروج">🚪</button>
       <button onclick="openMobileMenu()" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-family:'Tajawal',sans-serif;font-size:.78rem;font-weight:700;color:var(--text2)">
         <div class="uav" id="uav2" style="width:22px;height:22px;font-size:.6rem">?</div>
         <span style="font-size:.72rem" id="unm2">القائمة ☰</span>
@@ -1188,6 +1235,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
         <button onclick="sp('bulk-wa',null);closeMobileMenu()" class="mob-nav-btn">📢<span>حملات واتساب</span></button>
         <button onclick="sp('coupons',null);closeMobileMenu()" class="mob-nav-btn">🎟️<span>الكوبونات</span></button>
         <button onclick="sp('loyalty',null);closeMobileMenu()" class="mob-nav-btn">💎<span>نقاط الولاء</span></button>
+        <button onclick="sp('referral',null);closeMobileMenu()" class="mob-nav-btn">🔗<span>برنامج الإحالة</span></button>
         <button onclick="sp('retargeting',null);closeMobileMenu()" class="mob-nav-btn">🎯<span>إعادة الاستهداف</span></button>
         <button onclick="sp('social',null);closeMobileMenu()" class="mob-nav-btn">🔗<span>ربط المنصات</span></button>
         <button onclick="sp('marketplace',null);closeMobileMenu()" class="mob-nav-btn">🏪<span>متجري العام</span></button>
@@ -1201,6 +1249,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
         <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">التحليل والمراقبة</div>
         <button onclick="sp('analytics',null);closeMobileMenu()" class="mob-nav-btn">📊<span>التحليلات</span></button>
         <button onclick="sp('analytics-adv',null);closeMobileMenu()" class="mob-nav-btn">📈<span>تحليلات متقدمة</span></button>
+        <button onclick="sp('heatmap',null);closeMobileMenu()" class="mob-nav-btn">🔥<span>خريطة المبيعات</span></button>
 
         <!-- الفريق الرقمي -->
         <div style="font-size:.64rem;color:var(--text2);font-weight:700;padding:10px 10px 3px;text-transform:uppercase;letter-spacing:.8px">الفريق الرقمي</div>
@@ -1320,6 +1369,41 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           </div>
         </div>
 
+      </div>
+
+      <!-- ذاكرة Mike الدائمة -->
+      <div class="card" style="border-color:rgba(91,106,240,.2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>🧠 ذاكرة Mike الدائمة</h3>
+          <div style="display:flex;gap:6px">
+            <button class="btn bo bsm" onclick="ldMikeMemory()">🔄</button>
+            <button class="btn bd bsm" onclick="clearMikeMemory()">🗑️</button>
+          </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;background:rgba(91,106,240,.06);border-radius:8px;padding:9px">
+          💡 Mike يحفظ تلقائياً من كل محادثة. يمكنك أيضاً إضافة معلومات يدوياً.
+        </div>
+        <!-- إضافة يدوية -->
+        <div class="fg">
+          <label class="fl">أضف معلومة لذاكرة Mike</label>
+          <input class="fi" id="mike-mem-input" placeholder='مثال: "زبائننا يفضلون الدفع كاش" أو "لا نقبل الإلغاء بعد التجهيز"' onkeydown="if(event.key==='Enter')addMikeMemory()">
+        </div>
+        <div class="fg">
+          <label class="fl">نوع المعلومة</label>
+          <select class="fs" id="mike-mem-type">
+            <option value="general">💡 عامة</option>
+            <option value="policy">📋 سياسة</option>
+            <option value="customer">👥 زبائن</option>
+            <option value="product">📦 منتجات</option>
+            <option value="preference">⭐ تفضيلات</option>
+            <option value="decision">⚡ قرار</option>
+          </select>
+        </div>
+        <button class="btn ba bfull" onclick="addMikeMemory()" style="margin-bottom:12px">🧠 أضف لذاكرة Mike</button>
+        <!-- قائمة الذاكرة -->
+        <div id="mike-memory-list">
+          <div class="empty"><div class="ei">🧠</div><p>اضغط 🔄 لعرض الذاكرة</p></div>
+        </div>
       </div>
     </div>
 
@@ -1868,7 +1952,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           </div>
           <div class="g2" style="margin-bottom:12px">
             <input class="fi" id="dt-product" placeholder="اسم المنتج (اختياري)">
-            <input class="fi" id="dt-price" placeholder="السعر (اختياري)" dir="ltr">
+            <input class="fi price-field" id="dt-price" placeholder="السعر (اختياري)" dir="ltr">
           </div>
           <button class="btn ba" onclick="generateDesignTemplate()" style="width:100%;padding:11px">✨ توليد القالب</button>
         </div>
@@ -1903,6 +1987,38 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     </div>
 
     <!-- COUPONS -->
+    <!-- HEATMAP — خريطة حرارية للمبيعات -->
+    <div class="page" id="page-heatmap">
+      <div class="pt">
+        <div><h1>🔥 خريطة المبيعات</h1><p>أفضل أوقات البيع</p></div>
+        <div class="pas">
+          <select class="fs" id="heatmap-period" onchange="ldHeatmap()" style="width:auto;padding:7px 10px">
+            <option value="30">30 يوم</option>
+            <option value="90" selected>90 يوم</option>
+            <option value="180">6 أشهر</option>
+            <option value="365">سنة</option>
+          </select>
+          <button class="btn ba bsm" onclick="ldHeatmap()">🔄 تحديث</button>
+        </div>
+      </div>
+
+      <!-- Insights -->
+      <div id="heatmap-insights" style="margin-bottom:14px">
+        <div class="empty"><div class="ei">🔥</div><p>اضغط تحديث لرؤية الخريطة</p></div>
+      </div>
+
+      <!-- الخريطة -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>🗓️ الخريطة الحرارية</h3>
+          <div style="font-size:.72rem;color:var(--text2)">أيام الأسبوع × ساعات اليوم</div>
+        </div>
+        <div id="heatmap-container">
+          <div class="empty"><div class="ei">🔥</div><p>اضغط تحديث لعرض الخريطة</p></div>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-coupons">
       <div class="pt"><div><h1>🎟️ الكوبونات</h1></div><div class="pas"><button class="btn ba" onclick="openCoupModal()">+ كوبون</button></div></div>
       <div id="couplist"><div class="empty"><div class="ei">🎟️</div><p>لا كوبونات</p></div></div>
@@ -1997,50 +2113,144 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     </div>
 
     <!-- DIGITAL TEAM — الفريق الرقمي -->
+    <!-- DIGITAL TEAM — الفريق الرقمي الكامل -->
     <div class="page" id="page-digital-team">
-      <div class="pt"><div><h1>🤖 الفريق الرقمي</h1><p>موظفون رقميون متخصصون يعملون معك</p></div></div>
+      <div class="pt">
+        <div><h1>🏢 الفريق الرقمي</h1><p>Mike + 6 موظفين رقميين</p></div>
+        <div class="pas"><button class="btn ba bsm" onclick="ldMikeBrief()">🔄</button></div>
+      </div>
+      <div id="mike-brief" class="card" style="border-color:rgba(91,106,240,.2);margin-bottom:12px"><div class="empty"><div class="ei">🤖</div><p>جاري تحميل Mike...</p></div></div>
+      <div class="card" style="border-color:rgba(91,106,240,.12);margin-bottom:12px">
+        <h3>⚡ Mike — أعطِه أمراً</h3>
+        <div id="mike-chat-msgs" style="min-height:80px;max-height:180px;overflow-y:auto;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px">
+          <input class="fi" id="mike-command-input" placeholder="مثال: انشر بوست، أضف منتج، تقرير اليوم..." style="flex:1" onkeydown="if(event.key==='Enter')mikeSendCommand()">
+          <button class="btn ba" onclick="mikeSendCommand()" style="padding:10px 14px">↑</button>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
+          <button class="btn bo bsm" onclick="document.getElementById('mike-command-input').value='تقرير اليوم';mikeSendCommand()">📊 تقرير</button>
+          <button class="btn bo bsm" onclick="document.getElementById('mike-command-input').value='فحص المخزون';mikeSendCommand()">📦 مخزون</button>
+          <button class="btn bo bsm" onclick="document.getElementById('mike-command-input').value='انشر بوست على Instagram';mikeSendCommand()">📱 نشر</button>
+          <button class="btn bo bsm" onclick="document.getElementById('mike-command-input').value='صمم فيديو ترويجي';mikeSendCommand()">🎬 فيديو</button>
+        </div>
+      </div>
+      <div class="fbar" style="margin-bottom:12px">
+        <button class="fb team-tab-btn active" onclick="switchTeamTab('customer',this)">💬 عملاء</button>
+        <button class="fb team-tab-btn" onclick="switchTeamTab('design',this)">🎨 تصميم</button>
+        <button class="fb team-tab-btn" onclick="switchTeamTab('promotion',this)">📢 ترويج</button>
+        <button class="fb team-tab-btn" onclick="switchTeamTab('orders',this)">📦 طلبات</button>
+        <button class="fb team-tab-btn" onclick="switchTeamTab('inventory',this)">🏪 مخزن</button>
+        <button class="fb team-tab-btn" onclick="switchTeamTab('analytics',this)">📊 تحليل</button>
+      </div>
 
-      <!-- بطاقات الموظفين -->
-      <div id="dteam-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:13px;margin-bottom:14px"></div>
-
-      <!-- منطقة المحادثة مع الموظف -->
-      <div id="dteam-chat-area" style="display:none">
-        <div class="card" style="border-color:rgba(79,142,247,.25)">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span id="dteam-chat-icon" style="font-size:1.4rem">🤖</span>
-              <div>
-                <div id="dteam-chat-name" style="font-weight:900;font-size:.92rem"></div>
-                <div id="dteam-chat-desc" style="font-size:.74rem;color:var(--text2)"></div>
-              </div>
-            </div>
-            <button class="btn bo bsm" onclick="closeDTeamChat()">✕ إغلاق</button>
+      <div id="team-tab-customer" class="team-tab-content">
+        <div class="card" style="margin-bottom:10px">
+          <h3>💬 اختبار الرد التلقائي</h3>
+          <div class="g2" style="margin-bottom:10px"><input class="fi" id="customer-name-input" placeholder="اسم الزبون"><input class="fi" id="customer-phone-input" placeholder="07xxxxxxxxxx" dir="ltr"></div>
+          <div id="customer-chat-msgs" style="min-height:120px;max-height:240px;overflow-y:auto;background:var(--s2);border-radius:10px;padding:12px;margin-bottom:10px"><div style="text-align:center;font-size:.78rem;color:var(--text3);padding:16px">ابدأ محادثة تجريبية</div></div>
+          <div style="display:flex;gap:8px">
+            <input class="fi" id="customer-msg-input" placeholder="رسالة الزبون..." style="flex:1" onkeydown="if(event.key==='Enter')customerSendMsg()">
+            <button class="btn ba" onclick="customerSendMsg()" style="padding:10px 14px">إرسال</button>
           </div>
-          <div class="cwrap">
-            <div class="cmsgs" id="dteam-msgs"></div>
-            <div class="cin">
-              <input id="dteam-input" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter')sendDTeam()">
-              <button class="btn ba bsm" onclick="sendDTeam()" id="dteam-btn">إرسال</button>
-            </div>
-          </div>
+          <button class="btn bo bsm" onclick="_chatHistory=[];document.getElementById('customer-chat-msgs').innerHTML='<div style='text-align:center;font-size:.78rem;color:var(--text3);padding:16px'>محادثة جديدة</div>'" style="margin-top:8px;width:100%">🔄 محادثة جديدة</button>
+        </div>
+        <div class="card"><h3>💬 رد على تعليق</h3>
+          <div class="fg"><label class="fl">التعليق</label><textarea class="ft" id="comment-text" placeholder="الصق تعليق الزبون..." style="min-height:60px"></textarea></div>
+          <button class="btn ba bfull" id="comment-reply-btn" onclick="replyToComment()">💬 توليد رد</button>
+          <div id="comment-reply-result" style="display:none;margin-top:10px"></div>
         </div>
       </div>
 
-      <!-- إعدادات الموظف -->
-      <div id="dteam-settings-area" style="display:none">
+      <div id="team-tab-design" class="team-tab-content" style="display:none">
+        <div class="card" style="border-color:rgba(167,139,250,.25);margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--purple,#a78bfa));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">🎬</div>
+            <div><div style="font-weight:800;font-size:.88rem">Mike مصمم الفيديو</div><div style="font-size:.72rem;color:var(--text2)">اكتب الفكرة أو صور → Mike يصنع الفيديو</div></div>
+          </div>
+          <div class="fg"><label class="fl">💡 فكرة الفيديو</label><textarea class="ft" id="team-video-idea" placeholder="مثال: فيديو لقميص أزرق بسعر 35 ألف خصم 20%" style="min-height:70px"></textarea></div>
+          <div class="fg"><label class="fl">📸 صور المنتج (اختياري)</label>
+            <div style="display:flex;gap:7px;margin-bottom:6px">
+              <label style="flex:1;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:8px;text-align:center;cursor:pointer;font-size:.75rem;color:var(--text2)">
+                📱 من الهاتف (أكثر من صورة)
+                <input type="file" accept="image/*" multiple style="display:none" onchange="uploadTeamVideoImages(this)">
+              </label>
+            </div>
+            <div id="team-video-imgs-preview"></div>
+          </div>
+          <div class="fg"><label class="fl">المنصة</label>
+            <select class="fs" id="team-video-platform">
+              <option value="instagram">📸 Instagram Reels</option><option value="tiktok">🎵 TikTok</option><option value="facebook">👤 Facebook</option>
+            </select>
+          </div>
+          <div id="team-mike-video-thinking" style="display:none;margin-bottom:10px"></div>
+          <button class="btn ba bfull" id="team-video-btn" onclick="teamMikeCreateVideo()" style="padding:11px">🎬 Mike اصنع الفيديو</button>
+          <div id="team-video-result" style="margin-top:10px"></div>
+        </div>
+        <div class="card" style="border-color:rgba(34,197,94,.2);margin-bottom:10px">
+          <h3>🚀 صمم وانشر في خطوة واحدة</h3>
+          <div class="fg"><label class="fl">اسم المنتج *</label><input class="fi" id="dap-product" placeholder="مثال: قميص كاجوال أزرق"></div>
+          <div class="g2"><div class="fg" style="margin:0"><label class="fl">المنصة</label><select class="fs" id="dap-platform"><option value="instagram">📸 Instagram</option><option value="facebook">👤 Facebook</option><option value="tiktok">🎵 TikTok</option></select></div><div class="fg" style="margin:0"><label class="fl">السعر</label><input class="fi price-field" id="dap-price" placeholder="0" dir="ltr"></div></div>
+          <div class="fg"><label class="fl">الخلفية</label><input class="fi" id="dap-bg" placeholder="بيضاء، ورد..."></div>
+          <div class="fg"><label class="fl">تعليمات خاصة</label><input class="fi" id="dap-instructions" placeholder="أضف نص خصم..."></div>
+          <button class="btn ba bfull" id="dap-btn" onclick="designAndPublish()" style="padding:11px">🚀 صمم وانشر</button>
+          <div id="dap-result" style="margin-top:10px"></div>
+        </div>
         <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
-            <h3 id="dteam-set-title">⚙️ إعدادات الموظف</h3>
-            <button class="btn bo bsm" onclick="closeDTeamSettings()">✕</button>
+          <h3>📱 نشر على المنصات</h3>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button class="btn ba bsm platform-btn active" onclick="switchPublishPlatform('instagram',this)" style="flex:1">📸 IG</button>
+            <button class="btn bo bsm platform-btn" onclick="switchPublishPlatform('facebook',this)" style="flex:1">👤 FB</button>
+            <button class="btn bo bsm platform-btn" onclick="switchPublishPlatform('tiktok',this)" style="flex:1">🎵 TT</button>
           </div>
-          <input type="hidden" id="dteam-set-role">
-          <div class="fg"><label class="fl">الاسم</label><input class="fi" id="dts-name"></div>
-          <div class="fg"><label class="fl">الشخصية</label><textarea class="ft" id="dts-personality" placeholder="ودي، محترف، مقنع..."></textarea></div>
-          <div class="fg"><label class="fl">الخبرة</label><textarea class="ft" id="dts-expertise" placeholder="خبير في... متخصص في..."></textarea></div>
-          <div class="fg"><label class="fl">تعليمات خاصة</label><textarea class="ft" id="dts-instructions" placeholder="تعليمات إضافية للموظف..."></textarea></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn ba" onclick="saveDTeamMember()" style="flex:1;padding:11px">💾 حفظ</button>
-          </div>
+          <div class="fg"><label class="fl">نوع المنشور</label><select class="fs" id="pub-post-type"><option value="product">📦 منتج</option><option value="offer">🎯 عرض</option><option value="new_arrival">✨ وصول جديد</option><option value="promotion">📢 ترويجي</option></select></div>
+          <div class="g2"><div class="fg" style="margin:0"><label class="fl">المنتج</label><input class="fi" id="pub-product" placeholder="اسم المنتج"></div><div class="fg" style="margin:0"><label class="fl">السعر</label><input class="fi price-field" id="pub-price" placeholder="0" dir="ltr"></div></div>
+          <button class="btn ba bfull" id="pub-gen-btn" onclick="generatePublishContent()" style="margin-bottom:10px">✨ توليد محتوى AI</button>
+          <div id="pub-content-preview" style="display:none;margin-bottom:10px"></div>
+          <div class="fg"><label class="fl">نص البوست *</label><textarea class="ft" id="pub-caption" placeholder="اكتب أو استخدم AI..." style="min-height:70px"></textarea></div>
+          <div class="fg"><label class="fl">الهاشتاقات</label><input class="fi" id="pub-hashtags" placeholder="#هاشتاق1 #هاشتاق2"></div>
+          <div class="fg"><label class="fl">رابط الصورة</label><input class="fi" id="pub-media-url" placeholder="https://..." dir="ltr"></div>
+          <div class="fg"><label class="fl">جدولة (اختياري)</label><input class="fi" id="pub-scheduled" type="datetime-local"></div>
+          <button class="btn ba bfull" id="pub-publish-btn" onclick="publishPost()" style="padding:11px">🚀 نشر الآن</button>
+          <div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:.75rem;font-weight:700;color:var(--text2)">آخر المنشورات</div><button class="btn bo bsm" onclick="ldPublishedPosts()">🔄</button></div><div id="published-posts-list"><div class="empty"><div class="ei">📱</div><p>اضغط 🔄</p></div></div></div>
+        </div>
+      </div>
+
+      <div id="team-tab-promotion" class="team-tab-content" style="display:none">
+        <div class="card" style="border-color:rgba(245,158,11,.2)">
+          <div style="background:rgba(245,158,11,.08);border-radius:8px;padding:9px;margin-bottom:12px;font-size:.77rem;color:var(--yellow)">💰 الميزانية تحددها أنت فقط</div>
+          <h3>📢 دراسة حملة ترويجية</h3>
+          <div class="fg"><label class="fl">هدف الحملة *</label><input class="fi" id="promo-goal" placeholder="زيادة المبيعات..."></div>
+          <div class="fg"><label class="fl">المنتج</label><input class="fi" id="promo-product" placeholder="اسم المنتج"></div>
+          <div class="fg"><label class="fl">المدة</label><select class="fs" id="promo-days"><option value="7">7 أيام</option><option value="14">14 يوم</option><option value="30">30 يوم</option></select></div>
+          <button class="btn ba bfull" id="promo-btn" onclick="generateCampaignStudy()">📢 ابدأ الدراسة</button>
+          <div id="promo-result" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div id="team-tab-orders" class="team-tab-content" style="display:none">
+        <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>📦 طلبات واردة</h3><button class="btn bo bsm" onclick="ldTeamOrders()">🔄</button></div><div id="team-orders-list"><div class="empty"><div class="ei">📦</div><p>لا طلبات معلقة</p></div></div></div>
+      </div>
+
+      <div id="team-tab-inventory" class="team-tab-content" style="display:none">
+        <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>⚠️ تنبيهات المخزون</h3><button class="btn bo bsm" onclick="ldTeamInventory()">🔄</button></div><div id="inventory-alerts"><div class="empty"><div class="ei">✅</div><p>جاري الفحص...</p></div></div></div>
+        <div class="card"><h3>📦 إضافة منتج</h3>
+          <div class="g2"><div class="fg" style="margin:0"><label class="fl">الاسم *</label><input class="fi" id="inv-name" placeholder="اسم المنتج"></div><div class="fg" style="margin:0"><label class="fl">السعر *</label><input class="fi price-field" id="inv-price" placeholder="0" dir="ltr" type="number"></div></div>
+          <div class="g2" style="margin-top:10px"><div class="fg" style="margin:0"><label class="fl">الكمية</label><input class="fi" id="inv-stock" placeholder="0" type="number"></div><div class="fg" style="margin:0"><label class="fl">الفئة</label><input class="fi" id="inv-cat" placeholder="الفئة"></div></div>
+          <div class="fg" style="margin-top:10px"><label class="fl">الوصف</label><textarea class="ft" id="inv-desc" style="min-height:50px"></textarea></div>
+          <button class="btn ba bfull" onclick="addTeamProduct()">➕ إضافة</button>
+        </div>
+      </div>
+
+      <div id="team-tab-analytics" class="team-tab-content" style="display:none">
+        <div class="card" style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3>📊 تقرير شامل</h3><select class="fs" id="report-period" style="width:auto;padding:5px 10px"><option value="7">7 أيام</option><option value="30">30 يوم</option><option value="90">3 أشهر</option></select></div>
+          <button class="btn ba bfull" id="report-btn" onclick="generateTeamReport()">📊 توليد التقرير</button>
+          <div id="team-report-result" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3>🔥 خريطة المبيعات</h3><div style="display:flex;gap:6px"><select class="fs" id="heatmap-period" style="width:auto;padding:5px 10px"><option value="30">30 يوم</option><option value="90" selected>90 يوم</option><option value="180">6 أشهر</option></select><button class="btn ba bsm" onclick="ldHeatmap()">🔄</button></div></div>
+          <div id="heatmap-insights" style="margin-bottom:12px"></div>
+          <div id="heatmap-container"><div class="empty"><div class="ei">🔥</div><p>اضغط 🔄 لعرض الخريطة</p></div></div>
         </div>
       </div>
     </div>
@@ -2087,7 +2297,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           </div>
         </div>
         <div class="g2">
-          <div class="fg"><label class="fl">الميزانية اليومية ($)</label><input class="fi" id="ads-budget" type="number" min="1" placeholder="10"></div>
+          <div class="fg"><label class="fl">الميزانية اليومية ($)</label><input class="fi price-field" id="ads-budget" type="number" min="1" placeholder="10"></div>
           <div class="fg"><label class="fl">وصف المنتج</label><input class="fi" id="ads-pdesc" placeholder="ملابس رجالية عراقية..."></div>
         </div>
         <button class="btn ba" onclick="suggestAd()" id="ads-sug-btn" style="width:100%;padding:11px">✨ اقترح حملة بالـ AI</button>
@@ -2111,6 +2321,204 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     </div>
 
     <!-- RETARGETING — إعادة الاستهداف -->
+    <!-- REFERRAL — برنامج الإحالة -->
+    <!-- VIDEO DESIGNER — Mike مخرج الفيديو الذكي -->
+    <div class="page" id="page-video">
+      <div class="pt">
+        <div>
+          <h1>🎬 مصمم الفيديو</h1>
+          <p>Mike يختار القالب ويصنع الفيديو تلقائياً</p>
+        </div>
+        <div class="pas">
+          <button class="btn bo bsm" onclick="ldVideoGallery();document.getElementById('video-gallery-section').scrollIntoView({behavior:'smooth'})">🎬 معرضي</button>
+        </div>
+      </div>
+
+      <!-- Mike thinking -->
+      <div id="mike-video-thinking" style="display:none"></div>
+
+      <!-- نموذج الطلب -->
+      <div class="card" style="border-color:rgba(91,106,240,.2);margin-bottom:12px">
+
+        <!-- Mike header -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border2)">
+          <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🤖</div>
+          <div>
+            <div style="font-weight:800;font-size:.9rem">Mike — مخرج الفيديو الذكي</div>
+            <div style="font-size:.74rem;color:var(--text2)">اكتب الفكرة أو أرسل صوراً وأنا أتولى الباقي</div>
+          </div>
+        </div>
+
+        <!-- الفكرة -->
+        <div class="fg">
+          <label class="fl">💡 اكتب فكرتك</label>
+          <textarea class="ft" id="video-idea" placeholder="مثال:
+• فيديو لقميص أزرق بسعر 35 ألف مع خصم 20%
+• حملة ترويجية لإطلاق مجموعة صيف جديدة
+• عرض تقييم زبون اسمه أحمد قال المنتج ممتاز
+• فيديو للصور المرفقة مع اسم المتجر والسعر" style="min-height:100px"></textarea>
+        </div>
+
+        <!-- إضافة صور -->
+        <div class="fg">
+          <label class="fl">📸 أضف صور المنتج (اختياري — حتى 5 صور)</label>
+          <div style="display:flex;gap:8px;margin-bottom:7px">
+            <label style="flex:1;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:9px;text-align:center;cursor:pointer;font-size:.78rem;color:var(--text2)">
+              📱 اختر من الهاتف (أكثر من صورة)
+              <input type="file" accept="image/*" multiple style="display:none" onchange="uploadVideoImages(this)">
+            </label>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input class="fi" id="video-img-url" placeholder="أو رابط URL للصورة..." dir="ltr" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addVideoImage()}">
+            <button class="btn bo bsm" onclick="addVideoImage()">+ إضافة</button>
+          </div>
+        </div>
+
+        <!-- معاينة الصور -->
+        <div id="video-images-preview"></div>
+
+        <!-- المنصة -->
+        <div class="fg">
+          <label class="fl">📱 المنصة</label>
+          <select class="fs" id="video-platform">
+            <option value="instagram">📸 Instagram Reels</option>
+            <option value="tiktok">🎵 TikTok</option>
+            <option value="facebook">👤 Facebook</option>
+          </select>
+        </div>
+
+        <!-- القوالب المتاحة -->
+        <div style="background:var(--s2);border-radius:10px;padding:10px;margin-bottom:14px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--text2);margin-bottom:8px">🎬 القوالب المتاحة — Mike يختار الأنسب تلقائياً</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <span style="background:rgba(91,106,240,.1);color:var(--accent2);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:600">🛍️ منتج مع خصم</span>
+            <span style="background:rgba(239,68,68,.08);color:var(--red);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:600">📢 حملة ترويجية</span>
+            <span style="background:rgba(245,158,11,.1);color:var(--yellow);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:600">⭐ تقييم متحرك</span>
+          </div>
+        </div>
+
+        <button class="btn ba bfull" id="video-create-btn" onclick="mikeCreateVideo()" style="padding:13px;font-size:.9rem">
+          🎬 Mike اصنع الفيديو
+        </button>
+      </div>
+
+      <!-- نتيجة الفيديو -->
+      <div id="video-result" style="margin-bottom:14px"></div>
+
+      <!-- معرض الفيديوهات -->
+      <div id="video-gallery-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:.88rem;font-weight:700">🎬 فيديوهاتي</div>
+          <button class="btn bo bsm" onclick="ldVideoGallery()">🔄 تحديث</button>
+        </div>
+        <div id="video-gallery">
+          <div class="empty"><div class="ei">🎬</div><p>لا فيديوهات بعد</p></div>
+        </div>
+      </div>
+
+    </div>
+
+        <div class="page" id="page-referral">
+      <div class="pt">
+        <div><h1>🔗 برنامج الإحالة</h1><p>زبائنك يجلبون زبائن جدد</p></div>
+        <div class="pas"><button class="btn ba bsm" onclick="saveReferralSettings()">💾 حفظ</button></div>
+      </div>
+
+      <!-- إحصائيات -->
+      <div id="referral-stats">
+        <div class="empty"><div class="ei">🔗</div><p>جاري التحميل...</p></div>
+      </div>
+
+      <!-- إعدادات البرنامج -->
+      <div class="card" style="border-color:rgba(91,106,240,.2);margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3>⚙️ إعدادات البرنامج</h3>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="ref-active" checked style="width:16px;height:16px">
+            <span style="font-size:.82rem;font-weight:700">مفعّل</span>
+          </label>
+        </div>
+
+        <div style="font-size:.78rem;font-weight:700;color:var(--text2);margin-bottom:10px">🎁 مكافأة المُحيل (الزبون الذي أرسل الرابط)</div>
+        <div class="g2" style="margin-bottom:14px">
+          <div class="fg" style="margin:0">
+            <label class="fl">نوع المكافأة</label>
+            <select class="fs" id="ref-referrer-type">
+              <option value="points">نقاط ولاء</option>
+              <option value="discount">خصم %</option>
+            </select>
+          </div>
+          <div class="fg" style="margin:0">
+            <label class="fl">القيمة</label>
+            <input class="fi" id="ref-referrer-value" type="number" value="500" placeholder="500" dir="ltr">
+          </div>
+        </div>
+
+        <div style="font-size:.78rem;font-weight:700;color:var(--text2);margin-bottom:10px">🎁 مكافأة الزبون الجديد (الذي استخدم الرابط)</div>
+        <div class="g2" style="margin-bottom:14px">
+          <div class="fg" style="margin:0">
+            <label class="fl">نوع المكافأة</label>
+            <select class="fs" id="ref-referee-type">
+              <option value="discount">خصم %</option>
+              <option value="points">نقاط ولاء</option>
+            </select>
+          </div>
+          <div class="fg" style="margin:0">
+            <label class="fl">القيمة</label>
+            <input class="fi" id="ref-referee-value" type="number" value="10" placeholder="10" dir="ltr">
+          </div>
+        </div>
+
+        <div class="fg">
+          <label class="fl">الحد الأدنى للطلب (اختياري)</label>
+          <input class="fi" id="ref-min-order" type="number" value="0" placeholder="0" dir="ltr">
+        </div>
+        <button class="btn ba bfull" onclick="saveReferralSettings()">💾 حفظ الإعدادات</button>
+      </div>
+
+      <!-- إرسال رابط إحالة لزبون -->
+      <div class="card" style="margin-bottom:12px">
+        <h3>📤 أرسل رابط الإحالة لزبون</h3>
+        <div style="font-size:.78rem;color:var(--text2);margin-bottom:12px">أرسل للزبون رابطه الخاص — كل مرة يشارك الرابط يكسب مكافأة</div>
+        <div class="fg">
+          <label class="fl">رقم هاتف الزبون</label>
+          <input class="fi" id="ref-customer-phone" placeholder="07xxxxxxxxxx" dir="ltr">
+        </div>
+        <button class="btn ba bfull" onclick="sendReferralLink(null)">📱 إرسال الرابط على واتساب</button>
+        <div id="ref-generated-link" style="display:none"></div>
+      </div>
+
+      <!-- تطبيق كود إحالة -->
+      <div class="card" style="margin-bottom:12px">
+        <h3>✅ تطبيق كود إحالة على طلب</h3>
+        <div style="font-size:.78rem;color:var(--text2);margin-bottom:12px">عندما يذكر زبون جديد كود الإحالة، طبّقه هنا</div>
+        <div class="fg">
+          <label class="fl">كود الإحالة</label>
+          <input class="fi" id="ref-apply-code" placeholder="ABC123" dir="ltr" style="letter-spacing:2px;font-weight:700">
+        </div>
+        <div class="fg">
+          <label class="fl">هاتف الزبون الجديد</label>
+          <input class="fi" id="ref-apply-phone" placeholder="07xxxxxxxxxx" dir="ltr">
+        </div>
+        <div class="fg">
+          <label class="fl">رقم الطلب (اختياري)</label>
+          <input class="fi" id="ref-apply-order" placeholder="رقم الطلب" type="number">
+        </div>
+        <button class="btn ba bfull" onclick="applyReferralCode()">✅ تطبيق الكود</button>
+      </div>
+
+      <!-- أكثر المُحيلين -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>🏆 أكثر المُحيلين</h3>
+          <button class="btn bo bsm" onclick="ldReferralStats()">🔄</button>
+        </div>
+        <div id="top-referrers">
+          <div class="empty"><div class="ei">🔗</div><p>لا إحالات بعد</p></div>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-retargeting">
       <div class="pt"><div><h1>🎯 إعادة الاستهداف</h1><p>استهدف عملاءك السابقين بعروض مخصصة</p></div></div>
 
@@ -2135,7 +2543,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
             <option value="tiktok">🎵 TikTok</option>
           </select>
         </div>
-        <div class="fg"><label class="fl">الميزانية اليومية ($)</label><input class="fi" id="rt-budget" type="number" min="1" value="5" placeholder="5"></div>
+        <div class="fg"><label class="fl">الميزانية اليومية ($)</label><input class="fi price-field" id="rt-budget" type="number" min="1" value="5" placeholder="5"></div>
         <div class="fg"><label class="fl">نص الإعلان / العرض *</label><textarea class="ft" id="rt-copy" placeholder="عرض خاص لعملائنا المميزين — خصم 20% على كل الطلبات هذا الأسبوع! 🎁" style="min-height:90px"></textarea></div>
         <div class="fg"><label class="fl">العرض الخاص (سيظهر في رسائل واتساب)</label><input class="fi" id="rt-offer" placeholder="كوبون WELCOME20 — خصم 20%"></div>
         <div style="display:flex;gap:8px">
@@ -2213,7 +2621,15 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
         <div>
           <div class="card">
             <h3>🖼️ الشعار والغلاف</h3>
-            <div class="fg"><label class="fl">رابط الشعار</label><input class="fi" id="id-logo" placeholder="https://..." oninput="prvLogo()"></div>
+            <div class="fg"><label class="fl">شعار المتجر</label>
+            <div style="display:flex;gap:7px;margin-bottom:7px">
+              <label style="flex:1;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:8px;text-align:center;cursor:pointer;font-size:.76rem;color:var(--text2)">
+                📱 رفع الشعار من الهاتف
+                <input type="file" accept="image/*" style="display:none" onchange="uploadImgToField(this,'id-logo',prvLogo)">
+              </label>
+            </div>
+            <input class="fi" id="id-logo" placeholder="أو رابط الشعار https://..." oninput="prvLogo()">
+            </div>
             <div id="id-logo-prv" style="margin-bottom:10px;display:none"><img id="id-logo-img" style="width:80px;height:80px;border-radius:12px;object-fit:cover;border:2px solid var(--border)"></div>
             <div class="fg"><label class="fl">رابط صورة الغلاف</label><input class="fi" id="id-cover" placeholder="https://..."></div>
           </div>
@@ -3049,6 +3465,80 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
           </div>
         </div>
       </div>
+
+
+      <!-- واتساب والتواصل -->
+      <div class="card" style="margin-top:0">
+        <h3>📱 واتساب والتواصل</h3>
+        <div class="fg"><label class="fl">رقم واتساب التجاري</label><input class="fi" id="sw2" dir="ltr" placeholder="07xxxxxxxxxx"></div>
+        <div class="fg"><label class="fl">أسلوب الرد التلقائي</label>
+          <select class="fs" id="sst2">
+            <option value="ودي وقريب">ودي وقريب 😊</option>
+            <option value="عراقي">عراقي أصيل 🇮🇶</option>
+            <option value="خليجي">خليجي راقي</option>
+            <option value="فصحى">فصحى</option>
+            <option value="رسمي">رسمي</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">رسالة الترحيب</label><textarea class="ft" id="swelcome" placeholder="مثال: أهلاً بك في متجرنا! كيف أقدر أساعدك؟" style="min-height:70px"></textarea></div>
+        <button class="btn ba bfull" onclick="saveWhatsappSettings()">💾 حفظ إعدادات واتساب</button>
+      </div>
+
+      <!-- التوصيل -->
+      <div class="card" style="margin-top:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>🚚 أسعار التوصيل</h3>
+          <button class="btn ba bsm" onclick="sp('delivery',null)">⚙️ إدارة التوصيل</button>
+        </div>
+        <div style="font-size:.78rem;color:var(--text2)">اضغط "إدارة التوصيل" لضبط أسعار التوصيل لكل منطقة وشركة شحن.</div>
+      </div>
+
+      <!-- الإشعارات -->
+      <div class="card" style="margin-top:0">
+        <h3>🔔 الإشعارات</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:700;font-size:.85rem">إشعارات الطلبات الجديدة</div>
+            <div style="font-size:.73rem;color:var(--text2)">عند وصول طلب جديد</div>
+          </div>
+          <input type="checkbox" id="notif-orders" checked>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:700;font-size:.85rem">إشعارات Mike</div>
+            <div style="font-size:.73rem;color:var(--text2)">تقارير Mike اليومية</div>
+          </div>
+          <input type="checkbox" id="notif-mike" checked>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:700;font-size:.85rem">تنبيهات المخزون</div>
+            <div style="font-size:.73rem;color:var(--text2)">عند نفاد المخزون</div>
+          </div>
+          <input type="checkbox" id="notif-stock" checked>
+        </div>
+        <button class="btn ba bfull" id="push-enable-btn" onclick="enablePush()">🔔 تفعيل الإشعارات الفورية</button>
+      </div>
+
+      <!-- الأمان -->
+      <div class="card" style="margin-top:0">
+        <h3>🔐 الأمان</h3>
+        <div class="fg"><label class="fl">كلمة المرور الحالية</label><input class="fi" type="password" id="sec-old-pass" placeholder="••••••••"></div>
+        <div class="fg"><label class="fl">كلمة المرور الجديدة</label><input class="fi" type="password" id="sec-new-pass" placeholder="••••••••"></div>
+        <div class="fg"><label class="fl">تأكيد كلمة المرور</label><input class="fi" type="password" id="sec-conf-pass" placeholder="••••••••"></div>
+        <button class="btn ba bfull" onclick="changePassword()">🔐 تغيير كلمة المرور</button>
+      </div>
+
+      <!-- النسخ الاحتياطي -->
+      <div class="card" style="margin-top:0">
+        <h3>💾 النسخ الاحتياطي</h3>
+        <div style="font-size:.78rem;color:var(--text2);margin-bottom:12px">احتفظ بنسخة من بيانات متجرك</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ba bsm" onclick="sp('backup',null)" style="flex:1">💾 إدارة النسخ الاحتياطية</button>
+          <button class="btn bo bsm" onclick="sp('security',null)" style="flex:1">🛡️ سجل الأمان</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- DEPARTMENTS — الأقسام الستة -->
@@ -3129,7 +3619,15 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     <!-- PROFILE -->
     <div class="page" id="page-profile">
       <div class="pt"><div><h1>👤 الملف الشخصي</h1></div><div class="pas"><button class="btn ba" onclick="saveProf()">💾 حفظ</button></div></div>
-      <div class="card" style="max-width:440px"><div class="fg"><label class="fl">الاسم</label><input class="fi" id="pfn"></div><div class="fg"><label class="fl">البريد</label><input class="fi" id="pfe" disabled></div><div class="fg"><label class="fl">رابط الصورة</label><input class="fi" id="pfa"></div></div>
+      <div class="card" style="max-width:440px"><div class="fg"><label class="fl">الاسم</label><input class="fi" id="pfn"></div><div class="fg"><label class="fl">البريد</label><input class="fi" id="pfe" disabled></div><div class="fg"><label class="fl">صورة الحساب</label>
+            <div style="display:flex;gap:7px;margin-bottom:7px">
+              <label style="flex:1;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:8px;text-align:center;cursor:pointer;font-size:.76rem;color:var(--text2)">
+                📱 رفع صورة من الهاتف
+                <input type="file" accept="image/*" style="display:none" onchange="uploadImgToField(this,'pfa')">
+              </label>
+            </div>
+            <input class="fi" id="pfa" placeholder="أو رابط الصورة https://...">
+            </div></div>
     </div>
 
   </div><!-- /main -->
@@ -3157,7 +3655,7 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     </div>
   </div>
   <div class="g2">
-    <div class="fg"><label class="fl">الميزانية ($)</label><input class="fi" id="ad-budget" type="number" min="0" placeholder="10"></div>
+    <div class="fg"><label class="fl">الميزانية ($)</label><input class="fi price-field" id="ad-budget" type="number" min="0" placeholder="10"></div>
     <div class="fg"><label class="fl">نوع الميزانية</label>
       <select class="fs" id="ad-btype">
         <option value="daily">يومية</option>
@@ -3238,19 +3736,19 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
     <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:10px">
       <div class="fg" style="flex:1;margin:0">
         <label class="fl">العربون الواصل</label>
-        <input class="fi" type="number" id="inv-deposit" value="0" min="0" placeholder="0" oninput="calcInvRemaining()" onchange="calcInvRemaining()">
+        <input class="fi price-field" type="number" id="inv-deposit" value="0" min="0" placeholder="0" oninput="calcInvRemaining()" onchange="calcInvRemaining()">
       </div>
       <div style="text-align:center;padding-bottom:4px">
         <!-- زر رفع صورة الوصل -->
-        <input type="file" id="inv-receipt-input" accept="image/*" style="display:none" onchange="loadReceiptImage(this)">
-        <button class="btn bo bsm" onclick="document.getElementById('inv-receipt-input').click()" style="padding:8px 12px">
-          📎 صورة الوصل
-        </button>
+        <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700;color:var(--text2)">
+          📎 صورة الوصل من الهاتف
+          <input type="file" id="inv-receipt-input" accept="image/*" style="display:none" onchange="loadReceiptImage(this)">
+        </label>
       </div>
     </div>
     <!-- معاينة صورة الوصل -->
-    <div id="inv-receipt-preview" style="margin-bottom:8px;min-height:0">
-      <img id="inv-receipt-img" src="" style="display:none;width:100%;max-height:150px;object-fit:contain;border-radius:8px;border:1px solid var(--border);margin-top:8px">
+    <div id="inv-receipt-preview" style="margin-bottom:8px;display:none">
+      <img id="inv-receipt-img" src="" style="display:none;width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid var(--border);margin-top:8px">
       <button id="inv-receipt-clear" onclick="clearReceiptImage()" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:.75rem;margin-top:4px">✕ حذف الصورة</button>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:.84rem;border-top:1px solid var(--border);padding-top:8px">
@@ -3479,7 +3977,14 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 <div class="mo" id="mp-image"><div class="mdl">
   <div class="mh"><h2>📸 منتج من صورة</h2><button class="mclose" onclick="cm('mp-image')">✕</button></div>
   <div class="fg"><label class="fl">رابط الصورة أو ارفع من جهازك</label>
-    <input class="fi" id="pimg-url" placeholder="https://..." oninput="prvProdImg()">
+    <div style="display:flex;gap:7px;align-items:center;margin-bottom:7px">
+              <label style="flex:1;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:9px;text-align:center;cursor:pointer;font-size:.78rem;color:var(--text2)">
+                📱 اختر صورة المنتج من الهاتف
+                <input type="file" accept="image/*" style="display:none" onchange="uploadImgToField(this,'pimg-url')">
+              </label>
+            </div>
+            <div id="pimg-preview" style="margin-bottom:6px"></div>
+            <input class="fi" id="pimg-url" placeholder="أو أدخل رابط الصورة https://..." oninput="prvProdImg()">
   </div>
   <div id="pimg-prv" style="display:none;margin-bottom:10px;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
     <img id="pimg-img" style="width:100%;max-height:200px;object-fit:contain;background:var(--surface2)">
@@ -3681,19 +4186,22 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=5"></script>
-<script src="/js/employee.js?v=5"></script>
-<script src="/js/orders.js?v=5"></script>
-<script src="/js/store.js?v=5"></script>
-<script src="/js/social.js?v=5"></script>
-<script src="/js/departments.js?v=5"></script>
-<script src="/js/ai_features.js?v=5"></script>
-<script src="/js/mike.js?v=5"></script>
-<script src="/js/analytics.js?v=5"></script>
-<script src="/js/ads.js?v=5"></script>
-<script src="/js/designer.js?v=5"></script>
-<script src="/js/app.js?v=5"></script>
-<script src="/js/app2.js?v=5"></script>
+<script src="/js/core.js?v=37"></script>
+<script src="/js/employee.js?v=37"></script>
+<script src="/js/orders.js?v=37"></script>
+<script src="/js/store.js?v=37"></script>
+<script src="/js/social.js?v=37"></script>
+<script src="/js/video.js?v=37"></script>
+<script src="/js/referral.js?v=37"></script>
+<script src="/js/departments.js?v=37"></script>
+<script src="/js/team_ui.js?v=37"></script>
+<script src="/js/ai_features.js?v=37"></script>
+<script src="/js/mike.js?v=37"></script>
+<script src="/js/analytics.js?v=37"></script>
+<script src="/js/ads.js?v=37"></script>
+<script src="/js/designer.js?v=37"></script>
+<script src="/js/app.js?v=37"></script>
+<script src="/js/app2.js?v=37"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>

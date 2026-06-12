@@ -223,3 +223,61 @@ async function deleteGalleryImg(id) {
   } else toast('❌ ' + (d.message||'خطأ'));
 }
 
+
+// ============================================================
+// واجهة الذاكرة الدائمة
+// ============================================================
+async function ldMikeMemory() {
+  const d = await api('/api/mike/memory');
+  const el = document.getElementById('mike-memory-list');
+  if (!el) return;
+
+  if (!d.success || !d.memories?.length) {
+    el.innerHTML = '<div class="empty"><div class="ei">🧠</div><p>ذاكرة Mike فارغة بعد<br><small>ستُملأ تلقائياً مع كل محادثة</small></p></div>';
+    return;
+  }
+
+  const typeNames = {
+    customer: '👥 زبائن', product: '📦 منتجات', decision: '⚡ قرارات',
+    policy: '📋 سياسات', preference: '⭐ تفضيلات', result: '📊 نتائج', general: '💡 عام'
+  };
+  const impColors = { 1: 'var(--text3)', 2: 'var(--accent2)', 3: 'var(--yellow)' };
+
+  el.innerHTML = d.memories.map(m => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:9px;background:var(--s2);border-radius:9px;margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-size:.78rem;line-height:1.5">${esc(m.content)}</div>
+        <div style="font-size:.7rem;color:var(--text3);margin-top:3px">
+          ${typeNames[m.memory_type] || m.memory_type} · 
+          <span style="color:${impColors[m.importance] || 'var(--text3)'}">
+            ${'⭐'.repeat(m.importance || 1)}
+          </span> · 
+          ${new Date(m.created_at).toLocaleDateString('ar')}
+        </div>
+      </div>
+      <button onclick="deleteMikeMemory(${m.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.75rem;flex-shrink:0">✕</button>
+    </div>`).join('');
+}
+
+async function addMikeMemory() {
+  const content = document.getElementById('mike-mem-input')?.value.trim();
+  if (!content) return toast('⚠️ أدخل المعلومة');
+  const type = document.getElementById('mike-mem-type')?.value || 'general';
+  const d = await api('/api/mike/memory', { method: 'POST', body: JSON.stringify({ content, memory_type: type, importance: 2 }) });
+  if (d.success) {
+    toast('✅ تم الحفظ في ذاكرة Mike');
+    document.getElementById('mike-mem-input').value = '';
+    ldMikeMemory();
+  } else toast('❌ ' + d.message);
+}
+
+async function deleteMikeMemory(id) {
+  const d = await api(`/api/mike/memory/${id}`, { method: 'DELETE' });
+  if (d.success) { toast('✅ تم الحذف'); ldMikeMemory(); }
+}
+
+async function clearMikeMemory() {
+  if (!confirm('هل تريد مسح كل ذاكرة Mike؟')) return;
+  const d = await api('/api/mike/memory', { method: 'DELETE' });
+  if (d.success) { toast('✅ تم مسح الذاكرة'); ldMikeMemory(); }
+}

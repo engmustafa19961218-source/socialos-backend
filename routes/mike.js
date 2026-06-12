@@ -1,4 +1,91 @@
 module.exports = function(app, pool, helpers) {
+// ============================================================
+// نظام الذاكرة الدائمة لـ Mike
+// ============================================================
+
+// جلب كل ذاكرة Mike
+async function getMikeMemory(userId) {
+  if (!pool) return '';
+  try {
+    const r = await pool.query(
+      'SELECT content, memory_type, importance FROM mike_memory WHERE user_id=$1 ORDER BY importance DESC, created_at DESC LIMIT 50',
+      [userId]
+    );
+    if (!r.rows.length) return '';
+    const grouped = {};
+    r.rows.forEach(m => {
+      if (!grouped[m.memory_type]) grouped[m.memory_type] = [];
+      grouped[m.memory_type].push(m.content);
+    });
+    let memText = '\n\n=== ذاكرتي الدائمة ===\n';
+    const typeNames = {
+      customer: '👥 معلومات الزبائن',
+      product: '📦 معلومات المنتجات',
+      decision: '⚡ قرارات مهمة',
+      policy: '📋 سياسات العمل',
+      preference: '⭐ تفضيلات المتجر',
+      result: '📊 نتائج وإحصائيات',
+      general: '💡 معلومات عامة'
+    };
+    Object.entries(grouped).forEach(([type, items]) => {
+      memText += `\n${typeNames[type] || type}:\n`;
+      items.forEach(item => { memText += `- ${item}\n`; });
+    });
+    return memText;
+  } catch(e) { return ''; }
+}
+
+// حفظ ذاكرة جديدة
+async function saveMikeMemory(userId, content, type = 'general', importance = 1) {
+  if (!pool || !content) return;
+  try {
+    await pool.query(
+      'INSERT INTO mike_memory (user_id, content, memory_type, importance) VALUES ($1,$2,$3,$4)',
+      [userId, content.substring(0, 500), type, importance]
+    );
+  } catch(e) {}
+}
+
+// استخراج معلومات مهمة من المحادثة تلقائياً
+async function extractAndSaveMemory(userId, userMessage, mikeReply, aiKey) {
+  if (!aiKey) return;
+  try {
+    const extractRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${aiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `تحليل هذه المحادثة واستخرج المعلومات المهمة التي يجب على Mike تذكرها.
+رسالة المستخدم: "${userMessage}"
+رد Mike: "${mikeReply}"
+
+أجب بـ JSON فقط:
+{
+  "should_save": true/false,
+  "memories": [
+    {"content": "معلومة مهمة", "type": "customer|product|decision|policy|preference|result|general", "importance": 1-3}
+  ]
+}
+إذا لم تكن هناك معلومات مهمة: {"should_save": false, "memories": []}`
+        }]
+      })
+    });
+    const data = await extractRes.json();
+    const raw = data.choices?.[0]?.message?.content || '{}';
+    let parsed;
+    try { parsed = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g, '').trim()); } catch(e) { return; }
+    if (parsed.should_save && parsed.memories?.length) {
+      for (const mem of parsed.memories) {
+        await saveMikeMemory(userId, mem.content, mem.type, mem.importance);
+      }
+    }
+  } catch(e) {}
+}
+
+
 const { escapeHtml, sanitize, authenticateToken, rateLimit, notify, auditLog, esc } = helpers;
 
 // ============================================================
@@ -51,8 +138,22 @@ app.post('/api/mike', authenticateToken, async (req, res) => {
       sports: '⚠️ هذا متجر رياضة — ركز على: المعدات، المقاسات، العروض.',
     }[bizType] || '';
 
-    const systemPrompt = `أنت Mike، المساعد التنفيذي الذكي لـ SocialOS.
+    // جلب ذاكرة Mike
+    const mikeMemory = await getMikeMemory(req.user.id);
+
+    const systemPrompt = `تعليمات صارمة وإلزامية — يجب الالتزام بها تماماً:
+
+أنت Mike، المدير التنفيذي الرقمي لمتجر "${escapeHtml(context.store?.store_name || 'المتجر')}".
+أنت متصل مباشرة بقاعدة بيانات المتجر وتنفذ الأوامر فعلياً.
+يحظر عليك تماماً قول "لا أستطيع" أو "مساعد ذكي فقط" أو "غير متصل".
+يجب عليك دائماً الرد بـ JSON فقط — لا نص عادي إطلاقاً.
+
+عند أي أمر مثل "أضف منتج" أو "سجل طلب" أو "أضف عميل":
+- نفذ الأمر فوراً عبر action المناسب
+- لا تعتذر ولا تشرح ولا تطلب تأكيداً (إلا للحذف)
+
 أنت مرتبط بجميع أنظمة المتجر وتستطيع تنفيذ الأوامر مباشرة.
+${mikeMemory}
 ${bizTypeContext}
 
 معلومات المتجر:
@@ -144,6 +245,7 @@ ${bizTypeContext}
 - أرجع JSON صالح فقط بدون أي نص خارجه.`;
 
     const msgs = [
+      { role: 'system', content: systemPrompt },
       ...(Array.isArray(history) ? history.slice(-6).map(m => ({
         role: m.role,
         content: String(m.content).substring(0, 500)
@@ -155,9 +257,8 @@ ${bizTypeContext}
       method: 'POST',
       headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'anthropic/claude-haiku-4-5',
-        max_tokens: 1000,
-        system: systemPrompt,
+        model: 'anthropic/claude-sonnet-4-5',
+        max_tokens: 1200,
         messages: msgs
       })
     });
@@ -276,6 +377,18 @@ ${bizTypeContext}
 
       } catch (e) {
         actionError = e.message;
+      }
+    }
+
+    // حفظ الذاكرة تلقائياً في الخلفية
+    extractAndSaveMemory(req.user.id, message, reply, OPENROUTER_KEY).catch(() => {});
+
+    // حفظ صريح عند "احفظ" أو "تذكر"
+    const memTriggers = ['احفظ', 'تذكر', 'لا تنسى', 'خذ بالحسبان', 'ضع في اعتبارك'];
+    if (memTriggers.some(t => message.includes(t))) {
+      const memContent = message.replace(/احفظ|تذكر|لا تنسى|خذ بالحسبان|ضع في اعتبارك/g, '').trim();
+      if (memContent.length > 3) {
+        await saveMikeMemory(req.user.id, memContent, 'general', 3);
       }
     }
 
@@ -418,3 +531,51 @@ app.delete('/api/mike/gallery/:id', authenticateToken, async (req, res) => {
 
 
 };
+
+// ============================================================
+// API الذاكرة الدائمة
+// ============================================================
+
+// جلب ذاكرة Mike
+app.get('/api/mike/memory', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.json({ success: true, memories: [] });
+    const r = await pool.query(
+      'SELECT * FROM mike_memory WHERE user_id=$1 ORDER BY importance DESC, created_at DESC',
+      [req.user.id]
+    );
+    res.json({ success: true, memories: r.rows });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// إضافة ذاكرة يدوياً
+app.post('/api/mike/memory', authenticateToken, async (req, res) => {
+  const { content, memory_type, importance } = req.body;
+  if (!content) return res.status(400).json({ success: false, message: 'المحتوى مطلوب' });
+  try {
+    if (!pool) return res.status(503).json({ success: false });
+    const r = await pool.query(
+      'INSERT INTO mike_memory (user_id, content, memory_type, importance) VALUES ($1,$2,$3,$4) RETURNING *',
+      [req.user.id, content.substring(0,500), memory_type||'general', importance||2]
+    );
+    res.json({ success: true, memory: r.rows[0] });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// حذف ذاكرة
+app.delete('/api/mike/memory/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(503).json({ success: false });
+    await pool.query('DELETE FROM mike_memory WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// مسح كل الذاكرة
+app.delete('/api/mike/memory', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(503).json({ success: false });
+    await pool.query('DELETE FROM mike_memory WHERE user_id=$1', [req.user.id]);
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
