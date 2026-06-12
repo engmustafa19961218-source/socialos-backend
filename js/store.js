@@ -559,18 +559,21 @@ function loadReceiptImage(input) {
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) return toast('⚠️ الصورة أكبر من 5MB');
   const reader = new FileReader();
-  reader.onload = () => {
-    invReceiptBase64 = reader.result;
-    const preview = document.getElementById('inv-receipt-preview');
+  reader.onload = function() {
+    invReceiptBase64 = this.result;
     const img = document.getElementById('inv-receipt-img');
+    const preview = document.getElementById('inv-receipt-preview');
     const clearBtn = document.getElementById('inv-receipt-clear');
     if (img) {
-      img.src = invReceiptBase64;
-      img.style.cssText = 'display:block !important;width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:2px solid var(--accent);margin-top:8px;background:#f5f5f5';
+      img.src = this.result;
+      img.style.display = 'block';
+      img.style.width = '100%';
+      img.style.maxHeight = '200px';
+      img.style.borderRadius = '8px';
+      img.style.marginTop = '8px';
+      img.style.border = '2px solid #5b6af0';
     }
-    if (preview) {
-      preview.style.cssText = 'display:block !important;margin-bottom:10px';
-    }
+    if (preview) preview.style.display = 'block';
     if (clearBtn) clearBtn.style.display = 'inline-block';
     toast('✅ تم تحميل صورة الوصل');
   };
@@ -587,44 +590,28 @@ function clearReceiptImage() {
   if (input) input.value = '';
 }
 
-function calcInvRemaining() {
-  const total = parseFloat(document.getElementById('inv-total-calc')?.value) || 0;
-  const delivery = parseFloat(document.getElementById('inv-delivery')?.value) || 0;
-  const deposit = parseFloat(document.getElementById('inv-deposit')?.value) || 0;
-  const grandTotal = total + delivery;
-  const remaining = Math.max(0, grandTotal - deposit);
-  const cur = document.getElementById('inv-currency')?.value || 'IQD';
-  const fmt = n => n.toLocaleString('ar-IQ') + ' ' + cur;
-  if (document.getElementById('inv-remaining')) document.getElementById('inv-remaining').textContent = fmt(remaining);
-  // عرض الإجمالي مع التوصيل
-  const totalEl = document.getElementById('inv-grand-total');
-  if (totalEl) totalEl.textContent = fmt(grandTotal);
-}
 
 async function saveInvoice(print = false) {
   const cname = document.getElementById('inv-cname')?.value.trim();
   const details = document.getElementById('inv-details')?.value.trim();
-  const getVal = id => {
-    const el = document.getElementById(id);
-    if (!el) return 0;
-    return parseFloat((el.dataset.raw || el.value).replace(/[^0-9.]/g, '')) || 0;
-  };
-  const total = getVal('inv-total-calc');
+  const gv = id => parseInt((document.getElementById(id)?.dataset?.raw || String(document.getElementById(id)?.value||'0')).replace(/[^0-9]/g,''))||0;
+  const total = gv('inv-total-calc');
   if (!cname) return toast('⚠️ اسم الزبون مطلوب');
   if (!details) return toast('⚠️ تفاصيل الطلب مطلوبة');
   if (total <= 0) return toast('⚠️ السعر الكلي يجب أن يكون أكبر من صفر');
-  const deposit = getVal('inv-deposit');
+  const deposit = gv('inv-deposit');
+  const delivery = gv('inv-delivery');
   const body = {
     customer_name: cname,
     customer_phone: document.getElementById('inv-cphone')?.value.trim(),
     customer_address: document.getElementById('inv-address')?.value.trim(),
     items: [{ description: details, qty: 1, price: total }],
-    total: total,
+    total,
     tax_rate: 0,
     discount: 0,
-    deposit: deposit,
-    delivery_cost: getVal('inv-delivery'),
-    order_details: document.getElementById('inv-details')?.value.trim() || '',
+    deposit,
+    delivery_cost: delivery,
+    order_details: details,
     receipt_image: invReceiptBase64 || null,
     notes: document.getElementById('inv-notes')?.value.trim(),
     due_date: document.getElementById('inv-duedate')?.value || null,
@@ -632,45 +619,22 @@ async function saveInvoice(print = false) {
   };
   const d = await api('/api/invoices', { method: 'POST', body: JSON.stringify(body) });
   if (d.success) {
-    toast('✅ تم حفظ الفاتورة ' + d.invoice.invoice_number);
+    toast('✅ تم حفظ الفاتورة ' + (d.invoice?.invoice_number || ''));
     cm('minvoice');
     invReceiptBase64 = null;
     clearReceiptImage();
-    // إعادة تعيين الحقول
     ['inv-cname','inv-cphone','inv-details','inv-notes','inv-duedate'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
-    document.getElementById('inv-total-calc').value = '';
-    document.getElementById('inv-deposit').value = '0';
-    document.getElementById('inv-remaining').textContent = '0';
-    if (document.getElementById('inv-delivery')) document.getElementById('inv-delivery').value = '0';
+    ['inv-total-calc','inv-deposit','inv-delivery'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.dataset.raw = ''; }
+    });
+    calcInvRemaining();
     ldInvoices();
     if (print) printInvoice(d.invoice);
-  } else toast('❌ ' + (d.message || 'خطأ'));
+  } else toast('❌ ' + (d.message || 'خطأ في الحفظ'));
 }
-
-
-function calcInvRemaining() {
-  const getVal = id => {
-    const el = document.getElementById(id);
-    if (!el) return 0;
-    const raw = el.dataset.raw || el.value.replace(/[^0-9.]/g, '');
-    return parseFloat(raw) || 0;
-  };
-  const total = getVal('inv-total-calc');
-  const delivery = getVal('inv-delivery');
-  const deposit = getVal('inv-deposit');
-  const grandTotal = total + delivery;
-  const remaining = Math.max(0, grandTotal - deposit);
-  const cur = document.getElementById('inv-currency')?.value || 'IQD';
-  const sym = {IQD:'د.ع',SAR:'ر.س',AED:'د.إ',USD:'$',KWD:'د.ك'}[cur] || cur;
-  const fmt = n => n > 0 ? n.toLocaleString('en') + ' ' + sym : '0';
-  const remEl = document.getElementById('inv-remaining');
-  if (remEl) remEl.textContent = fmt(remaining);
-  const gtEl = document.getElementById('inv-grand-total');
-  if (gtEl) gtEl.textContent = fmt(grandTotal);
-}
-
 
 function initInvFields() {
   ['inv-total-calc','inv-delivery','inv-deposit'].forEach(id => {
@@ -680,7 +644,8 @@ function initInvFields() {
     el.addEventListener('input', function() {
       const raw = this.value.replace(/[^0-9]/g, '');
       this.dataset.raw = raw;
-      if (raw.length > 1) this.value = parseInt(raw).toLocaleString('en');
+      if (raw.length > 0) this.value = parseInt(raw).toLocaleString('en');
+      calcInvRemaining();
     });
     el.addEventListener('blur', function() {
       const raw = this.dataset.raw || this.value.replace(/[^0-9]/g,'');
@@ -688,16 +653,17 @@ function initInvFields() {
         const cur = document.getElementById('inv-currency')?.value||'IQD';
         const sym = {IQD:'د.ع',SAR:'ر.س',AED:'د.إ',USD:'$'}[cur]||cur;
         this.value = parseInt(raw).toLocaleString('en') + ' ' + sym;
-        this.dataset.raw = raw;
       }
-      calcInvRemaining();
     });
     el.addEventListener('focus', function() {
-      this.value = this.dataset.raw || this.value.replace(/[^0-9]/g,'');
+      const raw = this.dataset.raw || this.value.replace(/[^0-9]/g,'');
+      this.value = raw === '0' ? '' : (raw || '');
     });
   });
 }
 
+
+// calcInvRemaining already defined above
 function saveAndPrintInvoice() { saveInvoice(true); }
 
 function printInvoice(inv) {

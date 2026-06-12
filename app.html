@@ -3222,7 +3222,8 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
         <!-- زر رفع صورة الوصل -->
         <label style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:var(--s2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:700;color:var(--text2)">
           📎 صورة الوصل من الهاتف
-          </label>
+          <input type="file" id="inv-receipt-input" accept="image/*" style="display:none" onchange="loadReceiptImage(this)">
+        </label>
       </div>
     </div>
     <!-- معاينة صورة الوصل -->
@@ -3658,19 +3659,19 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=39"></script>
-<script src="/js/employee.js?v=39"></script>
-<script src="/js/orders.js?v=39"></script>
-<script src="/js/store.js?v=39"></script>
-<script src="/js/social.js?v=39"></script>
-<script src="/js/departments.js?v=39"></script>
-<script src="/js/ai_features.js?v=39"></script>
-<script src="/js/mike.js?v=39"></script>
-<script src="/js/analytics.js?v=39"></script>
-<script src="/js/ads.js?v=39"></script>
-<script src="/js/designer.js?v=39"></script>
-<script src="/js/app.js?v=39"></script>
-<script src="/js/app2.js?v=39"></script>
+<script src="/js/core.js?v=40"></script>
+<script src="/js/employee.js?v=40"></script>
+<script src="/js/orders.js?v=40"></script>
+<script src="/js/store.js?v=40"></script>
+<script src="/js/social.js?v=40"></script>
+<script src="/js/departments.js?v=40"></script>
+<script src="/js/ai_features.js?v=40"></script>
+<script src="/js/mike.js?v=40"></script>
+<script src="/js/analytics.js?v=40"></script>
+<script src="/js/ads.js?v=40"></script>
+<script src="/js/designer.js?v=40"></script>
+<script src="/js/app.js?v=40"></script>
+<script src="/js/app2.js?v=40"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>
