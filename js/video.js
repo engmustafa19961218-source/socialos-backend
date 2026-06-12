@@ -119,7 +119,8 @@ async function mikeCreateVideo() {
 
   if (!d.success) {
     if (mikeEl) mikeEl.style.display = 'none';
-    toast('❌ ' + (d.message || 'خطأ'));
+    console.error('Video error:', JSON.stringify(d));
+    toast('❌ ' + (d.message || d.error || JSON.stringify(d).substring(0,100)));
     return;
   }
 

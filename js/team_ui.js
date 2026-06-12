@@ -640,7 +640,8 @@ async function teamMikeCreateVideo() {
 
   if (!d.success) {
     if (thinkEl) thinkEl.style.display = 'none';
-    return toast('❌ ' + (d.message || 'خطأ'));
+    console.error('Video error:', d);
+    return toast('❌ ' + (d.message || d.error || JSON.stringify(d).substring(0,100)));
   }
 
   if (thinkEl) {
