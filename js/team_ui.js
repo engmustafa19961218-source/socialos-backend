@@ -704,3 +704,30 @@ async function publishTeamVideo(videoUrl, platform) {
   if (d.success) toast(`✅ تم نشر الفيديو على ${platform}!`);
   else toast('❌ ' + (d.message || 'خطأ'));
 }
+
+// رفع صور من الهاتف للفيديو في team tab
+async function uploadTeamVideoImages(input) {
+  const files = Array.from(input.files).slice(0, 5 - _teamVideoImages.length);
+  if (!files.length) return;
+  toast('⏳ جاري رفع الصور...');
+
+  for (const file of files) {
+    if (_teamVideoImages.length >= 5) break;
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      const d = await api('/api/images/upload-base64', {
+        method: 'POST',
+        body: JSON.stringify({ image: base64, filename: file.name })
+      });
+      _teamVideoImages.push(d.success && d.url ? d.url : base64);
+    } catch(e) { toast('❌ فشل رفع صورة'); }
+  }
+  renderTeamVideoImages();
+  toast(`✅ تم إضافة ${files.length} صورة`);
+  input.value = '';
+}

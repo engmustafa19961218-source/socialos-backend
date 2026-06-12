@@ -9,6 +9,46 @@ function loadVideoPage() {
   ldVideoGallery();
 }
 
+
+// رفع صور من الهاتف
+async function uploadVideoImages(input) {
+  const files = Array.from(input.files).slice(0, 5 - _videoImages.length);
+  if (!files.length) return;
+  toast('⏳ جاري رفع الصور...');
+
+  for (const file of files) {
+    if (_videoImages.length >= 5) break;
+    try {
+      // تحويل الصورة لـ base64 ثم رفعها لـ Cloudinary أو استخدامها مباشرة
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      // رفع للـ API
+      const d = await api('/api/images/upload-base64', {
+        method: 'POST',
+        body: JSON.stringify({ image: base64, filename: file.name })
+      });
+
+      if (d.success && d.url) {
+        _videoImages.push(d.url);
+      } else {
+        // استخدام base64 مباشرة إن فشل الرفع
+        _videoImages.push(base64);
+      }
+    } catch(e) {
+      toast('❌ فشل رفع صورة');
+    }
+  }
+
+  renderVideoImages();
+  toast(`✅ تم إضافة ${files.length} صورة`);
+  input.value = '';
+}
+
 // ============================================================
 // إضافة وإزالة الصور
 // ============================================================

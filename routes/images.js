@@ -6,6 +6,45 @@ const { escapeHtml, sanitize, authenticateToken, rateLimit, notify, auditLog, es
 // ============================================================
 
 // إزالة الخلفية عبر remove.bg
+
+// ============================================================
+// رفع صورة base64 → Cloudinary
+// ============================================================
+app.post('/api/images/upload-base64', authenticateToken, async (req, res) => {
+  const { image, filename } = req.body;
+  if (!image) return res.status(400).json({ success: false, message: 'الصورة مطلوبة' });
+
+  try {
+    const CLOUD = process.env.CLOUDINARY_CLOUD_NAME;
+    const KEY = process.env.CLOUDINARY_API_KEY;
+    const SECRET = process.env.CLOUDINARY_API_SECRET;
+
+    if (CLOUD && KEY && SECRET) {
+      // رفع لـ Cloudinary
+      const formData = new URLSearchParams();
+      formData.append('file', image);
+      formData.append('upload_preset', 'ml_default');
+
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString()
+      });
+      const data = await uploadRes.json();
+
+      if (data.secure_url) {
+        return res.json({ success: true, url: data.secure_url });
+      }
+    }
+
+    // إذا لم يكن Cloudinary متاحاً، أرجع الـ base64 كـ URL
+    res.json({ success: true, url: image });
+  } catch(e) {
+    // في حالة الفشل أرجع base64
+    res.json({ success: true, url: image });
+  }
+});
+
 app.post('/api/images/remove-bg', authenticateToken, async (req, res) => {
   const { image_url, image_base64 } = req.body;
   if (!image_url && !image_base64)

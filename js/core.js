@@ -396,3 +396,87 @@ async function ldHome(){
   const nb=document.getElementById('nbc');nb.style.display=ub>0?'flex':'none';nb.textContent=ub;
 }
 
+
+// ============================================================
+// رفع صورة من الهاتف — دالة موحدة لكل الأماكن
+// ============================================================
+async function uploadImgToField(input, fieldId, callback) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const previewId = fieldId.replace('-url','') + '-preview';
+  const prevEl = document.getElementById(previewId);
+
+  toast('⏳ جاري رفع الصورة...');
+
+  try {
+    // تحويل لـ base64
+    const base64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+
+    // محاولة رفع للسيرفر
+    let finalUrl = base64;
+    try {
+      const d = await api('/api/images/upload-base64', {
+        method: 'POST',
+        body: JSON.stringify({ image: base64, filename: file.name })
+      });
+      if (d.success && d.url) finalUrl = d.url;
+    } catch(e) { /* استخدم base64 مباشرة */ }
+
+    // وضع الرابط في الحقل
+    const field = document.getElementById(fieldId);
+    if (field) field.value = finalUrl;
+
+    // معاينة الصورة
+    if (prevEl) {
+      prevEl.innerHTML = `<img src="${finalUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin-bottom:4px">`;
+      prevEl.style.display = 'block';
+    }
+
+    // استدعاء callback إن وجد
+    if (typeof callback === 'function') callback();
+
+    toast('✅ تم رفع الصورة');
+  } catch(e) {
+    toast('❌ فشل رفع الصورة');
+  }
+
+  input.value = '';
+}
+
+// رفع عدة صور
+async function uploadMultipleImgs(input, callback) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  toast('⏳ جاري رفع الصور...');
+
+  const urls = [];
+  for (const file of files) {
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      let finalUrl = base64;
+      try {
+        const d = await api('/api/images/upload-base64', {
+          method: 'POST',
+          body: JSON.stringify({ image: base64, filename: file.name })
+        });
+        if (d.success && d.url) finalUrl = d.url;
+      } catch(e) {}
+      urls.push(finalUrl);
+    } catch(e) {}
+  }
+
+  if (typeof callback === 'function') callback(urls);
+  toast(`✅ تم رفع ${urls.length} صورة`);
+  input.value = '';
+}
