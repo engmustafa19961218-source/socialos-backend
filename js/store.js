@@ -664,6 +664,24 @@ function initInvFields() {
 
 
 // calcInvRemaining already defined above
+
+function calcInvRemaining() {
+  const gv = id => {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    return parseInt((el.dataset.raw || el.value).replace(/[^0-9]/g,'')) || 0;
+  };
+  const grand = gv('inv-total-calc') + gv('inv-delivery');
+  const remaining = Math.max(0, grand - gv('inv-deposit'));
+  const cur = document.getElementById('inv-currency')?.value || 'IQD';
+  const sym = {IQD:'د.ع',SAR:'ر.س',AED:'د.إ',USD:'$',KWD:'د.ك'}[cur] || cur;
+  const fmt = n => n > 0 ? n.toLocaleString('en') + ' ' + sym : '0';
+  const remEl = document.getElementById('inv-remaining');
+  if (remEl) remEl.textContent = fmt(remaining);
+  const gtEl = document.getElementById('inv-grand-total');
+  if (gtEl) gtEl.textContent = fmt(grand);
+}
+
 function saveAndPrintInvoice() { saveInvoice(true); }
 
 function printInvoice(inv) {
