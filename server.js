@@ -636,6 +636,18 @@ try {
       action VARCHAR(50) DEFAULT 'none',
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    `CREATE TABLE IF NOT EXISTS video_renders (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      render_id VARCHAR(255),
+      type VARCHAR(50) DEFAULT 'slideshow',
+      platform VARCHAR(50) DEFAULT 'instagram',
+      product_name VARCHAR(255) DEFAULT '',
+      status VARCHAR(50) DEFAULT 'rendering',
+      video_url TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS referral_settings (
       id SERIAL PRIMARY KEY,
       user_id INTEGER UNIQUE,
@@ -774,7 +786,9 @@ require('./routes/images')(app, pool, helpers);
 require('./routes/settings')(app, pool, helpers);
 require('./routes/departments')(app, pool, helpers);
 require('./routes/ai_features')(app, pool, helpers);
+require('./routes/team')(app, pool, helpers);
 require('./routes/referral')(app, pool, helpers);
+require('./routes/video')(app, pool, helpers);
 
 
 // ============================================================

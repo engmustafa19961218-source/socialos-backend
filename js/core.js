@@ -480,3 +480,152 @@ async function uploadMultipleImgs(input, callback) {
   toast(`✅ تم رفع ${urls.length} صورة`);
   input.value = '';
 }
+
+
+// ============================================================
+// ONBOARDING الجديد — 4 مراحل
+// ============================================================
+let _obCards = [];
+
+function prevStep() { if (obS > 0) goOb(obS - 1); }
+
+function updateObPreview() {
+  const name = document.getElementById('ob-store-name')?.value || 'اسم متجرك';
+  const type = document.getElementById('ob-business-type')?.value || 'نوع النشاط';
+  const color = document.getElementById('ob-color1')?.value || '#5b6af0';
+  const el = document.getElementById('ob-prev-name');
+  const el2 = document.getElementById('ob-prev-type');
+  if (el) { el.textContent = name; el.style.color = color; }
+  if (el2) el2.textContent = type;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const pairs = [['ob-color1','ob-color1-hex'],['ob-color2','ob-color2-hex']];
+  pairs.forEach(([pid,hid]) => {
+    const picker = document.getElementById(pid);
+    const hex = document.getElementById(hid);
+    if (picker && hex) {
+      picker.oninput = () => { hex.value = picker.value; updateObPreview(); };
+      hex.oninput = () => { try { picker.value = hex.value; } catch(e){} updateObPreview(); };
+    }
+  });
+});
+
+async function saveOb1New() {
+  const name = document.getElementById('ob-store-name')?.value.trim();
+  const type = document.getElementById('ob-business-type')?.value.trim();
+  if (!name) return toast('⚠️ أدخل اسم المتجر');
+  if (!type) return toast('⚠️ أدخل نوع النشاط');
+  const desc = document.getElementById('ob-business-desc')?.value.trim() || '';
+  await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ store_name: name, business_type: type, business_desc: desc }) }).catch(()=>{});
+  updateObPreview();
+  nextStep();
+}
+
+function addObCard() {
+  const type = document.getElementById('ob-card-type')?.value;
+  const number = document.getElementById('ob-card-number')?.value.trim();
+  const holder = document.getElementById('ob-card-holder')?.value.trim();
+  const notes = document.getElementById('ob-card-notes')?.value.trim() || '';
+  if (!number) return toast('⚠️ أدخل رقم البطاقة');
+  if (!holder) return toast('⚠️ أدخل اسم صاحب البطاقة');
+  _obCards.push({ card_type: type, card_number: number, card_holder: holder, notes });
+  rnObCards();
+  ['ob-card-number','ob-card-holder','ob-card-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  toast('✅ تمت إضافة البطاقة');
+}
+
+function rnObCards() {
+  const el = document.getElementById('ob-cards-list');
+  if (!el) return;
+  if (!_obCards.length) {
+    el.innerHTML = '<div class="empty" style="padding:16px"><div class="ei" style="font-size:1.6rem">💳</div><p>لم تضف بطاقات بعد</p></div>';
+    return;
+  }
+  el.innerHTML = _obCards.map((c,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border2)">
+      <div style="font-size:1.3rem">💳</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:.85rem">${c.card_type}</div>
+        <div style="font-size:.75rem;color:var(--text2);direction:ltr;text-align:right">${c.card_number}</div>
+        <div style="font-size:.74rem;color:var(--text2)">${c.card_holder}</div>
+      </div>
+      <button class="btn bd bsm" onclick="_obCards.splice(${i},1);rnObCards()">✕</button>
+    </div>`).join('');
+}
+
+async function saveOb2New() {
+  for (const card of _obCards) {
+    await api('/api/payment-cards', { method: 'POST', body: JSON.stringify(card) }).catch(()=>{});
+  }
+  nextStep();
+}
+
+async function saveOb3New() {
+  const wa = document.getElementById('ob-whatsapp')?.value.trim();
+  if (!wa) return toast('⚠️ أدخل رقم واتساب');
+  const currency = document.getElementById('ob-currency')?.value || 'IQD';
+  const style = document.getElementById('ob-style')?.value || 'ودي وقريب';
+  await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ whatsapp_number: wa, currency, communication_style: style }) }).catch(()=>{});
+  nextStep();
+}
+
+async function saveOb4New() {
+  const btn = document.querySelector('#obs4 .btn.ba');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري الإعداد...'; }
+  try {
+    const logo = document.getElementById('ob-logo')?.value.trim() || '';
+    const color1 = document.getElementById('ob-color1')?.value || '#5b6af0';
+    const color2 = document.getElementById('ob-color2')?.value || '#f59e0b';
+    const font = document.getElementById('ob-font')?.value || 'Tajawal';
+    const storeName = document.getElementById('ob-store-name')?.value.trim() || '';
+    const businessType = document.getElementById('ob-business-type')?.value.trim() || '';
+
+    await api('/api/identity', { method: 'PUT', body: JSON.stringify({ logo_url: logo, primary_color: color1, secondary_color: color2, font_name: font, store_name: storeName }) }).catch(()=>{});
+
+    const setup = await api('/api/onboarding/auto-setup', { method: 'POST', body: JSON.stringify({
+      business_type: businessType, store_name: storeName, employee_name: 'Mike', user_philosophy: '', user_objection: ''
+    }) }).catch(() => ({ settings: {} }));
+
+    const s = setup?.settings || {};
+    await api('/api/employee', { method: 'PUT', body: JSON.stringify({
+      name: 'Mike', personality: s.personality || `مدير تنفيذي لـ ${storeName}`,
+      sales_style: s.sales_style || '', philosophy: s.philosophy || ''
+    }) }).catch(()=>{});
+
+    await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ onboarding_done: true, primary_color: color1, font_name: font }) });
+    finOb();
+  } catch(e) {
+    await api('/api/business/profile', { method: 'PUT', body: JSON.stringify({ onboarding_done: true }) }).catch(()=>{});
+    finOb();
+  }
+}
+
+// ============================================================
+// رفع صورة من الهاتف — دالة موحدة
+// ============================================================
+async function uploadImgToField(input, fieldId, callback) {
+  const file = input.files[0];
+  if (!file) return;
+  toast('⏳ جاري رفع الصورة...');
+  try {
+    const base64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+    let finalUrl = base64;
+    try {
+      const d = await api('/api/images/upload-base64', { method: 'POST', body: JSON.stringify({ image: base64, filename: file.name }) });
+      if (d.success && d.url) finalUrl = d.url;
+    } catch(e) {}
+    const field = document.getElementById(fieldId);
+    if (field) field.value = finalUrl;
+    const prevEl = document.getElementById(fieldId.replace('-url','') + '-preview');
+    if (prevEl) { prevEl.innerHTML = `<img src="${finalUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin-top:5px">`; }
+    if (typeof callback === 'function') callback();
+    toast('✅ تم رفع الصورة');
+  } catch(e) { toast('❌ فشل رفع الصورة'); }
+  input.value = '';
+}
