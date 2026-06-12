@@ -232,15 +232,19 @@ window.onload=()=>{const sv=localStorage.getItem('sos_user');if(token&&sv){cu=JS
 // ============================================================
 let obS=0,selBT='',ob1CustomDesc='';
 function initOb(){
-  const types=[
-    {id:'retail',n:'تجارة',i:'🛍️'},{id:'restaurant',n:'مطاعم',i:'🍽️'},
-    {id:'real_estate',n:'عقارات',i:'🏠'},{id:'services',n:'خدمات',i:'🔧'},
-    {id:'health',n:'صحة',i:'💆'},{id:'education',n:'تعليم',i:'📚'},
-    {id:'fashion',n:'أزياء',i:'👗'},{id:'electronics',n:'إلكترونيات',i:'📱'},
-    {id:'perfume',n:'عطور',i:'🌹'},{id:'furniture',n:'أثاث',i:'🛋️'},
-    {id:'sports',n:'رياضة',i:'⚽'},{id:'other',n:'أخرى',i:'🏪'}
-  ];
-  document.getElementById('btg').innerHTML=types.map(t=>`<div class="btc" onclick="pickBT('${t.id}',this)"><div class="bi">${t.i}</div><div class="bn">${t.n}</div></div>`).join('');
+  // الـ onboarding الجديد لا يحتاج btg
+  const btg = document.getElementById('btg');
+  if (btg) {
+    const types=[
+      {id:'retail',n:'تجارة',i:'🛍️'},{id:'restaurant',n:'مطاعم',i:'🍽️'},
+      {id:'real_estate',n:'عقارات',i:'🏠'},{id:'services',n:'خدمات',i:'🔧'},
+      {id:'health',n:'صحة',i:'💆'},{id:'education',n:'تعليم',i:'📚'},
+      {id:'fashion',n:'أزياء',i:'👗'},{id:'electronics',n:'إلكترونيات',i:'📱'},
+      {id:'perfume',n:'عطور',i:'🌹'},{id:'furniture',n:'أثاث',i:'🛋️'},
+      {id:'sports',n:'رياضة',i:'⚽'},{id:'other',n:'أخرى',i:'🏪'}
+    ];
+    btg.innerHTML=types.map(t=>`<div class="btc" onclick="pickBT('${t.id}',this)"><div class="bi">${t.i}</div><div class="bn">${t.n}</div></div>`).join('');
+  }
 }
 function pickBT(id,el){
   selBT=id;
@@ -265,7 +269,7 @@ function goOb(n){
   document.getElementById('obs'+obS).classList.remove('active');
   document.getElementById('pd'+obS).classList.remove('active');document.getElementById('pd'+obS).classList.add('done');
   obS=n;
-  if(obS>=4){finOb();return;}
+  if(obS>=5){finOb();return;}
   document.getElementById('obs'+obS).classList.add('active');
   document.getElementById('pd'+obS).classList.add('active');
 }
