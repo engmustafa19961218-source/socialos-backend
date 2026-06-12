@@ -2,7 +2,7 @@ module.exports = function(app, pool, helpers) {
 const { sanitize, authenticateToken, rateLimit, notify } = helpers;
 
 const CREATOMATE_KEY = () => process.env.CREATOMATE_API_KEY || '0b330c957d7d46b5be1588af6c8cf097ccfe8059093ebdb58e3693dace5b8ffece54c47fcfcb9a1258cae47886a741ee';
-const OPENROUTER_KEY = () => process.env.OPENROUTER_API_KEY;
+const OPENROUTER_KEY = () => process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
 const CREATOMATE_URL = 'https://api.creatomate.com/v1/renders';
 
 // القوالب المتاحة
@@ -50,7 +50,6 @@ app.post('/api/video/mike-create', authenticateToken, rateLimit(10, 60000), asyn
   if (!idea && !images?.length) return res.status(400).json({ success: false, message: 'اكتب فكرة أو أرسل صوراً' });
 
   const aiKey = OPENROUTER_KEY();
-  if (!aiKey) return res.status(503).json({ success: false, message: 'AI غير متاح' });
 
   try {
     const bp = await getBP(req.user.id);
@@ -58,6 +57,38 @@ app.post('/api/video/mike-create', authenticateToken, rateLimit(10, 60000), asyn
     const color = bp.primary_color || '#5b6af0';
     const currency = bp.currency || 'IQD';
     const businessType = bp.business_type || '';
+
+    let plan;
+
+    if (!aiKey) {
+      // بدون AI — اختر قالب بناءً على كلمات مفتاحية
+      const ideaLower = (idea || '').toLowerCase();
+      let templateKey = 'product-hero-discount';
+      if (ideaLower.includes('تقييم') || ideaLower.includes('زبون') || ideaLower.includes('مراجعة')) {
+        templateKey = 'animated-review';
+      } else if (ideaLower.includes('حملة') || ideaLower.includes('ترويج') || ideaLower.includes('إطلاق') || ideaLower.includes('جديد')) {
+        templateKey = 'matrix-promotion';
+      }
+      plan = {
+        template: templateKey,
+        reasoning: 'تم اختيار القالب تلقائياً',
+        modifications: {
+          'Product Name': idea || 'منتجنا',
+          'Price': '', 'Discount': '',
+          'Store Name': storeName,
+          'Headline': idea || storeName,
+          'Subtext': businessType,
+          'CTA': 'اطلب الآن',
+          'Customer Name': 'زبون راضٍ',
+          'Review Text': idea || 'منتج رائع!',
+          'Rating': '⭐⭐⭐⭐⭐',
+          'Primary Color': color,
+          'Background Color': color
+        },
+        platform: 'instagram',
+        mike_note: 'تم اختيار القالب تلقائياً بدون AI'
+      };
+    } else {
 
     // Mike يحلل الفكرة ويختار القالب المناسب
     const prompt = `أنت Mike، مخرج فيديو ذكي لمتجر "${storeName}" (${businessType}).
@@ -100,10 +131,25 @@ ${images?.length ? `الصور المرسلة: ${images.length} صورة` : ''}
     const raw = aiData.choices?.[0]?.message?.content || '{}';
     let plan;
     try { plan = JSON.parse(raw.replace(/```json|```/g, '').trim()); }
-    catch(e) { return res.status(500).json({ success: false, message: 'Mike لم يتمكن من تحليل الفكرة' }); }
+    catch(e) {
+      // إذا فشل Mike في تحليل JSON، استخدم قالب افتراضي
+      plan = {
+        template: 'product-hero-discount',
+        reasoning: 'اخترت قالب المنتج الافتراضي',
+        modifications: {
+          'Product Name': idea || 'منتجنا',
+          'Price': '',
+          'Discount': '',
+          'Store Name': storeName
+        },
+        platform: 'instagram',
+        mike_note: 'تم اختيار القالب الافتراضي'
+      };
+    }
 
-    const template = TEMPLATES[plan.template];
-    if (!template) return res.status(400).json({ success: false, message: 'لم يتم اختيار قالب مناسب' });
+    } // end else (aiKey)
+
+    const template = TEMPLATES[plan.template] || TEMPLATES['product-hero-discount'];
 
     // إضافة صورة المنتج إن وجدت
     let modifications = plan.modifications || {};
@@ -117,7 +163,10 @@ ${images?.length ? `الصور المرسلة: ${images.length} صورة` : ''}
 
     // إنشاء الفيديو
     const result = await createRender(modifications, template.id);
-    if (result.error) return res.status(400).json({ success: false, message: result.error });
+    if (!result || result.error) {
+      const errMsg = result?.error || result?.message || 'خطأ في Creatomate';
+      return res.status(400).json({ success: false, message: errMsg });
+    }
 
     const renderId = Array.isArray(result) ? result[0]?.id : result.id;
 
