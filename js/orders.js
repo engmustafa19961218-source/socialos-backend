@@ -28,7 +28,7 @@ function rnOrds(ords){
             <option>shipped</option><option>delivered</option><option>cancelled</option>
           </select>
           <button class="btn bo bsm" onclick="waInv(${o.id})" style="margin-top:3px;width:100%">📱 واتساب</button>
-          <button class="btn bo bsm" onclick="notifyCustomer(${o.id},'${o.status||'confirmed'}')" style="margin-top:3px;width:100%;font-size:.68rem">🔔 إشعار</button>
+          <button class="btn bo bsm" onclick="notifyCustomer(${o.id},'${['confirmed','shipped','delivered','cancelled'].includes(o.status) ? o.status : 'confirmed'}')" style="margin-top:3px;width:100%;font-size:.68rem">🔔 إشعار</button>
           ${o.status==='confirmed'?`<label class="btn bo bsm" style="margin-top:3px;width:100%;font-size:.68rem;cursor:pointer;text-align:center">📸 وصل حوالة<input type="file" accept="image/*" style="display:none" onchange="uploadReceipt(${o.id},this.files[0])"></label>`:''}
           ${o.payment_wa_link?`<button class="btn bo bsm" onclick="window.open('${o.payment_wa_link}','_blank')" style="margin-top:3px;width:100%;font-size:.65rem;background:rgba(37,211,102,.1);color:#25D366">💳 أرسل بطاقات</button>`:''}
           ${o.status==='delivered'?`<button class="btn bo bsm" onclick="sendReviewLink(${o.id})" style="margin-top:3px;width:100%;font-size:.65rem;background:rgba(245,158,11,.1);color:#f59e0b">⭐ رابط تقييم</button>`:''}
@@ -64,7 +64,20 @@ async function saveOrd(){
   } else toast('❌ '+(d.message||'خطأ'));
 }
 async function updOrdSt(id,s){if(!s) return;await api('/api/orders/'+id,{method:'PUT',body:JSON.stringify({status:s})});ldOrds();}
-async function waInv(id){const d=await api('/api/orders/'+id+'/whatsapp');if(d.url) window.open(d.url,'_blank');else toast('❌ خطأ');}
+async function waInv(id) {
+  const d = await api('/api/orders/' + id + '/whatsapp');
+  if (d.success && d.url) {
+    window.open(d.url, '_blank');
+  } else {
+    // fallback - افتح واتساب مباشرة برقم الزبون
+    const order = allOrds?.find(o => o.id == id);
+    if (order?.customer_phone) {
+      const phone = String(order.customer_phone).replace(/[^0-9]/g,'');
+      const waPhone = phone.startsWith('0') ? '964'+phone.slice(1) : phone;
+      window.open('https://wa.me/' + waPhone, '_blank');
+    } else toast('❌ ' + (d.message || 'لا يوجد رقم هاتف'));
+  }
+}
 
 // طرق الدفع — تفاصيل العرض
 const PAYMENT_INFO = {

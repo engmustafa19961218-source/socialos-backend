@@ -250,7 +250,10 @@ ${bizTypeContext}
         role: m.role,
         content: String(m.content).substring(0, 500)
       })) : []),
-      { role: 'user', content: String(message).substring(0, 2000) }
+      { role: 'user', content: image ? [
+        { type: 'image_url', image_url: { url: image } },
+        { type: 'text', text: String(message || 'ماذا ترى في هذه الصورة؟ نفذ الأمر المناسب').substring(0, 2000) }
+      ] : String(message).substring(0, 2000) }
     ];
 
     const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -265,9 +268,16 @@ ${bizTypeContext}
     const aiData = await aiRes.json();
     let raw = aiData.choices?.[0]?.message?.content || '{}';
 
+    // تأكد أن الرد JSON
     let parsed = {};
     try {
-      parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      // إزالة أي نص قبل { وبعد }
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        parsed = { reply: raw, action: null };
+      }
     } catch (e) {
       parsed = { reply: raw, action: null };
     }

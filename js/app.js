@@ -17,7 +17,7 @@ function sp(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'mike') document.getElementById('mike-nav-btn')?.classList.add('active');
   closeMobileMenu();
-  const ldr = {home:ldHome,mike:ldMike,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'heatmap':ldHeatmap,'digital-team':loadTeamPage,coupons:ldCoups,loyalty:ldLoy,'referral':ldReferral,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,identity:ldIdentity,designer:ldDesigner,'video':loadVideoPage,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs,departments:loadDepartmentsPage,ai:loadAIPage,more:()=>{}};
+  const ldr = {home:ldHome,mike:ldMike,orders:ldOrds,products:ldProds,customers:ldCusts,knowledge:ldKb,decisions:ldDec,board:ldBoard,approvals:ldApprov,analytics:ldAna,'analytics-adv':ldAdvAna,'heatmap':ldHeatmap,'digital-team':loadTeamPage,coupons:ldCoups,loyalty:ldLoy,'referral':ldReferral,'bulk-wa':ldWa,marketplace:ldMkt,social:ldSocial,ads:ldAds,posts:ldPosts,invoices:ldInvoices,identity:ldIdentity,designer:ldDesigner,'video':loadVideoPage,team:ldTeam,notifications:ldNotifs,security:ldSec,backup:ldBkps,emergency:ldEm,inventory:ldInv,settings:ldSets,profile:ldProf,employee:ldEmp,training:ldCorrs,departments:loadDepartmentsPage,ai:loadAIPage,more:()=>{}};
   if (ldr[name]) ldr[name]();
   setTimeout(initImgPickers, 100);
   // إخفاء/إظهار الـ FAB حسب الصفحة

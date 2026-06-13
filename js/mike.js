@@ -21,6 +21,36 @@ function ldMike() {
   ldPendingTasks();
 }
 
+
+// ============================================================
+// 📸 إرسال صورة لـ Mike
+// ============================================================
+let _mikeImgBase64 = null;
+
+async function attachMikeImg(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) return toast('⚠️ الصورة أكبر من 5MB');
+
+  const reader = new FileReader();
+  reader.onload = function() {
+    _mikeImgBase64 = this.result;
+    const thumb = document.getElementById('mike-img-thumb');
+    const preview = document.getElementById('mike-img-preview');
+    if (thumb) thumb.src = this.result;
+    if (preview) preview.style.display = 'block';
+    toast('✅ الصورة جاهزة — اكتب رسالتك وأرسل');
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function clearMikeImg() {
+  _mikeImgBase64 = null;
+  const preview = document.getElementById('mike-img-preview');
+  if (preview) preview.style.display = 'none';
+}
+
 async function sendMike(text) {
   const input = document.getElementById('mike-input');
   const msg = text || input.value.trim();
@@ -47,7 +77,13 @@ async function sendMike(text) {
   msgs.appendChild(loadingDiv);
   msgs.scrollTop = msgs.scrollHeight;
 
-  const d = await api('/api/mike', { method: 'POST', body: JSON.stringify({ message: msg, history: mikeHistory.slice(-6) }) });
+  // إضافة الصورة للرسالة إن وجدت
+  const imgToSend = _mikeImgBase64;
+  if (imgToSend) {
+    addCm('mike-msgs', 'user', '📸 صورة مرفقة');
+    clearMikeImg();
+  }
+  const d = await api('/api/mike', { method: 'POST', body: JSON.stringify({ message: msg, history: mikeHistory.slice(-6), image: imgToSend || null }) });
 
   // إزالة رسالة الانتظار
   const ldEl = document.getElementById(loadingId);

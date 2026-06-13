@@ -320,8 +320,8 @@ app.post('/api/customers', authenticateToken, async (req, res) => {
   try {
     if (pool) {
       const r = await pool.query(
-        'INSERT INTO customers (user_id, name, phone, address, notes, tags) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-        [req.user.id, name, phone, address||'', notes||'', JSON.stringify(tags||[])]
+        'INSERT INTO customers (user_id, name, phone, address, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [req.user.id, name, phone, address||'', notes||'']
       );
       return res.json({ success: true, customer: r.rows[0] });
     }
@@ -347,7 +347,7 @@ app.put('/api/customers/:id', authenticateToken, async (req, res) => {
   const { name, phone, address, notes, tags } = req.body;
   try {
     if (pool) {
-      await pool.query('UPDATE customers SET name=$1,phone=$2,address=$3,notes=$4,tags=$5 WHERE id=$6 AND user_id=$7',
+      await pool.query('UPDATE customers SET name=$1,phone=$2,address=$3,notes=$4 WHERE id=$5 AND user_id=$6',
         [name, phone, address||'', notes||'', JSON.stringify(tags||[]), req.params.id, req.user.id]);
       return res.json({ success: true });
     }
@@ -444,4 +444,17 @@ app.get('/api/analytics/report', authenticateToken, async (req, res) => {
 // ============================================================
 // COUPONS
 // ============================================================
+
+// رابط تتبع الطلب
+app.post('/api/orders/:id/track-link', authenticateToken, async (req, res) => {
+  try {
+    if (!pool) return res.status(503).json({ success: false });
+    const r = await pool.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+    const baseUrl = process.env.BASE_URL || 'https://socialos.store';
+    const trackUrl = `${baseUrl}/track/${req.params.id}`;
+    res.json({ success: true, track_url: trackUrl });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 };
