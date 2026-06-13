@@ -102,7 +102,31 @@ async function sendMike(text) {
       fullReply += '\n\n✅ ' + esc(d.action_result.message || '');
       if (d.action === 'get_report' && d.action_result.data) {
         const rd = d.action_result.data;
-        fullReply += '\n\n📊 تقرير المبيعات:\n• الطلبات (30 يوم): ' + rd.orders_30d + '\n• الإيراد: ' + Number(rd.revenue_30d).toLocaleString() + ' IQD\n• المنتجات: ' + rd.products + '\n• العملاء: ' + rd.customers;
+        const rt = d.action_result.report_type || 'sales';
+        if (rt === 'customers' && rd.top) {
+          fullReply += '\n\n👥 تقرير العملاء:\n• إجمالي العملاء: ' + rd.total;
+          if (rd.top.length > 0) {
+            fullReply += '\n\n🏆 أفضل العملاء:';
+            rd.top.forEach((c,i) => {
+              fullReply += '\n' + (i+1) + '. ' + esc(c.name) + ' — ' + Number(c.spent).toLocaleString() + ' IQD (' + c.orders + ' طلب)';
+            });
+          }
+        } else if (rt === 'products' && rd.products) {
+          fullReply += '\n\n📦 تقرير المنتجات:\n• إجمالي المنتجات: ' + rd.products.length;
+          rd.products.slice(0,5).forEach(p => {
+            fullReply += '\n• ' + esc(p.name) + ' — ' + Number(p.price).toLocaleString() + ' IQD | مخزون: ' + p.stock;
+          });
+        } else if (rt === 'orders' && rd.recent) {
+          fullReply += '\n\n🛒 تقرير الطلبات:\n• الطلبات (30 يوم): ' + rd.orders_30d + '\n• الإيراد: ' + Number(rd.revenue_30d).toLocaleString() + ' IQD';
+          if (rd.recent.length > 0) {
+            fullReply += '\n\nآخر الطلبات:';
+            rd.recent.forEach(o => {
+              fullReply += '\n• ' + esc(o.customer_name) + ' — ' + Number(o.total).toLocaleString() + ' IQD [' + esc(o.status) + ']';
+            });
+          }
+        } else {
+          fullReply += '\n\n📊 تقرير المبيعات:\n• الطلبات (30 يوم): ' + rd.orders_30d + '\n• الإيراد: ' + Number(rd.revenue_30d).toLocaleString() + ' IQD\n• المنتجات: ' + rd.products + '\n• العملاء: ' + rd.customers;
+        }
       }
     }
     if (d.action_error) {

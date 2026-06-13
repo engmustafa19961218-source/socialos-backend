@@ -375,16 +375,49 @@ ${bizTypeContext}
         }
 
         else if (action === 'get_report') {
-          const [o, r, c] = await Promise.all([
-            pool.query('SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL \'30 days\'', [userId]),
-            pool.query('SELECT COUNT(*) as cnt FROM products WHERE user_id=$1', [userId]),
-            pool.query('SELECT COUNT(*) as cnt FROM customers WHERE user_id=$1', [userId])
-          ]);
-          actionResult = {
-            type: 'report',
-            data: { orders_30d: o.rows[0].cnt, revenue_30d: o.rows[0].rev, products: r.rows[0].cnt, customers: c.rows[0].cnt },
-            message: `الطلبات (30 يوم): ${o.rows[0].cnt} — الإيراد: ${Number(o.rows[0].rev).toLocaleString()}`
-          };
+          const reportType = actionData.type || 'sales';
+
+          if (reportType === 'customers') {
+            const [c, topC] = await Promise.all([
+              pool.query('SELECT COUNT(*) as cnt FROM customers WHERE user_id=$1', [userId]),
+              pool.query(`SELECT name, phone, COUNT(o.id) as orders, COALESCE(SUM(o.total),0) as spent
+                FROM customers c LEFT JOIN orders o ON o.customer_name=c.name AND o.user_id=$1
+                WHERE c.user_id=$1 GROUP BY c.id, c.name, c.phone ORDER BY spent DESC LIMIT 5`, [userId])
+            ]);
+            actionResult = {
+              type: 'report', report_type: 'customers',
+              data: { total: c.rows[0].cnt, top: topC.rows },
+              message: `إجمالي العملاء: ${c.rows[0].cnt}`
+            };
+          } else if (reportType === 'products') {
+            const p = await pool.query('SELECT name, price, stock, category FROM products WHERE user_id=$1 ORDER BY stock ASC', [userId]);
+            actionResult = {
+              type: 'report', report_type: 'products',
+              data: { products: p.rows },
+              message: `إجمالي المنتجات: ${p.rows.length}`
+            };
+          } else if (reportType === 'orders') {
+            const [o, recent] = await Promise.all([
+              pool.query('SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL \'30 days\'', [userId]),
+              pool.query('SELECT customer_name, total, status FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 5', [userId])
+            ]);
+            actionResult = {
+              type: 'report', report_type: 'orders',
+              data: { orders_30d: o.rows[0].cnt, revenue_30d: o.rows[0].rev, recent: recent.rows },
+              message: `الطلبات (30 يوم): ${o.rows[0].cnt} — الإيراد: ${Number(o.rows[0].rev).toLocaleString()}`
+            };
+          } else {
+            const [o, r, c] = await Promise.all([
+              pool.query('SELECT COUNT(*) as cnt, COALESCE(SUM(total),0) as rev FROM orders WHERE user_id=$1 AND created_at>=NOW()-INTERVAL \'30 days\'', [userId]),
+              pool.query('SELECT COUNT(*) as cnt FROM products WHERE user_id=$1', [userId]),
+              pool.query('SELECT COUNT(*) as cnt FROM customers WHERE user_id=$1', [userId])
+            ]);
+            actionResult = {
+              type: 'report', report_type: 'sales',
+              data: { orders_30d: o.rows[0].cnt, revenue_30d: o.rows[0].rev, products: r.rows[0].cnt, customers: c.rows[0].cnt },
+              message: `الطلبات (30 يوم): ${o.rows[0].cnt} — الإيراد: ${Number(o.rows[0].rev).toLocaleString()}`
+            };
+          }
         }
 
       } catch (e) {
