@@ -156,6 +156,8 @@ app.post('/api/mike', authenticateToken, async (req, res) => {
 ${mikeMemory}
 ${bizTypeContext}
 
+قاعدة إلزامية: جميع ردودك واقتراحاتك وأمثلتك يجب أن تكون مرتبطة بنوع عمل المتجر فقط. لا تقترح أمثلة أو منتجات من قطاعات أخرى.
+
 معلومات المتجر:
 - الاسم: ${escapeHtml(context.store?.store_name || '')}
 - النوع: ${escapeHtml(bizType)}

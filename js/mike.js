@@ -100,6 +100,10 @@ async function sendMike(text) {
     // إضافة نتيجة الإجراء
     if (d.action_result) {
       fullReply += '\n\n✅ ' + esc(d.action_result.message || '');
+      if (d.action === 'get_report' && d.action_result.data) {
+        const rd = d.action_result.data;
+        fullReply += '\n\n📊 تقرير المبيعات:\n• الطلبات (30 يوم): ' + rd.orders_30d + '\n• الإيراد: ' + Number(rd.revenue_30d).toLocaleString() + ' IQD\n• المنتجات: ' + rd.products + '\n• العملاء: ' + rd.customers;
+      }
     }
     if (d.action_error) {
       fullReply += '\n\n❌ ' + esc(d.action_error);
