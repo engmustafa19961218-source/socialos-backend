@@ -837,12 +837,14 @@ async function processVoiceInput() {
   reader.readAsDataURL(blob);
 }
 
-async function speakResponse(text) {
-  if (!voiceMode || !text) return;
-  const d = await api('/api/voice/speak', 'POST', { text });
-  if (d.success) {
-    const audio = new Audio(`data:${d.mime_type};base64,${d.audio_base64}`);
-    audio.play();
-  }
+async function speakResponse(text, force = false) {
+  if ((!voiceMode && !force) || !text) return;
+  try {
+    const d = await api('/api/voice/speak', { method: 'POST', body: JSON.stringify({ text: text.substring(0, 500) }) });
+    if (d.success && d.audio_base64) {
+      const audio = new Audio(`data:${d.mime_type || 'audio/mp3'};base64,${d.audio_base64}`);
+      audio.play().catch(() => {});
+    }
+  } catch(e) {}
 }
 

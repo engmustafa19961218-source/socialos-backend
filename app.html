@@ -1299,6 +1299,37 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
         </div>
 
       </div>
+
+
+      <!-- إعدادات الصوت -->
+      <div class="card" style="border-color:rgba(34,197,94,.2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3>🎙️ صوت Mike</h3>
+          <button id="mike-voice-toggle" class="btn bo bsm" onclick="toggleMikeVoice(this)">🔇 إيقاف</button>
+        </div>
+        <div class="fg">
+          <label class="fl">الصوت</label>
+          <select class="fs" id="voice-tone" onchange="saveVoiceSettings()">
+            <option value="alloy">Alloy — محايد</option>
+            <option value="echo">Echo — رجالي</option>
+            <option value="fable">Fable — دافئ</option>
+            <option value="onyx">Onyx — رسمي عميق</option>
+            <option value="nova">Nova — نسائي</option>
+            <option value="shimmer">Shimmer — ناعم</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">السرعة</label>
+          <select class="fs" id="voice-speed" onchange="saveVoiceSettings()">
+            <option value="0.75">بطيء</option>
+            <option value="1.0" selected>عادي</option>
+            <option value="1.25">سريع</option>
+            <option value="1.5">سريع جداً</option>
+          </select>
+        </div>
+        <button class="btn ba bfull" onclick="testVoice()" style="margin-bottom:8px">🔊 اختبر الصوت</button>
+        <div style="font-size:.72rem;color:var(--text2);text-align:center">يحتاج OPENAI_API_KEY في Railway</div>
+      </div>
     </div>
 
     <!-- HOME -->
@@ -3659,22 +3690,22 @@ function bnSwitch(name, btn) {
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/js/core.js?v=41"></script>
-<script src="/js/employee.js?v=41"></script>
-<script src="/js/orders.js?v=41"></script>
-<script src="/js/store.js?v=41"></script>
-<script src="/js/social.js?v=41"></script>
-<script src="/js/team_ui.js?v=41"></script>
-<script src="/js/video.js?v=41"></script>
-<script src="/js/referral.js?v=41"></script>
-<script src="/js/departments.js?v=41"></script>
-<script src="/js/ai_features.js?v=41"></script>
-<script src="/js/mike.js?v=41"></script>
-<script src="/js/analytics.js?v=41"></script>
-<script src="/js/ads.js?v=41"></script>
-<script src="/js/designer.js?v=41"></script>
-<script src="/js/app.js?v=41"></script>
-<script src="/js/app2.js?v=41"></script>
+<script src="/js/core.js?v=42"></script>
+<script src="/js/employee.js?v=42"></script>
+<script src="/js/orders.js?v=42"></script>
+<script src="/js/store.js?v=42"></script>
+<script src="/js/social.js?v=42"></script>
+<script src="/js/team_ui.js?v=42"></script>
+<script src="/js/video.js?v=42"></script>
+<script src="/js/referral.js?v=42"></script>
+<script src="/js/departments.js?v=42"></script>
+<script src="/js/ai_features.js?v=42"></script>
+<script src="/js/mike.js?v=42"></script>
+<script src="/js/analytics.js?v=42"></script>
+<script src="/js/ads.js?v=42"></script>
+<script src="/js/designer.js?v=42"></script>
+<script src="/js/app.js?v=42"></script>
+<script src="/js/app2.js?v=42"></script>
 <!-- MIKE FAB BUTTON -->
 <button id="mike-fab" onclick="toggleMikePanel()" title="Mike — المساعد التنفيذي">⚡</button>
 </body>

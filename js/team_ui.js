@@ -80,6 +80,8 @@ async function mikeSendCommand() {
         <div style="background:var(--s2);border-radius:12px 12px 12px 3px;padding:9px 13px;max-width:80%;font-size:.83rem;line-height:1.5">${esc(reply)}${reqOwner}</div>
       </div>`;
     msgsEl.scrollTop = msgsEl.scrollHeight;
+    // تشغيل الصوت
+    if (typeof mikeSpeakReply === 'function') mikeSpeakReply(reply);
   }
 }
 
@@ -118,10 +120,10 @@ async function customerSendMsg() {
         <div style="background:var(--s2);border-radius:12px 12px 12px 3px;padding:8px 12px;max-width:80%;font-size:.82rem;line-height:1.5">${esc(reply)}${actionBadge}</div>
       </div>`;
     msgsEl.scrollTop = msgsEl.scrollHeight;
+    // تشغيل صوت الموظف الرقمي
+    if (typeof speakResponse === 'function') speakResponse(reply, false);
   }
 }
-
-// رد على تعليق
 async function replyToComment() {
   const comment = document.getElementById('comment-text')?.value.trim();
   if (!comment) return toast('⚠️ أدخل التعليق');

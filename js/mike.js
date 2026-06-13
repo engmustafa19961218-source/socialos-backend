@@ -281,3 +281,66 @@ async function clearMikeMemory() {
   const d = await api('/api/mike/memory', { method: 'DELETE' });
   if (d.success) { toast('✅ تم مسح الذاكرة'); ldMikeMemory(); }
 }
+
+// ============================================================
+// 🎙️ نظام الصوت لـ Mike
+// ============================================================
+let mikeVoiceEnabled = localStorage.getItem('mike_voice') === '1';
+let mikeVoicePlaying = false;
+
+async function mikeSpeakReply(text) {
+  if (!mikeVoiceEnabled || !text || mikeVoicePlaying) return;
+  mikeVoicePlaying = true;
+  try {
+    const d = await api('/api/voice/speak', {
+      method: 'POST',
+      body: JSON.stringify({ text: text.substring(0, 500) })
+    });
+    if (d.success && d.audio_base64) {
+      const audio = new Audio(`data:${d.mime_type || 'audio/mp3'};base64,${d.audio_base64}`);
+      audio.onended = () => { mikeVoicePlaying = false; };
+      audio.onerror = () => { mikeVoicePlaying = false; };
+      await audio.play();
+    }
+  } catch(e) { mikeVoicePlaying = false; }
+}
+
+function toggleMikeVoice(btn) {
+  mikeVoiceEnabled = !mikeVoiceEnabled;
+  localStorage.setItem('mike_voice', mikeVoiceEnabled ? '1' : '0');
+  if (btn) {
+    btn.textContent = mikeVoiceEnabled ? '🔊 الصوت: تشغيل' : '🔇 الصوت: إيقاف';
+    btn.style.background = mikeVoiceEnabled ? 'rgba(34,197,94,.15)' : 'var(--s2)';
+    btn.style.borderColor = mikeVoiceEnabled ? 'rgba(34,197,94,.3)' : 'var(--border)';
+    btn.style.color = mikeVoiceEnabled ? 'var(--green)' : 'var(--text2)';
+  }
+  toast(mikeVoiceEnabled ? '🔊 Mike سيتكلم الآن' : '🔇 تم إيقاف صوت Mike');
+}
+
+// إعدادات الصوت
+async function saveVoiceSettings() {
+  const tone = document.getElementById('voice-tone')?.value || 'alloy';
+  const speed = parseFloat(document.getElementById('voice-speed')?.value || '1.0');
+  const d = await api('/api/voice/profile', {
+    method: 'POST',
+    body: JSON.stringify({ voice_tone: tone, voice_speed: speed })
+  });
+  if (d.success) toast('✅ تم حفظ إعدادات الصوت');
+  else toast('❌ ' + (d.message || 'خطأ'));
+}
+
+// اختبار الصوت
+async function testVoice() {
+  const tone = document.getElementById('voice-tone')?.value || 'alloy';
+  const d = await api('/api/voice/speak', {
+    method: 'POST',
+    body: JSON.stringify({
+      text: 'مرحباً! أنا Mike، مساعدك الرقمي. كيف يمكنني مساعدتك اليوم؟',
+      voice: tone
+    })
+  });
+  if (d.success && d.audio_base64) {
+    const audio = new Audio(`data:${d.mime_type || 'audio/mp3'};base64,${d.audio_base64}`);
+    audio.play().catch(() => toast('⚠️ فعّل الصوت في المتصفح أولاً'));
+  } else toast('❌ ' + (d.message || 'تأكد من OPENAI_API_KEY'));
+}
