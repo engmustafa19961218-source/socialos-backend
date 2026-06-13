@@ -825,13 +825,25 @@ async function processVoiceInput() {
   reader.onloadend = async () => {
     const base64 = reader.result.split(',')[1];
     toast('⏳ جاري تحويل الصوت...');
-    const d = await api('/api/voice/transcribe', 'POST', { audio_base64: base64, mime_type: 'audio/webm' });
+    const d = await api('/api/voice/transcribe', {
+      method: 'POST',
+      body: JSON.stringify({ audio_base64: base64, mime_type: 'audio/webm' })
+    });
     if (d.success && d.text) {
-      const inp = document.getElementById('tinput');
-      if (inp) { inp.value = d.text; }
-      toast('✅ تم التعرف: ' + d.text.substring(0,40));
-      // إرسال تلقائي
-      await sendTrain();
+      toast('✅ ' + d.text.substring(0, 40));
+      // إرسال للمكان الصحيح حسب الصفحة الحالية
+      const mikeInput = document.getElementById('mike-command-input');
+      const trainInput = document.getElementById('tinput');
+      if (mikeInput && document.getElementById('page-digital-team')?.classList.contains('active')) {
+        mikeInput.value = d.text;
+        if (typeof mikeSendCommand === 'function') await mikeSendCommand();
+      } else if (mikeInput && document.getElementById('mike-chat-msgs')) {
+        mikeInput.value = d.text;
+        if (typeof mikeSendCommand === 'function') await mikeSendCommand();
+      } else if (trainInput) {
+        trainInput.value = d.text;
+        if (typeof sendTrain === 'function') await sendTrain();
+      }
     } else toast('❌ ' + (d.message || 'فشل التعرف على الصوت'));
   };
   reader.readAsDataURL(blob);

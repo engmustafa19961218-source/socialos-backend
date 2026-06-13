@@ -332,15 +332,22 @@ async function saveVoiceSettings() {
 // اختبار الصوت
 async function testVoice() {
   const tone = document.getElementById('voice-tone')?.value || 'alloy';
+  const btn = document.querySelector('[onclick="testVoice()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري...'; }
   const d = await api('/api/voice/speak', {
     method: 'POST',
     body: JSON.stringify({
-      text: 'مرحباً! أنا Mike، مساعدك الرقمي. كيف يمكنني مساعدتك اليوم؟',
+      text: 'مرحباً! أنا Mike، مساعدك الذكي.',
       voice: tone
     })
   });
+  if (btn) { btn.disabled = false; btn.textContent = '🔊 اختبر الصوت'; }
   if (d.success && d.audio_base64) {
     const audio = new Audio(`data:${d.mime_type || 'audio/mp3'};base64,${d.audio_base64}`);
-    audio.play().catch(() => toast('⚠️ فعّل الصوت في المتصفح أولاً'));
-  } else toast('❌ ' + (d.message || 'تأكد من OPENAI_API_KEY'));
+    audio.play().catch(e => toast('⚠️ فعّل الصوت في المتصفح: ' + e.message));
+    toast('🎙️ يتم تشغيل الصوت...');
+  } else {
+    toast('❌ ' + (d.message || 'تأكد من OPENAI_API_KEY في Railway'));
+    console.error('Voice test failed:', d);
+  }
 }
