@@ -93,7 +93,7 @@ const { escapeHtml, sanitize, authenticateToken, rateLimit, notify, auditLog, es
 // ============================================================
 
 app.post('/api/mike', authenticateToken, async (req, res) => {
-  const { message, history } = req.body;
+  const { message, history, image } = req.body;
   if (!message || String(message).length > 2000)
     return res.status(400).json({ success: false, message: 'الرسالة غير صالحة' });
 

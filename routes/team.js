@@ -542,7 +542,7 @@ app.post('/api/team/publish/post', authenticateToken, rateLimit(20, 60000), asyn
 
     // إنشاء البوست
     const r = await pool.query(
-      `INSERT INTO posts (user_id, platform, content, media_url, media_type, scheduled_at, status)
+      `INSERT INTO social_posts (user_id, platform, content, media_url, media_type, scheduled_at, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [req.user.id, platform, sanitize(content.substring(0,2200)), media_url||null,
        media_url ? 'image' : 'text', scheduled_at||null, scheduled_at ? 'scheduled' : 'pending']
@@ -574,7 +574,7 @@ app.post('/api/team/publish/post', authenticateToken, rateLimit(20, 60000), asyn
             });
             const fbData = await fbRes.json();
             if (fbData.id) {
-              await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3', ['published', fbData.id, r.rows[0].id]);
+              await pool.query('UPDATE social_posts SET status=$1, external_id=$2 WHERE id=$3', ['published', fbData.id, r.rows[0].id]);
             }
           } else if (platform === 'instagram' && page_id && media_url) {
             const containerRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}/media`, {
@@ -590,7 +590,7 @@ app.post('/api/team/publish/post', authenticateToken, rateLimit(20, 60000), asyn
                 body: JSON.stringify({ creation_id: container.id, access_token })
               });
               const pub = await publishRes.json();
-              if (pub.id) await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3', ['published', pub.id, r.rows[0].id]);
+              if (pub.id) await pool.query('UPDATE social_posts SET status=$1, external_id=$2 WHERE id=$3', ['published', pub.id, r.rows[0].id]);
             }
           }
         } catch(e) { /* نكمل حتى لو فشل النشر */ }
@@ -612,7 +612,7 @@ app.get('/api/team/publish/posts', authenticateToken, async (req, res) => {
   try {
     if (!pool) return res.json({ success: true, posts: [] });
     const r = await pool.query(
-      'SELECT * FROM posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',
+      'SELECT * FROM social_posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',
       [req.user.id]
     );
     res.json({ success: true, posts: r.rows });
@@ -726,7 +726,7 @@ app.post('/api/team/design-and-publish', authenticateToken, rateLimit(5, 60000),
     if (pool) {
       // حفظ البوست في DB
       const postR = await pool.query(
-        `INSERT INTO posts (user_id, platform, content, media_url, media_type, status)
+        `INSERT INTO social_posts (user_id, platform, content, media_url, media_type, status)
          VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
         [req.user.id, targetPlatform, fullCaption.substring(0,2200),
          imageUrl, imageUrl ? 'image' : 'text', 'pending']
@@ -752,7 +752,7 @@ app.post('/api/team/design-and-publish', authenticateToken, rateLimit(5, 60000),
             const fbData = await fbRes.json();
             if (fbData.id) {
               publishResult = { status: 'published', external_id: fbData.id };
-              await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3',
+              await pool.query('UPDATE social_posts SET status=$1, external_id=$2 WHERE id=$3',
                 ['published', fbData.id, postR.rows[0].id]);
             }
           } else if (targetPlatform === 'instagram' && page_id && imageUrl) {
@@ -771,7 +771,7 @@ app.post('/api/team/design-and-publish', authenticateToken, rateLimit(5, 60000),
               const pub = await publishRes.json();
               if (pub.id) {
                 publishResult = { status: 'published', external_id: pub.id };
-                await pool.query('UPDATE posts SET status=$1, external_id=$2 WHERE id=$3',
+                await pool.query('UPDATE social_posts SET status=$1, external_id=$2 WHERE id=$3',
                   ['published', pub.id, postR.rows[0].id]);
               }
             }
