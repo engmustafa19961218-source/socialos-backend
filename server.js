@@ -875,17 +875,27 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
     const REMOVE_BG_KEY = process.env.REMOVE_BG_API_KEY;
     if (REMOVE_BG_KEY) {
       try {
-        const FormData = require('form-data');
-        const fd = new FormData();
-        fd.append('image_file', productBuffer, { filename: 'product.jpg' });
-        fd.append('size', 'auto');
+        // استخدام multipart/form-data يدوياً بدون مكتبة خارجية
+        const boundary = '----FormBoundary' + Math.random().toString(36).substr(2);
+        const bodyParts = [
+          Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="image_file"; filename="product.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`),
+          productBuffer,
+          Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="size"\r\n\r\nauto\r\n--${boundary}--\r\n`)
+        ];
+        const bodyBuffer = Buffer.concat(bodyParts);
         const bgRes = await fetch('https://api.remove.bg/v1.0/removebg', {
           method: 'POST',
-          headers: { 'X-Api-Key': REMOVE_BG_KEY, ...fd.getHeaders() },
-          body: fd
+          headers: {
+            'X-Api-Key': REMOVE_BG_KEY,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+            'Content-Length': bodyBuffer.length
+          },
+          body: bodyBuffer
         });
         if (bgRes.ok) {
           productBuffer = Buffer.from(await bgRes.arrayBuffer());
+        } else {
+          console.warn('remove.bg status:', bgRes.status, await bgRes.text());
         }
       } catch(e) { console.warn('remove.bg error:', e.message); }
     }
