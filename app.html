@@ -2424,377 +2424,69 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
       </div>
     </div>
 
-    <!-- IMAGE DESIGNER — مصمم الصور الذكي -->
+    <!-- IMAGE DESIGNER — مولّد الإعلانات الذكي -->
     <div class="page" id="page-designer">
-      <div class="pt"><div><h1>🖼️ مصمم الصور</h1><p>إزالة خلفية · كتابة نصوص · تحليل ذكي</p></div></div>
+      <div class="pt"><div><h1>🎨 مولّد الإعلانات</h1><p>ضع منتجك في ديكور احترافي بنقرة واحدة</p></div></div>
 
-      <!-- تبويبات -->
-      <div class="fbar" style="margin-bottom:16px">
-        <button class="fb active" onclick="switchDesTab('edit',this)">✂️ تعديل الصورة</button>
-        <button class="fb" onclick="switchDesTab('batch',this)">🗂️ مجموعة صور</button>
-        <button class="fb" onclick="switchDesTab('text',this)">✍️ نصوص على الصورة</button>
-        <button class="fb" onclick="switchDesTab('ai',this)">🤖 تحليل ذكي</button>
-        <button class="fb" onclick="switchDesTab('gen',this)">📢 مولّد النصوص</button>
+      <!-- API Key -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:.8rem;color:var(--text2);margin-bottom:8px">🔑 Clipdrop API Key <span style="font-size:.7rem;color:#888">(اختياري — لإزالة الخلفية تلقائياً)</span></div>
+        <input id="dsApiKey" type="password" class="fi" placeholder="sk-..." style="direction:ltr;font-size:.82rem">
+        <div style="font-size:.7rem;color:#888;margin-top:6px">احصل على مفتاحك مجاناً: <a href="https://clipdrop.co/apis" target="_blank" style="color:var(--accent)">clipdrop.co/apis</a></div>
       </div>
 
-      <!-- ─── تبويب: مجموعة الصور ─── -->
-      <div id="des-tab-batch" style="display:none">
-        <div class="g2">
+      <!-- صور المنتج -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">📦 صور المنتج <span style="font-size:.72rem;color:#888;font-weight:400">(يمكن رفع أكثر من صورة)</span></div>
+        <div id="dsProdGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
+        <button class="btn bo bsm" onclick="document.getElementById('dsProdInput').click()" style="width:100%">+ إضافة صور المنتج</button>
+        <input type="file" id="dsProdInput" accept="image/*" multiple style="display:none" onchange="addProdImgs(this)">
+      </div>
+
+      <!-- صورة الديكور -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">🏠 صورة الديكور / الخلفية</div>
+        <div id="dsDecorPreviewWrap" style="display:none;margin-bottom:10px;position:relative">
+          <img id="dsDecorPreview" style="width:100%;border-radius:10px;max-height:160px;object-fit:cover">
+          <button onclick="clearDecor()" style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:.8rem">✕</button>
+        </div>
+        <button class="btn bo bsm" onclick="document.getElementById('dsDecorInput').click()" style="width:100%" id="dsDecorBtn">+ رفع صورة الديكور</button>
+        <input type="file" id="dsDecorInput" accept="image/*" style="display:none" onchange="setDecorImg(this)">
+      </div>
+
+      <!-- إعدادات الإعلان -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">⚙️ إعدادات الإعلان</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <div>
-            <div class="card">
-              <h3>📁 رفع مجموعة صور</h3>
-              <!-- منطقة السحب والإفلات -->
-              <div id="batch-drop" onclick="document.getElementById('batch-file-input').click()"
-                style="border:2px dashed var(--border);border-radius:14px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px">
-                <div style="font-size:2rem;margin-bottom:8px">📁</div>
-                <div style="font-weight:700;font-size:.88rem;margin-bottom:4px">اضغط لاختيار الصور</div>
-                <div style="font-size:.76rem;color:var(--text2)">أو اسحب الصور وأفلتها هنا — يدعم JPG, PNG, WebP</div>
-              </div>
-              <input type="file" id="batch-file-input" multiple accept="image/*" style="display:none" onchange="batchAddFiles(this.files)">
-
-              <!-- قائمة الصور المضافة -->
-              <div id="batch-list" style="display:none">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
-                  <div style="font-size:.78rem;font-weight:700;color:var(--text2)" id="batch-count">0 صور</div>
-                  <button class="btn bd bsm" onclick="clearBatch()">🗑 مسح الكل</button>
-                </div>
-                <div id="batch-thumbs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px;max-height:260px;overflow-y:auto"></div>
-              </div>
-            </div>
-
-            <div class="card">
-              <h3>🎨 إعدادات الديكور المشترك</h3>
-              <div class="fg"><label class="fl">نوع المنتج</label>
-                <select class="fs" id="batch-product-type">
-                  <option value="ملابس">👗 ملابس</option>
-                  <option value="منتج عام">📦 منتج عام</option>
-                  <option value="طعام">🍽️ طعام ومشروبات</option>
-                  <option value="إلكترونيات">📱 إلكترونيات</option>
-                  <option value="عطور">🌹 عطور وعناية</option>
-                  <option value="أثاث">🛋️ أثاث وديكور</option>
-                  <option value="مجوهرات">💍 مجوهرات وإكسسوار</option>
-                </select>
-              </div>
-              <div class="fg"><label class="fl">أسلوب التصميم</label>
-                <select class="fs" id="batch-style">
-                  <option value="عصري وأنيق">✨ عصري وأنيق</option>
-                  <option value="بسيط ونظيف">🤍 بسيط ونظيف</option>
-                  <option value="جريء وملفت">🔥 جريء وملفت</option>
-                  <option value="فاخر">👑 فاخر</option>
-                  <option value="شبابي">🎯 شبابي</option>
-                </select>
-              </div>
-              <div class="g2">
-                <div class="fg"><label class="fl">لون الخلفية الأساسي</label>
-                  <div style="display:flex;gap:5px;align-items:center">
-                    <input type="color" id="batch-color1" value="#4f8ef7" style="width:38px;height:36px;border:none;border-radius:8px;cursor:pointer">
-                    <input class="fi" id="batch-color1-hex" value="#4f8ef7" style="flex:1;font-family:monospace;font-size:.8rem">
-                  </div>
-                </div>
-                <div class="fg"><label class="fl">اللون الثانوي</label>
-                  <div style="display:flex;gap:5px;align-items:center">
-                    <input type="color" id="batch-color2" value="#7c3aed" style="width:38px;height:36px;border:none;border-radius:8px;cursor:pointer">
-                    <input class="fi" id="batch-color2-hex" value="#7c3aed" style="flex:1;font-family:monospace;font-size:.8rem">
-                  </div>
-                </div>
-              </div>
-              <div class="fg"><label class="fl">نص مشترك (اختياري)</label>
-                <input class="fi" id="batch-text" placeholder="مثل: اسم المتجر، رقم الواتساب، عرض خاص...">
-              </div>
-              <button class="btn ba" id="batch-suggest-btn" onclick="batchSuggestDecor()" style="width:100%;padding:11px;margin-bottom:8px">🤖 اقترح ديكور ذكي بالـ AI</button>
-              <div id="batch-decor-preview" style="display:none;background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:8px;font-size:.82rem"></div>
-            </div>
+            <div style="font-size:.72rem;color:var(--text2);margin-bottom:4px">نص الإعلان الرئيسي</div>
+            <input class="fi" id="dsAdTitle" placeholder="عرض خاص!" style="font-size:.82rem">
           </div>
-
           <div>
-            <div class="card">
-              <h3>⚡ تطبيق على الكل</h3>
-              <div style="display:grid;gap:8px">
-                <button class="btn bo" onclick="batchRemoveBg()" id="batch-rm-btn" style="padding:12px;justify-content:flex-start;gap:10px">
-                  <span style="font-size:1.1rem">✂️</span>
-                  <div style="text-align:right"><div style="font-weight:700;font-size:.84rem">إزالة خلفية الكل</div><div style="font-size:.72rem;color:var(--text2)">يزيل الخلفية من كل الصور</div></div>
-                </button>
-                <button class="btn bo" onclick="batchApplyDecor()" id="batch-decor-btn" style="padding:12px;justify-content:flex-start;gap:10px">
-                  <span style="font-size:1.1rem">🎨</span>
-                  <div style="text-align:right"><div style="font-weight:700;font-size:.84rem">تطبيق الديكور على الكل</div><div style="font-size:.72rem;color:var(--text2)">نفس التصميم على كل الصور</div></div>
-                </button>
-                <button class="btn ba" onclick="batchApplyAll()" id="batch-all-btn" style="padding:12px;justify-content:flex-start;gap:10px">
-                  <span style="font-size:1.1rem">⚡</span>
-                  <div style="text-align:right"><div style="font-weight:700;font-size:.84rem">إزالة خلفية + ديكور</div><div style="font-size:.72rem;opacity:.8">الكل دفعة واحدة</div></div>
-                </button>
-                <button class="btn bo" onclick="batchDownloadAll()" id="batch-dl-btn" style="padding:12px;justify-content:flex-start;gap:10px">
-                  <span style="font-size:1.1rem">⬇️</span>
-                  <div style="text-align:right"><div style="font-weight:700;font-size:.84rem">تحميل الكل</div><div style="font-size:.72rem;color:var(--text2)">تحميل جميع الصور المعالجة</div></div>
-                </button>
-              </div>
-
-              <!-- شريط التقدم -->
-              <div id="batch-progress" style="display:none;margin-top:14px">
-                <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:6px">
-                  <span id="batch-progress-label">جاري المعالجة...</span>
-                  <span id="batch-progress-pct">0%</span>
-                </div>
-                <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden">
-                  <div id="batch-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--green));width:0%;transition:width .3s;border-radius:4px"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- نتائج المعالجة -->
-            <div class="card">
-              <h3>✅ الصور المعالجة</h3>
-              <div id="batch-results"><div class="empty"><div class="ei">🖼️</div><p>أضف صوراً وطبّق التصميم</p></div></div>
-            </div>
+            <div style="font-size:.72rem;color:var(--text2);margin-bottom:4px">نص فرعي</div>
+            <input class="fi" id="dsAdSub" placeholder="جودة عالية وسعر مناسب" style="font-size:.82rem">
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:.72rem;color:var(--text2);margin-bottom:4px">الصورة الرئيسية للتوليد</div>
+          <div id="dsProdThumbRow" style="display:flex;gap:6px;flex-wrap:wrap;min-height:40px;align-items:center">
+            <span style="font-size:.75rem;color:#888">ارفع صور المنتج أولاً</span>
           </div>
         </div>
       </div>
 
-      <!-- ─── تبويب: تعديل الصورة ─── -->
-      <div id="des-tab-edit">
-        <div class="g2">
-          <div>
-            <div class="card">
-              <h3>📸 الصورة المصدر</h3>
-              <div class="fg">
-                <label class="fl">رابط الصورة أو ارفع من جهازك</label>
-                <div class="img-picker">
-                  <input class="fi" id="des-url" placeholder="https://..." oninput="prvDesImg()">
-                  <button class="img-pick-btn" onclick="pickImg('des-url','des-pick-btn','des-prv-img')" id="des-pick-btn" title="اختر من جهازك">🖼️</button>
-                </div>
-              </div>
-              <div id="des-prv" style="display:none;margin-bottom:12px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);text-align:center">
-                <img id="des-img" style="max-width:100%;max-height:300px;object-fit:contain" crossorigin="anonymous">
-              </div>
-              <div class="fg"><label class="fl">عنوان المشروع</label><input class="fi" id="des-title" placeholder="صورة منتج..."></div>
-            </div>
-            <div class="card">
-              <h3>✂️ أدوات التعديل</h3>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <button class="btn bo" onclick="removeBg()" id="rm-bg-btn" style="padding:11px;flex-direction:column;gap:4px;height:auto">
-                  <span style="font-size:1.2rem">✂️</span>
-                  <span style="font-size:.76rem">إزالة الخلفية</span>
-                </button>
-                <button class="btn bo" onclick="downloadDesImg()" style="padding:11px;flex-direction:column;gap:4px;height:auto">
-                  <span style="font-size:1.2rem">⬇️</span>
-                  <span style="font-size:.76rem">تحميل الصورة</span>
-                </button>
-                <button class="btn bo" onclick="copyImgUrl()" style="padding:11px;flex-direction:column;gap:4px;height:auto">
-                  <span style="font-size:1.2rem">📋</span>
-                  <span style="font-size:.76rem">نسخ الرابط</span>
-                </button>
-                <button class="btn ba bsm" onclick="saveDesProject()" style="padding:11px;flex-direction:column;gap:4px;height:auto">
-                  <span style="font-size:1.2rem">💾</span>
-                  <span style="font-size:.76rem">حفظ المشروع</span>
-                </button>
-              </div>
-              <div id="rm-bg-result" style="display:none;margin-top:12px">
-                <div style="font-size:.78rem;color:var(--green);margin-bottom:7px">✅ تمت إزالة الخلفية</div>
-                <img id="rm-bg-img" style="max-width:100%;border-radius:10px;border:1px solid var(--border);background:repeating-conic-gradient(#1e2a3d 0% 25%,#111827 0% 50%) 0 0/20px 20px">
-                <!-- Product Placement -->
-                <div style="margin-top:12px;padding:12px;background:var(--surface2);border-radius:10px">
-                  <div style="font-weight:700;font-size:.85rem;margin-bottom:8px">🏠 ضع المنتج في بيئة</div>
-                  <div class="fg"><label class="fl">صف البيئة التي تريدها</label>
-                    <input class="fi" id="placement-prompt" placeholder="مثال: غرفة معيشة فاخرة، محل أنيق، خلفية بيضاء استوديو، طبيعة خضراء...">
-                  </div>
-                  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
-                    <button class="cs" onclick="setPlacementPrompt('غرفة معيشة فاخرة مع إضاءة دافئة')">🛋️ غرفة معيشة</button>
-                    <button class="cs" onclick="setPlacementPrompt('محل تجاري أنيق مع رفوف خشبية')">🏪 محل تجاري</button>
-                    <button class="cs" onclick="setPlacementPrompt('خلفية بيضاء نظيفة استوديو احترافي')">⬜ استوديو أبيض</button>
-                    <button class="cs" onclick="setPlacementPrompt('طبيعة خضراء مع إضاءة شمسية')">🌿 طبيعة</button>
-                    <button class="cs" onclick="setPlacementPrompt('مطبخ عصري نظيف')">🍳 مطبخ</button>
-                    <button class="cs" onclick="setPlacementPrompt('ديكور فاخر خلفية داكنة أنيقة')">✨ فاخر</button>
-                  </div>
-                  <button class="btn ba" onclick="placeProduct()" id="placement-btn" style="width:100%;padding:10px">🎨 ضع المنتج في البيئة</button>
-                  <div id="placement-result" style="display:none;margin-top:10px">
-                    <div style="font-size:.78rem;color:var(--green);margin-bottom:7px">✅ تم دمج المنتج</div>
-                    <img id="placement-img" style="max-width:100%;border-radius:10px">
-                    <button class="btn bo bsm" onclick="downloadPlacement()" style="margin-top:8px;width:100%">⬇️ تحميل الصورة</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <div class="card">
-              <h3>🗂️ مشاريعي</h3>
-              <div id="des-projects"><div class="empty"><div class="ei">🖼️</div><p>لا مشاريع بعد</p></div></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- زر التوليد -->
+      <button class="btn ba" id="dsGenBtn" onclick="dsGenerate()" style="width:100%;padding:14px;font-size:1rem;margin-bottom:14px">✨ توليد الإعلان</button>
+      <div id="dsStatus" style="display:none;text-align:center;padding:10px;font-size:.82rem;color:var(--text2);margin-bottom:10px"></div>
 
-      <!-- ─── تبويب: كتابة نصوص على الصورة ─── -->
-      <div id="des-tab-text" style="display:none">
-        <div class="g2">
-          <div>
-            <div class="card">
-              <h3>🖼️ الصورة</h3>
-              <div class="fg">
-                <label class="fl">رابط الصورة أو ارفعها</label>
-                <div class="img-picker">
-                  <input class="fi" id="txt-img-url" placeholder="https://..." oninput="loadCanvasImg()">
-                  <button class="img-pick-btn" onclick="pickImg('txt-img-url','txt-pick-btn',null)" id="txt-pick-btn">🖼️</button>
-                </div>
-              </div>
-              <!-- Canvas -->
-              <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:repeating-conic-gradient(#1e2a3d 0% 25%,#111827 0% 50%) 0 0/16px 16px;margin-bottom:10px;text-align:center">
-                <canvas id="des-canvas" style="max-width:100%;display:block;margin:0 auto;cursor:crosshair"></canvas>
-              </div>
-              <div style="display:flex;gap:7px">
-                <button class="btn ba" onclick="downloadCanvas()" style="flex:1;padding:10px">⬇️ تحميل</button>
-                <button class="btn bo bsm" onclick="clearCanvasTexts()">🗑 مسح النصوص</button>
-              </div>
-            </div>
-          </div>
-          <div>
-            <div class="card">
-              <h3>✍️ إضافة نص</h3>
-              <div class="fg"><label class="fl">النص *</label><input class="fi" id="txt-content" placeholder="اسم المنتج، السعر، عرض خاص..."></div>
-              <div class="g2">
-                <div class="fg"><label class="fl">حجم الخط</label><input class="fi" type="number" id="txt-size" value="36" min="12" max="120"></div>
-                <div class="fg"><label class="fl">اللون</label>
-                  <div style="display:flex;gap:5px;align-items:center">
-                    <input type="color" id="txt-color" value="#ffffff" style="width:38px;height:36px;border:none;border-radius:8px;cursor:pointer">
-                    <input class="fi" id="txt-color-hex" value="#ffffff" style="flex:1;font-family:monospace;font-size:.8rem" oninput="document.getElementById('txt-color').value=this.value">
-                  </div>
-                </div>
-              </div>
-              <div class="g2">
-                <div class="fg"><label class="fl">الخلفية</label>
-                  <select class="fs" id="txt-bg">
-                    <option value="none">بدون</option>
-                    <option value="black">أسود شفاف</option>
-                    <option value="white">أبيض شفاف</option>
-                    <option value="accent">أزرق</option>
-                    <option value="gradient">تدرج</option>
-                  </select>
-                </div>
-                <div class="fg"><label class="fl">الموضع</label>
-                  <select class="fs" id="txt-pos">
-                    <option value="center">المنتصف</option>
-                    <option value="top">الأعلى</option>
-                    <option value="bottom">الأسفل</option>
-                    <option value="top-right">أعلى اليمين</option>
-                    <option value="bottom-right">أسفل اليمين</option>
-                  </select>
-                </div>
-              </div>
-              <div class="fg"><label class="fl">الخط</label>
-                <select class="fs" id="txt-font">
-                  <option value="Tajawal">Tajawal</option>
-                  <option value="Cairo">Cairo</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Georgia">Georgia</option>
-                </select>
-              </div>
-              <button class="btn ba" onclick="addTextToCanvas()" style="width:100%;padding:11px">➕ إضافة النص</button>
-
-              <!-- قوالب جاهزة -->
-              <div style="margin-top:14px">
-                <div style="font-size:.72rem;color:var(--text2);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">قوالب سريعة</div>
-                <div style="display:flex;flex-wrap:wrap;gap:5px">
-                  <button class="cs" onclick="applyTemplate('offer')">🔥 عرض خاص</button>
-                  <button class="cs" onclick="applyTemplate('new')">🆕 وصل حديثاً</button>
-                  <button class="cs" onclick="applyTemplate('price')">💰 السعر</button>
-                  <button class="cs" onclick="applyTemplate('discount')">🏷️ خصم %</button>
-                  <button class="cs" onclick="applyTemplate('contact')">📞 للتواصل</button>
-                </div>
-              </div>
-
-              <!-- هوية المتجر -->
-              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-                <div style="font-size:.72rem;color:var(--text2);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">هوية المتجر</div>
-                <div style="display:flex;gap:6px">
-                  <button class="btn bo bsm" onclick="addLogoToCanvas()" style="flex:1;padding:9px">🏪 أضف الشعار</button>
-                  <button class="btn bo bsm" onclick="applyBrandColors()" style="flex:1;padding:9px">🎨 ألوان المتجر</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── تبويب: تحليل ذكي ─── -->
-      <div id="des-tab-ai" style="display:none">
-        <div class="g2">
-          <div>
-            <div class="card">
-              <h3>📸 الصورة</h3>
-              <div class="fg"><label class="fl">رابط الصورة</label><input class="fi" id="ai-img-url" placeholder="https://..." oninput="prvAiImg()"></div>
-              <div id="ai-img-prv" style="display:none;margin-bottom:10px;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-                <img id="ai-img" style="width:100%;max-height:260px;object-fit:contain;background:var(--surface2)">
-              </div>
-            </div>
-            <div class="card">
-              <h3>🤖 اختر التحليل</h3>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px">
-                <button class="btn bo bsm" onclick="analyzeImg('describe')" style="padding:10px">🔍 وصف الصورة</button>
-                <button class="btn bo bsm" onclick="analyzeImg('improve')" style="padding:10px">✨ تحسينات</button>
-                <button class="btn bo bsm" onclick="analyzeImg('caption')" style="padding:10px">✍️ تعليقات</button>
-                <button class="btn bo bsm" onclick="analyzeImg('hashtags')" style="padding:10px">🏷️ هاشتاقات</button>
-                <button class="btn bo bsm" onclick="analyzeImg('ad_copy')" style="padding:10px;grid-column:1/-1">📢 نص إعلاني كامل</button>
-              </div>
-              <div style="display:flex;gap:6px">
-                <input class="fi" id="des-prompt" placeholder="طلب مخصص..." style="flex:1">
-                <button class="btn ba bsm" onclick="analyzeImg('custom')">→</button>
-              </div>
-            </div>
-          </div>
-          <div>
-            <div class="card" style="min-height:200px">
-              <h3>📋 النتيجة</h3>
-              <div id="des-loading" style="display:none;text-align:center;padding:30px;color:var(--text2)">⏳ جاري التحليل...</div>
-              <div id="des-result" style="display:none;background:var(--surface2);border-radius:10px;padding:13px;font-size:.84rem;line-height:1.7;white-space:pre-wrap;max-height:400px;overflow-y:auto"></div>
-              <div id="des-result-actions" style="display:none;margin-top:9px;display:flex;gap:6px">
-                <button class="btn bo bsm" onclick="copyDesResult()">📋 نسخ</button>
-                <button class="btn ba bsm" onclick="saveDesProject()">💾 حفظ</button>
-              </div>
-              <div id="des-empty" style="text-align:center;padding:40px;color:var(--text2)"><div style="font-size:2rem;margin-bottom:8px;opacity:.4">🤖</div><p>اختر نوع التحليل</p></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── تبويب: مولّد النصوص ─── -->
-      <div id="des-tab-gen" style="display:none">
-        <div class="g2">
-          <div>
-            <div class="card">
-              <h3>📝 معلومات المنتج</h3>
-              <div class="fg"><label class="fl">اسم المنتج *</label><input class="fi" id="gt-name" placeholder="قميص قطني أزرق"></div>
-              <div class="fg"><label class="fl">وصف المنتج</label><textarea class="ft" id="gt-desc" placeholder="قطن 100%، مقاس L..." style="min-height:80px"></textarea></div>
-              <div class="g2">
-                <div class="fg"><label class="fl">المنصة</label>
-                  <select class="fs" id="gt-platform">
-                    <option value="instagram">📸 Instagram</option>
-                    <option value="tiktok">🎵 TikTok</option>
-                    <option value="facebook">👥 Facebook</option>
-                    <option value="whatsapp">💬 واتساب</option>
-                  </select>
-                </div>
-                <div class="fg"><label class="fl">الأسلوب</label>
-                  <select class="fs" id="gt-tone">
-                    <option value="جذاب ومقنع">جذاب ومقنع</option>
-                    <option value="رسمي واحترافي">رسمي</option>
-                    <option value="شبابي وعصري">شبابي</option>
-                    <option value="عاطفي وملهم">عاطفي</option>
-                    <option value="فكاهي وخفيف">فكاهي</option>
-                  </select>
-                </div>
-              </div>
-              <button class="btn ba" onclick="generateText()" style="width:100%;padding:12px" id="gt-btn">✨ توليد المحتوى</button>
-            </div>
-          </div>
-          <div>
-            <div class="card" style="min-height:200px">
-              <h3>📋 المحتوى المولّد</h3>
-              <div id="gt-result"><div class="empty"><div class="ei">✍️</div><p>أدخل معلومات المنتج وولّد المحتوى</p></div></div>
-            </div>
-          </div>
+      <!-- النتيجة -->
+      <div id="dsResultArea" style="display:none">
+        <div class="card">
+          <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">✅ الإعلانات الجاهزة</div>
+          <div id="dsResultGrid" style="display:grid;gap:12px"></div>
         </div>
       </div>
     </div>
-
     <!-- SOCIAL ACCOUNTS — ربط حسابات التواصل الاجتماعي -->
     <div class="page" id="page-social">
       <div class="pt"><div><h1>🔗 ربط الحسابات</h1><p>اربط منصات التواصل لإدارتها من مكان واحد</p></div><div class="pas"><button class="btn bo bsm" onclick="ldSocial()">🔄 تحديث</button></div></div>
