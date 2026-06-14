@@ -1,64 +1,51 @@
 // ============================================================
-// DESIGNER — مولّد الإعلانات الذكي
+// DESIGNER — مولّد الإعلانات (Server-Side Compositing)
 // ============================================================
 
-let dsProdFiles = [];
-let dsProdUrls = [];
+let dsProdFile = null;
+let dsProdUrl = null;
 let dsDecorFile = null;
 let dsDecorUrl = null;
-let dsSelectedProdIdx = 0;
+let dsSelectedDecorId = null;
 let dsCurrentCat = 'all';
 
 const DS_DECORS = [
   // غرف فارغة
-  { id:1,  cat:'empty', label:'غرفة معيشة فارغة بيضاء',  url:'https://images.unsplash.com/photo-1598928636135-d146006ff4be?w=800&q=85' },
-  { id:2,  cat:'empty', label:'غرفة كريمية فارغة',        url:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=85' },
-  { id:3,  cat:'empty', label:'غرفة بيضاء مودرن',         url:'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=85' },
-  { id:4,  cat:'empty', label:'غرفة رمادية فارغة',        url:'https://images.unsplash.com/photo-1505691723518-36a5ac3be353?w=800&q=85' },
-  { id:5,  cat:'empty', label:'غرفة خشبية دافئة',         url:'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=85' },
-  { id:6,  cat:'empty', label:'غرفة نوم فارغة فاخرة',     url:'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&q=85' },
-  { id:7,  cat:'empty', label:'مكتب فارغ أنيق',           url:'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=85' },
-  { id:8,  cat:'empty', label:'غرفة بيضاء إضاءة طبيعية', url:'https://images.unsplash.com/photo-1560440021-33f9b867899d?w=800&q=85' },
-
-  // غرف معيشة مفروشة
-  { id:9,  cat:'living', label:'جلسة فاخرة كلاسيك',       url:'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=85' },
-  { id:10, cat:'living', label:'ديكور ذهبي فاخر',          url:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=85' },
-  { id:11, cat:'living', label:'غرفة بيج دافئة',           url:'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=85' },
-  { id:12, cat:'living', label:'جلسة رمادية أنيقة',        url:'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=85' },
-  { id:13, cat:'living', label:'معيشة مودرن بيضاء',        url:'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=800&q=85' },
-  { id:14, cat:'living', label:'جلسة بني داكن',            url:'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=85' },
-
+  { id:1,  cat:'empty',    label:'غرفة معيشة فارغة',      url:'https://images.unsplash.com/photo-1598928636135-d146006ff4be?w=800&q=85' },
+  { id:2,  cat:'empty',    label:'غرفة كريمية فارغة',      url:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=85' },
+  { id:3,  cat:'empty',    label:'غرفة بيضاء مودرن',       url:'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=85' },
+  { id:4,  cat:'empty',    label:'غرفة رمادية فارغة',      url:'https://images.unsplash.com/photo-1505691723518-36a5ac3be353?w=800&q=85' },
+  { id:5,  cat:'empty',    label:'مكتب فارغ أنيق',         url:'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=85' },
+  { id:6,  cat:'empty',    label:'غرفة نوم فارغة فاخرة',   url:'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&q=85' },
+  { id:7,  cat:'empty',    label:'غرفة بيضاء إضاءة طبيعية',url:'https://images.unsplash.com/photo-1560440021-33f9b867899d?w=800&q=85' },
+  // معيشة
+  { id:8,  cat:'living',   label:'جلسة فاخرة كلاسيك',      url:'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=85' },
+  { id:9,  cat:'living',   label:'ديكور ذهبي فاخر',         url:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=85' },
+  { id:10, cat:'living',   label:'غرفة بيج دافئة',          url:'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=85' },
+  { id:11, cat:'living',   label:'جلسة رمادية أنيقة',       url:'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=85' },
+  { id:12, cat:'living',   label:'معيشة مودرن بيضاء',       url:'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=800&q=85' },
   // استوديو
-  { id:15, cat:'studio', label:'خلفية بيضاء نظيفة',        url:'https://images.unsplash.com/photo-1525909002-1b05e0c869d8?w=800&q=85' },
-  { id:16, cat:'studio', label:'استوديو رمادي ناعم',       url:'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=800&q=85' },
-  { id:17, cat:'studio', label:'خلفية كريمية',             url:'https://images.unsplash.com/photo-1553356084-58ef4a67b2a7?w=800&q=85' },
-  { id:18, cat:'studio', label:'خلفية بيضاء ظلال',         url:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=85' },
-
+  { id:13, cat:'studio',   label:'خلفية بيضاء نظيفة',       url:'https://images.unsplash.com/photo-1525909002-1b05e0c869d8?w=800&q=85' },
+  { id:14, cat:'studio',   label:'استوديو رمادي ناعم',      url:'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=800&q=85' },
+  { id:15, cat:'studio',   label:'خلفية كريمية',            url:'https://images.unsplash.com/photo-1553356084-58ef4a67b2a7?w=800&q=85' },
   // دارك
-  { id:19, cat:'dark', label:'دارك ذهبي فاخر',             url:'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=85' },
-  { id:20, cat:'dark', label:'خلفية سوداء أنيقة',          url:'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=85' },
-  { id:21, cat:'dark', label:'دارك مع إضاءة جانبية',       url:'https://images.unsplash.com/photo-1572297748986-13545eff1d9d?w=800&q=85' },
-  { id:22, cat:'dark', label:'غرفة داكنة فاخرة',           url:'https://images.unsplash.com/photo-1615873968403-89e068629265?w=800&q=85' },
-
+  { id:16, cat:'dark',     label:'دارك ذهبي فاخر',          url:'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=85' },
+  { id:17, cat:'dark',     label:'خلفية سوداء أنيقة',       url:'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=85' },
+  { id:18, cat:'dark',     label:'غرفة داكنة فاخرة',        url:'https://images.unsplash.com/photo-1615873968403-89e068629265?w=800&q=85' },
   // طبيعة
-  { id:23, cat:'nature', label:'نباتات داخلية خضراء',      url:'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=85' },
-  { id:24, cat:'nature', label:'طبيعة هادئة',              url:'https://images.unsplash.com/photo-1444605806593-9700ade7e53d?w=800&q=85' },
-  { id:25, cat:'nature', label:'أوراق خضراء ناعمة',        url:'https://images.unsplash.com/photo-1491895200222-0fc4a4c35e18?w=800&q=85' },
-
+  { id:19, cat:'nature',   label:'نباتات داخلية خضراء',     url:'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=85' },
+  { id:20, cat:'nature',   label:'طبيعة هادئة',             url:'https://images.unsplash.com/photo-1444605806593-9700ade7e53d?w=800&q=85' },
   // فني
-  { id:26, cat:'abstract', label:'تدرج بنفسجي فاخر',       url:'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800&q=85' },
-  { id:27, cat:'abstract', label:'موجات ذهبية فنية',       url:'https://images.unsplash.com/photo-1574169208507-84376144848b?w=800&q=85' },
-  { id:28, cat:'abstract', label:'تدرج وردي ذهبي',         url:'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=85' },
-  { id:29, cat:'abstract', label:'ألوان زرقاء فنية',       url:'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=85' },
+  { id:21, cat:'abstract', label:'تدرج بنفسجي فاخر',        url:'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800&q=85' },
+  { id:22, cat:'abstract', label:'تدرج وردي ذهبي',          url:'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=85' },
+  { id:23, cat:'abstract', label:'ألوان زرقاء فنية',        url:'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=85' },
 ];
-
-let dsSelectedDecorId = null;
 
 function ldDesigner() {
   dsRenderDecorGrid();
 }
 
-// ---- شبكة الديكورات ----
+// ---- تبويبات الديكور ----
 function dsFilterCat(cat, btn) {
   dsCurrentCat = cat;
   document.querySelectorAll('.dsDecorTab').forEach(t => {
@@ -72,86 +59,84 @@ function dsRenderDecorGrid() {
   const grid = document.getElementById('dsDecorGrid');
   if (!grid) return;
   const list = dsCurrentCat === 'all' ? DS_DECORS : DS_DECORS.filter(d => d.cat === dsCurrentCat);
-  grid.innerHTML = list.map(d => `
-    <div onclick="dsPickDecor(${d.id})" style="
-      position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1;cursor:pointer;
-      border:2px solid ${dsSelectedDecorId===d.id ? 'var(--accent)' : 'transparent'};
-      transition:border-color .15s;
-    ">
-      <img src="${d.url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">
-      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:12px 5px 5px;font-size:.62rem;color:#fff;font-weight:600">${d.label}</div>
-      ${dsSelectedDecorId===d.id ? '<div style="position:absolute;top:5px;right:5px;background:var(--accent);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#fff">✓</div>' : ''}
-    </div>
-  `).join('');
+  grid.innerHTML = '';
+  list.forEach(d => {
+    const div = document.createElement('div');
+    div.style.cssText = `position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1;cursor:pointer;border:2px solid ${dsSelectedDecorId===d.id?'var(--accent)':'transparent'};transition:border-color .15s`;
+    const img = document.createElement('img');
+    img.src = d.url;
+    img.loading = 'lazy';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+    const label = document.createElement('div');
+    label.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:12px 5px 5px;font-size:.62rem;color:#fff;font-weight:600';
+    label.textContent = d.label;
+    div.appendChild(img); div.appendChild(label);
+    if (dsSelectedDecorId === d.id) {
+      const check = document.createElement('div');
+      check.style.cssText = 'position:absolute;top:5px;right:5px;background:var(--accent);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#fff';
+      check.textContent = '✓';
+      div.appendChild(check);
+    }
+    div.onclick = () => dsPickDecor(d.id);
+    grid.appendChild(div);
+  });
 }
 
-async function dsPickDecor(id) {
+function dsPickDecor(id) {
   dsSelectedDecorId = id;
   dsDecorFile = null;
   const decor = DS_DECORS.find(d => d.id === id);
   dsDecorUrl = decor.url;
-
   // عرض preview
   const preview = document.getElementById('dsDecorPreview');
   const wrap = document.getElementById('dsDecorPreviewWrap');
-  preview.src = decor.url;
-  wrap.style.display = 'block';
-  document.getElementById('dsDecorBtn').textContent = '📁 أو ارفع صورتك الخاصة';
-
+  if (preview && wrap) { preview.src = decor.url; wrap.style.display = 'block'; }
   dsRenderDecorGrid();
 }
 
-// ---- صور المنتج ----
+// ---- صورة المنتج ----
 function addProdImgs(input) {
-  Array.from(input.files).forEach(f => {
-    dsProdFiles.push(f);
-    dsProdUrls.push(URL.createObjectURL(f));
-  });
-  renderProdGrid();
+  const file = input.files[0];
+  if (!file) return;
+  dsProdFile = file;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    dsProdUrl = e.target.result;
+
+    const grid = document.getElementById('dsProdGrid');
+    const thumbRow = document.getElementById('dsProdThumbRow');
+
+    if (grid) {
+      grid.innerHTML = '';
+      const div = document.createElement('div');
+      div.style.cssText = 'position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:2px solid var(--accent);background:#111';
+      const img = document.createElement('img');
+      img.src = dsProdUrl;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+      const btn = document.createElement('button');
+      btn.textContent = '✕';
+      btn.style.cssText = 'position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:22px;height:22px;color:#fff;cursor:pointer;font-size:.7rem';
+      btn.onclick = () => {
+        dsProdFile = null; dsProdUrl = null;
+        grid.innerHTML = '';
+        if (thumbRow) thumbRow.innerHTML = '<span style="font-size:.75rem;color:#888">ارفع صور المنتج أولاً</span>';
+      };
+      div.appendChild(img);
+      div.appendChild(btn);
+      grid.appendChild(div);
+    }
+
+    if (thumbRow) {
+      thumbRow.innerHTML = '';
+      const th = document.createElement('img');
+      th.src = dsProdUrl;
+      th.style.cssText = 'width:44px;height:44px;object-fit:cover;border-radius:8px;border:2px solid var(--accent)';
+      thumbRow.appendChild(th);
+    }
+  };
+  reader.readAsDataURL(file);
   input.value = '';
-}
-
-function renderProdGrid() {
-  const grid = document.getElementById('dsProdGrid');
-  const thumbRow = document.getElementById('dsProdThumbRow');
-  if (!grid || !thumbRow) return;
-
-  grid.innerHTML = '';
-  thumbRow.innerHTML = '';
-
-  if (!dsProdFiles.length) {
-    thumbRow.innerHTML = '<span style="font-size:.75rem;color:#888">ارفع صور المنتج أولاً</span>';
-    return;
-  }
-
-  dsProdFiles.forEach((f, i) => {
-    // Grid card
-    const div = document.createElement('div');
-    div.style.cssText = `position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}`;
-    const img = document.createElement('img');
-    img.src = dsProdUrls[i];
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
-    const btn = document.createElement('button');
-    btn.textContent = '✕';
-    btn.style.cssText = 'position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:22px;height:22px;color:#fff;cursor:pointer;font-size:.7rem';
-    btn.onclick = () => removeProdImg(i);
-    div.appendChild(img); div.appendChild(btn);
-    grid.appendChild(div);
-
-    // Thumb
-    const th = document.createElement('img');
-    th.src = dsProdUrls[i];
-    th.style.cssText = `width:44px;height:44px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}`;
-    th.onclick = () => { dsSelectedProdIdx = i; renderProdGrid(); };
-    thumbRow.appendChild(th);
-  });
-}
-
-function removeProdImg(idx) {
-  dsProdFiles.splice(idx, 1);
-  dsProdUrls.splice(idx, 1);
-  if (dsSelectedProdIdx >= dsProdFiles.length) dsSelectedProdIdx = Math.max(0, dsProdFiles.length-1);
-  renderProdGrid();
 }
 
 // ---- الديكور المرفوع يدوياً ----
@@ -163,86 +148,89 @@ function setDecorImg(input) {
   dsSelectedDecorId = null;
   const preview = document.getElementById('dsDecorPreview');
   const wrap = document.getElementById('dsDecorPreviewWrap');
-  preview.src = URL.createObjectURL(file);
-  wrap.style.display = 'block';
+  if (preview && wrap) { preview.src = URL.createObjectURL(file); wrap.style.display = 'block'; }
   document.getElementById('dsDecorBtn').textContent = '🔄 تغيير الصورة';
   dsRenderDecorGrid();
   input.value = '';
 }
 
 function clearDecor() {
-  dsDecorFile = null;
-  dsDecorUrl = null;
-  dsSelectedDecorId = null;
-  document.getElementById('dsDecorPreviewWrap').style.display = 'none';
-  document.getElementById('dsDecorBtn').textContent = '📁 أو ارفع صورتك الخاصة';
+  dsDecorFile = null; dsDecorUrl = null; dsSelectedDecorId = null;
+  const wrap = document.getElementById('dsDecorPreviewWrap');
+  if (wrap) wrap.style.display = 'none';
+  const btn = document.getElementById('dsDecorBtn');
+  if (btn) btn.textContent = '📁 أو ارفع صورتك الخاصة';
   dsRenderDecorGrid();
 }
 
-// ---- التوليد ----
+// ---- التوليد (Server-Side) ----
 function dsSetStatus(msg, color) {
   const el = document.getElementById('dsStatus');
+  if (!el) return;
   el.style.display = 'block';
   el.textContent = msg;
   el.style.color = color || 'var(--text2)';
 }
 
 async function dsGenerate() {
-  if (!dsProdFiles.length) { toast('❌ ارفع صورة المنتج أولاً'); return; }
+  if (!dsProdFile) { toast('❌ ارفع صورة المنتج أولاً'); return; }
   if (!dsDecorFile && !dsDecorUrl) { toast('❌ اختر ديكوراً أو ارفع صورة خلفية'); return; }
 
   const btn = document.getElementById('dsGenBtn');
   btn.disabled = true; btn.textContent = '⏳ جاري التوليد...';
   document.getElementById('dsResultArea').style.display = 'none';
-
-  const apiKey = document.getElementById('dsApiKey').value.trim();
-  const title = document.getElementById('dsAdTitle').value || '';
-  const sub = document.getElementById('dsAdSub').value || '';
-
-  let storeName = '', storePhone = '';
-  try {
-    const biz = await api('/api/business-profile');
-    storeName = biz.store_name || '';
-    storePhone = biz.whatsapp_number || biz.phone || '';
-  } catch(e) {}
-
-  const prodFile = dsProdFiles[dsSelectedProdIdx];
+  dsSetStatus('⏳ جاري دمج الصور في السيرفر...');
 
   try {
-    let productBlob;
-    if (apiKey) {
-      dsSetStatus('🔄 إزالة خلفية المنتج...');
-      const bgForm = new FormData();
-      bgForm.append('image_file', prodFile);
-      const bgRes = await fetch('https://clipdrop-api.co/remove-background/v1', {
-        method: 'POST', headers: { 'x-api-key': apiKey }, body: bgForm
-      });
-      if (!bgRes.ok) throw new Error('فشل إزالة الخلفية — تحقق من الـ API key');
-      productBlob = await bgRes.blob();
-    } else {
-      productBlob = prodFile;
-    }
+    // جلب بيانات المتجر
+    let storeName = '', storePhone = '';
+    try {
+      const biz = await api('/api/business-profile');
+      storeName = biz.store_name || '';
+      storePhone = biz.whatsapp_number || biz.phone || '';
+    } catch(e) {}
 
-    dsSetStatus('🎨 دمج الصور وتوليد الإعلان...');
+    const title = document.getElementById('dsAdTitle')?.value || '';
+    const sub = document.getElementById('dsAdSub')?.value || '';
 
-    // تحميل صورة الديكور
-    let decorSrc;
+    const formData = new FormData();
+    formData.append('product', dsProdFile);
     if (dsDecorFile) {
-      decorSrc = URL.createObjectURL(dsDecorFile);
+      formData.append('decor', dsDecorFile);
     } else {
-      decorSrc = dsDecorUrl;
+      formData.append('decor_url', dsDecorUrl);
+    }
+    formData.append('title', title);
+    formData.append('sub', sub);
+    formData.append('store_name', storeName);
+    formData.append('store_phone', storePhone);
+
+    const r = await fetch('/api/compose-ad', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: formData
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.message || 'فشل التوليد');
     }
 
-    const canvas = await dsComposeCanvas(productBlob, decorSrc, { title, sub, storeName, storePhone });
-    const resultSrc = canvas.toDataURL('image/jpeg', 0.93);
+    const blob = await r.blob();
+    const src = URL.createObjectURL(blob);
 
     const grid = document.getElementById('dsResultGrid');
-    grid.innerHTML = `
-      <div>
-        <img src="${resultSrc}" style="width:100%;border-radius:12px;margin-bottom:8px">
-        <button onclick="dsDownload('${resultSrc}')" class="btn ba" style="width:100%">⬇️ تنزيل الإعلان</button>
-      </div>
-    `;
+    grid.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = src;
+    img.style.cssText = 'width:100%;border-radius:12px;margin-bottom:8px';
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'btn ba';
+    dlBtn.style.width = '100%';
+    dlBtn.textContent = '⬇️ تنزيل الإعلان';
+    dlBtn.onclick = () => { const a = document.createElement('a'); a.href = src; a.download = `اعلان_${Date.now()}.jpg`; a.click(); };
+    grid.appendChild(img); grid.appendChild(dlBtn);
+
     document.getElementById('dsResultArea').style.display = 'block';
     dsSetStatus('✅ الإعلان جاهز!', '#34d399');
 
@@ -251,101 +239,4 @@ async function dsGenerate() {
   }
 
   btn.disabled = false; btn.textContent = '✨ توليد الإعلان';
-}
-
-async function dsComposeCanvas(productBlob, decorSrc, opts) {
-  const W = 1080, H = 1080;
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-
-  const [decorImg, prodImg] = await Promise.all([
-    dsLoadImg(decorSrc),
-    dsLoadImg(URL.createObjectURL(productBlob))
-  ]);
-
-  // ديكور (cover)
-  const dR = Math.max(W/decorImg.width, H/decorImg.height);
-  ctx.drawImage(decorImg, (W-decorImg.width*dR)/2, (H-decorImg.height*dR)/2, decorImg.width*dR, decorImg.height*dR);
-
-  // تدرج سفلي
-  const grad = ctx.createLinearGradient(0, H*0.5, 0, H);
-  grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.8)');
-  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
-
-  // منتج (وسط)
-  const pR = Math.min((W*0.72)/prodImg.width, (H*0.58)/prodImg.height);
-  const pW = prodImg.width*pR, pH = prodImg.height*pR;
-  ctx.drawImage(prodImg, (W-pW)/2, H*0.17, pW, pH);
-
-  // نص رئيسي
-  ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 12;
-  if (opts.title) {
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 58px Tahoma';
-    ctx.textAlign = 'center';
-    ctx.fillText(opts.title, W/2, H*0.82);
-  }
-  if (opts.sub) {
-    ctx.font = '34px Tahoma'; ctx.fillStyle = '#ddd';
-    ctx.fillText(opts.sub, W/2, H*0.88);
-  }
-  ctx.shadowBlur = 0;
-
-  // اسم المتجر + هاتف
-  if (opts.storeName) {
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 34px Tahoma'; ctx.textAlign = 'right';
-    ctx.fillText(opts.storeName, W-38, H-52);
-  }
-  if (opts.storePhone) {
-    ctx.fillStyle = '#ccc'; ctx.font = '27px Tahoma';
-    ctx.fillText(opts.storePhone, W-38, H-20);
-  }
-
-  // بادج اسم المتجر (يسار أعلى)
-  if (opts.storeName) {
-    ctx.fillStyle = 'rgba(80,60,220,0.85)';
-    dsRoundRect(ctx, 28, 28, 200, 56, 12); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 25px Tahoma'; ctx.textAlign = 'center';
-    ctx.fillText(opts.storeName, 128, 63);
-  }
-
-  return canvas;
-}
-
-function dsRoundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();
-}
-
-async function dsLoadImg(src) {
-  // إذا URL خارجي، نحمله عبر proxy لتجاوز CORS
-  if (src.startsWith('http') && !src.startsWith(location.origin)) {
-    try {
-      const r = await fetch(`/api/proxy-image?url=${encodeURIComponent(src)}`, {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (r.ok) {
-        const blob = await r.blob();
-        src = URL.createObjectURL(blob);
-      }
-    } catch(e) { console.warn('Proxy failed:', e); }
-  }
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => res(img);
-    img.onerror = () => rej(new Error('فشل تحميل الصورة'));
-    img.src = src;
-  });
-}
-
-function dsDownload(src) {
-  const a = document.createElement('a');
-  a.download = `اعلان_${Date.now()}.jpg`;
-  a.href = src; a.click();
 }
