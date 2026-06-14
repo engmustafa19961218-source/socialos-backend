@@ -381,12 +381,17 @@ ${bizTypeContext}
           if (reportType === 'customers') {
             const [c, topC] = await Promise.all([
               pool.query('SELECT COUNT(*) as cnt FROM customers WHERE user_id=$1', [userId]),
-              pool.query(`SELECT * FROM (
+              pool.query(`
                 SELECT c.name, c.phone,
-                (SELECT COUNT(*) FROM orders o WHERE o.user_id=$1 AND LOWER(TRIM(o.customer_name))=LOWER(TRIM(c.name))) as orders,
-                (SELECT COALESCE(SUM(o.total),0) FROM orders o WHERE o.user_id=$1 AND LOWER(TRIM(o.customer_name))=LOWER(TRIM(c.name))) as spent
-                FROM customers c WHERE c.user_id=$1
-              ) sub ORDER BY sub.spent DESC LIMIT 5`, [userId])
+                  COUNT(o.id) as orders,
+                  COALESCE(SUM(o.total), 0) as spent
+                FROM customers c
+                LEFT JOIN orders o ON LOWER(TRIM(o.customer_name)) = LOWER(TRIM(c.name))
+                  AND o.user_id = c.user_id
+                WHERE c.user_id = $1
+                GROUP BY c.id, c.name, c.phone
+                ORDER BY spent DESC
+                LIMIT 5`, [userId])
             ]);
             actionResult = {
               type: 'report', report_type: 'customers',
