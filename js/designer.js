@@ -3,52 +3,53 @@
 // ============================================================
 
 let dsProdFiles = [];
+let dsProdUrls = [];
 let dsDecorFile = null;
 let dsDecorUrl = null;
 let dsSelectedProdIdx = 0;
 let dsCurrentCat = 'all';
 
 const DS_DECORS = [
-  // غرف فارغة (مثالية لوضع الأثاث)
-  { id: 1,  cat: 'empty', label: 'غرفة معيشة فارغة بيضاء',   url: 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=85' },
-  { id: 2,  cat: 'empty', label: 'غرفة كريمية فارغة',         url: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=85' },
-  { id: 3,  cat: 'empty', label: 'غرفة رمادية مودرن',         url: 'https://images.unsplash.com/photo-1598928636135-d146006ff4be?w=800&q=85' },
-  { id: 4,  cat: 'empty', label: 'غرفة بيضاء إضاءة طبيعية',  url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=85' },
-  { id: 5,  cat: 'empty', label: 'غرفة خشبية دافئة',          url: 'https://images.unsplash.com/photo-1505691723518-36a5ac3be353?w=800&q=85' },
-  { id: 6,  cat: 'empty', label: 'مكتب فارغ أنيق',            url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=85' },
-  { id: 7,  cat: 'empty', label: 'غرفة نوم فارغة فاخرة',      url: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=85' },
-  { id: 8,  cat: 'empty', label: 'غرفة صغيرة بيضاء',          url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=85' },
+  // غرف فارغة
+  { id:1,  cat:'empty', label:'غرفة معيشة فارغة بيضاء',  url:'https://images.unsplash.com/photo-1598928636135-d146006ff4be?w=800&q=85' },
+  { id:2,  cat:'empty', label:'غرفة كريمية فارغة',        url:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=85' },
+  { id:3,  cat:'empty', label:'غرفة بيضاء مودرن',         url:'https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=85' },
+  { id:4,  cat:'empty', label:'غرفة رمادية فارغة',        url:'https://images.unsplash.com/photo-1505691723518-36a5ac3be353?w=800&q=85' },
+  { id:5,  cat:'empty', label:'غرفة خشبية دافئة',         url:'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=85' },
+  { id:6,  cat:'empty', label:'غرفة نوم فارغة فاخرة',     url:'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&q=85' },
+  { id:7,  cat:'empty', label:'مكتب فارغ أنيق',           url:'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=85' },
+  { id:8,  cat:'empty', label:'غرفة بيضاء إضاءة طبيعية', url:'https://images.unsplash.com/photo-1560440021-33f9b867899d?w=800&q=85' },
 
   // غرف معيشة مفروشة
-  { id: 9,  cat: 'living', label: 'جلسة فاخرة كلاسيك',        url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=85' },
-  { id: 10, cat: 'living', label: 'ديكور ذهبي فاخر',           url: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=85' },
-  { id: 11, cat: 'living', label: 'غرفة بيج دافئة',            url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=85' },
-  { id: 12, cat: 'living', label: 'جلسة رمادية أنيقة',         url: 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=85' },
-  { id: 13, cat: 'living', label: 'معيشة مودرن بيضاء',         url: 'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=800&q=85' },
-  { id: 14, cat: 'living', label: 'جلسة بني داكن',             url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=85' },
+  { id:9,  cat:'living', label:'جلسة فاخرة كلاسيك',       url:'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=85' },
+  { id:10, cat:'living', label:'ديكور ذهبي فاخر',          url:'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=85' },
+  { id:11, cat:'living', label:'غرفة بيج دافئة',           url:'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=85' },
+  { id:12, cat:'living', label:'جلسة رمادية أنيقة',        url:'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=85' },
+  { id:13, cat:'living', label:'معيشة مودرن بيضاء',        url:'https://images.unsplash.com/photo-1567016432779-094069958ea5?w=800&q=85' },
+  { id:14, cat:'living', label:'جلسة بني داكن',            url:'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=85' },
 
   // استوديو
-  { id: 15, cat: 'studio', label: 'خلفية بيضاء نظيفة',         url: 'https://images.unsplash.com/photo-1601628828688-632f38a5a7d0?w=800&q=85' },
-  { id: 16, cat: 'studio', label: 'استوديو رمادي ناعم',        url: 'https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=800&q=85' },
-  { id: 17, cat: 'studio', label: 'خلفية كريمية استوديو',      url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=85' },
-  { id: 18, cat: 'studio', label: 'خلفية بيضاء ظلال',          url: 'https://images.unsplash.com/photo-1603712725038-e9334ae8f39f?w=800&q=85' },
+  { id:15, cat:'studio', label:'خلفية بيضاء نظيفة',        url:'https://images.unsplash.com/photo-1525909002-1b05e0c869d8?w=800&q=85' },
+  { id:16, cat:'studio', label:'استوديو رمادي ناعم',       url:'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?w=800&q=85' },
+  { id:17, cat:'studio', label:'خلفية كريمية',             url:'https://images.unsplash.com/photo-1553356084-58ef4a67b2a7?w=800&q=85' },
+  { id:18, cat:'studio', label:'خلفية بيضاء ظلال',         url:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=85' },
 
   // دارك
-  { id: 19, cat: 'dark', label: 'دارك ذهبي فاخر',              url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=85' },
-  { id: 20, cat: 'dark', label: 'خلفية سوداء أنيقة',           url: 'https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=800&q=85' },
-  { id: 21, cat: 'dark', label: 'دارك مع إضاءة جانبية',        url: 'https://images.unsplash.com/photo-1572297748986-13545eff1d9d?w=800&q=85' },
-  { id: 22, cat: 'dark', label: 'غرفة داكنة فاخرة',            url: 'https://images.unsplash.com/photo-1615873968403-89e068629265?w=800&q=85' },
+  { id:19, cat:'dark', label:'دارك ذهبي فاخر',             url:'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=85' },
+  { id:20, cat:'dark', label:'خلفية سوداء أنيقة',          url:'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=85' },
+  { id:21, cat:'dark', label:'دارك مع إضاءة جانبية',       url:'https://images.unsplash.com/photo-1572297748986-13545eff1d9d?w=800&q=85' },
+  { id:22, cat:'dark', label:'غرفة داكنة فاخرة',           url:'https://images.unsplash.com/photo-1615873968403-89e068629265?w=800&q=85' },
 
   // طبيعة
-  { id: 23, cat: 'nature', label: 'نباتات داخلية خضراء',       url: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=85' },
-  { id: 24, cat: 'nature', label: 'طبيعة هادئة',               url: 'https://images.unsplash.com/photo-1444605806593-9700ade7e53d?w=800&q=85' },
-  { id: 25, cat: 'nature', label: 'أوراق خضراء ناعمة',         url: 'https://images.unsplash.com/photo-1446071103084-c257b5f70672?w=800&q=85' },
+  { id:23, cat:'nature', label:'نباتات داخلية خضراء',      url:'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=85' },
+  { id:24, cat:'nature', label:'طبيعة هادئة',              url:'https://images.unsplash.com/photo-1444605806593-9700ade7e53d?w=800&q=85' },
+  { id:25, cat:'nature', label:'أوراق خضراء ناعمة',        url:'https://images.unsplash.com/photo-1491895200222-0fc4a4c35e18?w=800&q=85' },
 
-  // فني / تجريدي
-  { id: 26, cat: 'abstract', label: 'تدرج بنفسجي فاخر',        url: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800&q=85' },
-  { id: 27, cat: 'abstract', label: 'موجات ذهبية فنية',        url: 'https://images.unsplash.com/photo-1554034483-04fda0d3507b?w=800&q=85' },
-  { id: 28, cat: 'abstract', label: 'تدرج وردي ذهبي',          url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=800&q=85' },
-  { id: 29, cat: 'abstract', label: 'ألوان زرقاء فنية',        url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=85' },
+  // فني
+  { id:26, cat:'abstract', label:'تدرج بنفسجي فاخر',       url:'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800&q=85' },
+  { id:27, cat:'abstract', label:'موجات ذهبية فنية',       url:'https://images.unsplash.com/photo-1574169208507-84376144848b?w=800&q=85' },
+  { id:28, cat:'abstract', label:'تدرج وردي ذهبي',         url:'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=85' },
+  { id:29, cat:'abstract', label:'ألوان زرقاء فنية',       url:'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=800&q=85' },
 ];
 
 let dsSelectedDecorId = null;
@@ -101,8 +102,6 @@ async function dsPickDecor(id) {
 }
 
 // ---- صور المنتج ----
-let dsProdUrls = [];
-
 function addProdImgs(input) {
   Array.from(input.files).forEach(f => {
     dsProdFiles.push(f);
