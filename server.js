@@ -832,6 +832,29 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+
+// ============================================================
+// PROXY IMAGE — لتجاوز CORS في مولّد الإعلانات
+// ============================================================
+app.get('/api/proxy-image', authenticateToken, async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ message: 'URL required' });
+  // السماح فقط بـ Unsplash
+  if (!url.startsWith('https://images.unsplash.com/')) {
+    return res.status(403).json({ message: 'Domain not allowed' });
+  }
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return res.status(502).json({ message: 'Failed to fetch image' });
+    const contentType = r.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    r.body.pipe(res);
+  } catch(e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ============================================================
 // START
 // ============================================================

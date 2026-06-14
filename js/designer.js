@@ -302,10 +302,21 @@ function dsRoundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function dsLoadImg(src) {
+async function dsLoadImg(src) {
+  // إذا URL خارجي، نحمله عبر proxy لتجاوز CORS
+  if (src.startsWith('http') && !src.startsWith(location.origin)) {
+    try {
+      const r = await fetch(`/api/proxy-image?url=${encodeURIComponent(src)}`, {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (r.ok) {
+        const blob = await r.blob();
+        src = URL.createObjectURL(blob);
+      }
+    } catch(e) {}
+  }
   return new Promise((res, rej) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => res(img);
     img.onerror = () => rej(new Error('فشل تحميل الصورة'));
     img.src = src;
