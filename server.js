@@ -870,6 +870,26 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
 
     if (!req.files?.product) return res.status(400).json({ message: 'صورة المنتج مطلوبة' });
 
+    // إزالة الخلفية باستخدام remove.bg
+    let productBuffer = req.files.product[0].buffer;
+    const REMOVE_BG_KEY = process.env.REMOVE_BG_API_KEY;
+    if (REMOVE_BG_KEY) {
+      try {
+        const FormData = require('form-data');
+        const fd = new FormData();
+        fd.append('image_file', productBuffer, { filename: 'product.jpg' });
+        fd.append('size', 'auto');
+        const bgRes = await fetch('https://api.remove.bg/v1.0/removebg', {
+          method: 'POST',
+          headers: { 'X-Api-Key': REMOVE_BG_KEY, ...fd.getHeaders() },
+          body: fd
+        });
+        if (bgRes.ok) {
+          productBuffer = Buffer.from(await bgRes.arrayBuffer());
+        }
+      } catch(e) { console.warn('remove.bg error:', e.message); }
+    }
+
     let decorBuffer;
     if (req.files?.decor) {
       decorBuffer = req.files.decor[0].buffer;
@@ -890,7 +910,7 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
       .toBuffer();
 
     // تجهيز المنتج — تصغير ليناسب الوسط
-    const prodMeta = await sharp(req.files.product[0].buffer).metadata();
+    const prodMeta = await sharp(productBuffer).metadata();
     const maxW = Math.round(W * 0.72);
     const maxH = Math.round(H * 0.58);
     const ratio = Math.min(maxW / prodMeta.width, maxH / prodMeta.height);
@@ -899,7 +919,7 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
     const pX = Math.round((W - pW) / 2);
     const pY = Math.round(H * 0.17);
 
-    const prodResized = await sharp(req.files.product[0].buffer)
+    const prodResized = await sharp(productBuffer)
       .resize(pW, pH)
       .toBuffer();
 
