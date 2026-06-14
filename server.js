@@ -857,25 +857,23 @@ app.get('/api/proxy-image', authenticateToken, async (req, res) => {
 
 
 // ============================================================
-// IMAGE COMPOSER — دمج صورة المنتج مع الديكور
+// IMAGE COMPOSER — دمج صورة المنتج مع الديكور (Stability AI)
 // ============================================================
-const multerCompose = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 10*1024*1024 } });
-app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
+app.post('/api/compose-ad', authenticateToken, require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 10*1024*1024 } }).fields([
   { name: 'product', maxCount: 1 },
   { name: 'decor', maxCount: 1 }
 ]), async (req, res) => {
   try {
     const sharp = require('sharp');
-    const { title = '', sub = '', store_name = '', store_phone = '' } = req.body;
+    const { title = '', sub = '', store_name = '', store_phone = '', decor_url = '' } = req.body;
 
     if (!req.files?.product) return res.status(400).json({ message: 'صورة المنتج مطلوبة' });
 
-    // إزالة الخلفية باستخدام remove.bg
+    // Step 1: إزالة خلفية المنتج
     let productBuffer = req.files.product[0].buffer;
     const REMOVE_BG_KEY = process.env.REMOVE_BG_API_KEY;
     if (REMOVE_BG_KEY) {
       try {
-        // استخدام multipart/form-data يدوياً بدون مكتبة خارجية
         const boundary = '----FormBoundary' + Math.random().toString(36).substr(2);
         const bodyParts = [
           Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="image_file"; filename="product.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`),
@@ -885,79 +883,155 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
         const bodyBuffer = Buffer.concat(bodyParts);
         const bgRes = await fetch('https://api.remove.bg/v1.0/removebg', {
           method: 'POST',
-          headers: {
-            'X-Api-Key': REMOVE_BG_KEY,
-            'Content-Type': `multipart/form-data; boundary=${boundary}`,
-            'Content-Length': bodyBuffer.length
-          },
+          headers: { 'X-Api-Key': REMOVE_BG_KEY, 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': bodyBuffer.length },
           body: bodyBuffer
         });
-        if (bgRes.ok) {
-          productBuffer = Buffer.from(await bgRes.arrayBuffer());
-        } else {
-          console.warn('remove.bg status:', bgRes.status, await bgRes.text());
-        }
+        if (bgRes.ok) productBuffer = Buffer.from(await bgRes.arrayBuffer());
       } catch(e) { console.warn('remove.bg error:', e.message); }
     }
 
+    // Step 2: تجهيز الديكور
     let decorBuffer;
     if (req.files?.decor) {
       decorBuffer = req.files.decor[0].buffer;
-    } else if (req.body.decor_url) {
-      const url = req.body.decor_url;
-      if (!url.startsWith('https://images.unsplash.com/')) return res.status(403).json({ message: 'مصدر غير مسموح' });
-      const r = await fetch(url);
+    } else if (decor_url && decor_url.startsWith('https://images.unsplash.com/')) {
+      const r = await fetch(decor_url);
       decorBuffer = Buffer.from(await r.arrayBuffer());
     } else {
       return res.status(400).json({ message: 'صورة الديكور مطلوبة' });
     }
 
-    const W = 1080, H = 1080;
+    const STABILITY_KEY = process.env.STABILITY_API_KEY;
+    const W = 1024, H = 1024;
 
-    // تجهيز الديكور كخلفية
-    const decorResized = await sharp(decorBuffer)
-      .resize(W, H, { fit: 'cover', position: 'centre' })
-      .toBuffer();
+    if (STABILITY_KEY) {
+      // Step 3: استخدام Stability AI لدمج المنتج في الديكور
+      try {
+        // تجهيز الديكور كـ init image
+        const decorResized = await sharp(decorBuffer).resize(W, H, { fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
+        
+        // تجهيز المنتج وإنشاء mask (منطقة وسط الصورة للوضع المنتج فيها)
+        const maskSvg = `<svg width="${W}" height="${H}">
+          <rect width="${W}" height="${H}" fill="white"/>
+          <rect x="${Math.round(W*0.15)}" y="${Math.round(H*0.35)}" width="${Math.round(W*0.70)}" height="${Math.round(H*0.55)}" fill="black" rx="20"/>
+        </svg>`;
+        const maskBuffer = await sharp(Buffer.from(maskSvg)).png().toBuffer();
 
-    // تجهيز المنتج — تصغير ليناسب الوسط
+        // تجهيز المنتج للوضع في المنطقة المحددة
+        const prodMeta = await sharp(productBuffer).metadata();
+        const maxW = Math.round(W * 0.65), maxH = Math.round(H * 0.50);
+        const ratio = Math.min(maxW / prodMeta.width, maxH / prodMeta.height);
+        const pW = Math.round(prodMeta.width * ratio);
+        const pH = Math.round(prodMeta.height * ratio);
+        const pX = Math.round((W - pW) / 2);
+        const pY = Math.round(H * 0.38);
+
+        const prodResized = await sharp(productBuffer).resize(pW, pH).toBuffer();
+
+        // دمج المنتج على الديكور أولاً كـ init image
+        const initImage = await sharp(decorResized)
+          .composite([{ input: prodResized, top: pY, left: pX, blend: 'over' }])
+          .jpeg({ quality: 90 })
+          .toBuffer();
+
+        // إرسال لـ Stability AI لتحسين الاندماج
+        const prodName = req.body.product_name || 'furniture product';
+        const prompt = `Professional interior design photo, ${prodName} naturally placed in a luxury room, photorealistic, high quality, perfect lighting, shadows, 8k`;
+
+        const stabilityForm = new (require('multiparty').Form)();
+        
+        // استخدام fetch مع FormData للـ Stability API
+        const { Blob } = require('buffer');
+        
+        const formBoundary = '----StabilityBoundary' + Date.now();
+        const formParts = [
+          Buffer.from(`--${formBoundary}
+Content-Disposition: form-data; name="init_image"; filename="init.jpg"
+Content-Type: image/jpeg
+
+`),
+          initImage,
+          Buffer.from(`
+--${formBoundary}
+Content-Disposition: form-data; name="mask_image"; filename="mask.png"
+Content-Type: image/png
+
+`),
+          maskBuffer,
+          Buffer.from(`
+--${formBoundary}
+Content-Disposition: form-data; name="text_prompts[0][text]"
+
+${prompt}
+`),
+          Buffer.from(`--${formBoundary}
+Content-Disposition: form-data; name="text_prompts[0][weight]"
+
+1
+`),
+          Buffer.from(`--${formBoundary}
+Content-Disposition: form-data; name="cfg_scale"
+
+7
+`),
+          Buffer.from(`--${formBoundary}
+Content-Disposition: form-data; name="samples"
+
+1
+`),
+          Buffer.from(`--${formBoundary}
+Content-Disposition: form-data; name="steps"
+
+30
+`),
+          Buffer.from(`--${formBoundary}--
+`)
+        ];
+        const formBuffer = Buffer.concat(formParts);
+
+        const stabilityRes = await fetch('https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image/masking', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${STABILITY_KEY}`,
+            'Accept': 'application/json',
+            'Content-Type': `multipart/form-data; boundary=${formBoundary}`
+          },
+          body: formBuffer
+        });
+
+        if (stabilityRes.ok) {
+          const stabilityData = await stabilityRes.json();
+          if (stabilityData.artifacts?.[0]?.base64) {
+            let resultBuffer = Buffer.from(stabilityData.artifacts[0].base64, 'base64');
+            
+            // إضافة النصوص
+            resultBuffer = await addTextOverlay(resultBuffer, { title, sub, store_name, store_phone, W, H, sharp });
+            
+            res.setHeader('Content-Type', 'image/jpeg');
+            return res.send(resultBuffer);
+          }
+        } else {
+          console.warn('Stability AI error:', stabilityRes.status, await stabilityRes.text());
+        }
+      } catch(e) {
+        console.warn('Stability AI error:', e.message);
+      }
+    }
+
+    // Fallback: دمج يدوي بـ sharp
+    const decorResized = await sharp(decorBuffer).resize(1080, 1080, { fit: 'cover' }).toBuffer();
     const prodMeta = await sharp(productBuffer).metadata();
-    // حجم المنتج — كبير نسبياً ليبدو حقيقياً
-    const maxW = Math.round(W * 0.80);
-    const maxH = Math.round(H * 0.55);
+    const maxW = Math.round(1080 * 0.80), maxH = Math.round(1080 * 0.55);
     const ratio = Math.min(maxW / prodMeta.width, maxH / prodMeta.height);
     const pW = Math.round(prodMeta.width * ratio);
     const pH = Math.round(prodMeta.height * ratio);
-    // موضع المنتج — مركز أفقياً، أسفل الصورة ليبدو على الأرض
-    const pX = Math.round((W - pW) / 2);
-    const pY = Math.round(H - pH - Math.round(H * 0.05));
+    const pX = Math.round((1080 - pW) / 2);
+    const pY = Math.round(1080 - pH - Math.round(1080 * 0.05));
+    const prodResized = await sharp(productBuffer).resize(pW, pH).toBuffer();
 
-    const prodResized = await sharp(productBuffer)
-      .resize(pW, pH)
-      .toBuffer();
+    const gradientSvg = `<svg width="1080" height="1080"><defs><linearGradient id="g" x1="0" y1="0.5" x2="0" y2="1"><stop offset="0" stop-color="black" stop-opacity="0"/><stop offset="1" stop-color="black" stop-opacity="0.78"/></linearGradient></defs><rect width="1080" height="1080" fill="url(#g)"/></svg>`;
+    const textSvg = buildTextSvg({ title, sub, store_name, store_phone, W: 1080, H: 1080 });
 
-    // تدرج سفلي
-    const gradientSvg = `<svg width="${W}" height="${H}">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0.5" x2="0" y2="1">
-          <stop offset="0" stop-color="black" stop-opacity="0"/>
-          <stop offset="1" stop-color="black" stop-opacity="0.78"/>
-        </linearGradient>
-      </defs>
-      <rect width="${W}" height="${H}" fill="url(#g)"/>
-    </svg>`;
-
-    // نصوص SVG
-    const textSvg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-      ${store_name ? `<rect x="28" y="28" width="200" height="56" rx="12" fill="rgba(80,60,220,0.85)"/>
-      <text x="128" y="63" text-anchor="middle" font-family="Arial" font-size="25" font-weight="bold" fill="white">${store_name}</text>` : ''}
-      ${title ? `<text x="${W/2}" y="${Math.round(H*0.82)}" text-anchor="middle" font-family="Arial" font-size="58" font-weight="bold" fill="white"
-        style="filter:drop-shadow(0 2px 8px rgba(0,0,0,0.9))">${title}</text>` : ''}
-      ${sub ? `<text x="${W/2}" y="${Math.round(H*0.88)}" text-anchor="middle" font-family="Arial" font-size="34" fill="#dddddd">${sub}</text>` : ''}
-      ${store_name ? `<text x="${W-38}" y="${H-52}" text-anchor="end" font-family="Arial" font-size="34" font-weight="bold" fill="white">${store_name}</text>` : ''}
-      ${store_phone ? `<text x="${W-38}" y="${H-20}" text-anchor="end" font-family="Arial" font-size="27" fill="#cccccc">${store_phone}</text>` : ''}
-    </svg>`;
-
-    // دمج الطبقات
     const result = await sharp(decorResized)
       .composite([
         { input: Buffer.from(gradientSvg), top: 0, left: 0 },
@@ -968,7 +1042,6 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
       .toBuffer();
 
     res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Content-Disposition', 'attachment; filename="ad.jpg"');
     res.send(result);
 
   } catch(e) {
@@ -976,6 +1049,29 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
     res.status(500).json({ message: e.message });
   }
 });
+
+function buildTextSvg({ title, sub, store_name, store_phone, W, H }) {
+  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    ${store_name ? `<rect x="28" y="28" width="200" height="56" rx="12" fill="rgba(80,60,220,0.85)"/>
+    <text x="128" y="63" text-anchor="middle" font-family="Arial" font-size="25" font-weight="bold" fill="white">${store_name}</text>` : ''}
+    ${title ? `<text x="${W/2}" y="${Math.round(H*0.82)}" text-anchor="middle" font-family="Arial" font-size="58" font-weight="bold" fill="white">${title}</text>` : ''}
+    ${sub ? `<text x="${W/2}" y="${Math.round(H*0.88)}" text-anchor="middle" font-family="Arial" font-size="34" fill="#dddddd">${sub}</text>` : ''}
+    ${store_name ? `<text x="${W-38}" y="${H-52}" text-anchor="end" font-family="Arial" font-size="34" font-weight="bold" fill="white">${store_name}</text>` : ''}
+    ${store_phone ? `<text x="${W-38}" y="${H-20}" text-anchor="end" font-family="Arial" font-size="27" fill="#cccccc">${store_phone}</text>` : ''}
+  </svg>`;
+}
+
+async function addTextOverlay(buffer, { title, sub, store_name, store_phone, W, H, sharp }) {
+  const textSvg = buildTextSvg({ title, sub, store_name, store_phone, W, H });
+  const gradSvg = `<svg width="${W}" height="${H}"><defs><linearGradient id="g" x1="0" y1="0.5" x2="0" y2="1"><stop offset="0" stop-color="black" stop-opacity="0"/><stop offset="1" stop-color="black" stop-opacity="0.7"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#g)"/></svg>`;
+  return sharp(buffer)
+    .composite([
+      { input: Buffer.from(gradSvg), top: 0, left: 0 },
+      { input: Buffer.from(textSvg), top: 0, left: 0 }
+    ])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
 
 // ============================================================
 // START
