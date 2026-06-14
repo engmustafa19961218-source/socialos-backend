@@ -101,8 +101,13 @@ async function dsPickDecor(id) {
 }
 
 // ---- صور المنتج ----
+let dsProdUrls = [];
+
 function addProdImgs(input) {
-  Array.from(input.files).forEach(f => dsProdFiles.push(f));
+  Array.from(input.files).forEach(f => {
+    dsProdFiles.push(f);
+    dsProdUrls.push(URL.createObjectURL(f));
+  });
   renderProdGrid();
   input.value = '';
 }
@@ -117,18 +122,19 @@ function renderProdGrid() {
   }
   grid.innerHTML = dsProdFiles.map((f, i) => `
     <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}">
-      <img src="${URL.createObjectURL(f)}" style="width:100%;height:100%;object-fit:cover">
+      <img src="${dsProdUrls[i]}" style="width:100%;height:100%;object-fit:cover">
       <button onclick="removeProdImg(${i})" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:22px;height:22px;color:#fff;cursor:pointer;font-size:.7rem">✕</button>
     </div>
   `).join('');
   thumbRow.innerHTML = dsProdFiles.map((f, i) => `
-    <img src="${URL.createObjectURL(f)}" onclick="dsSelectedProdIdx=${i};renderProdGrid()"
+    <img src="${dsProdUrls[i]}" onclick="dsSelectedProdIdx=${i};renderProdGrid()"
       style="width:44px;height:44px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}">
   `).join('');
 }
 
 function removeProdImg(idx) {
   dsProdFiles.splice(idx, 1);
+  dsProdUrls.splice(idx, 1);
   if (dsSelectedProdIdx >= dsProdFiles.length) dsSelectedProdIdx = Math.max(0, dsProdFiles.length-1);
   renderProdGrid();
 }
@@ -313,7 +319,7 @@ async function dsLoadImg(src) {
         const blob = await r.blob();
         src = URL.createObjectURL(blob);
       }
-    } catch(e) {}
+    } catch(e) { console.warn('Proxy failed:', e); }
   }
   return new Promise((res, rej) => {
     const img = new Image();
