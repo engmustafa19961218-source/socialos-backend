@@ -157,6 +157,7 @@ ${mikeMemory}
 ${bizTypeContext}
 
 قاعدة إلزامية: جميع ردودك واقتراحاتك وأمثلتك يجب أن تكون مرتبطة بنوع عمل المتجر فقط. لا تقترح أمثلة أو منتجات من قطاعات أخرى.
+قاعدة إلزامية للتقارير: عند عرض أي تقرير، اعرض البيانات الحقيقية فقط من قاعدة البيانات. لا تضف توصيات أو تحليلات أو أمثلة من عندك. اكتفِ بعرض الأرقام والبيانات الموجودة فعلاً.
 
 معلومات المتجر:
 - الاسم: ${escapeHtml(context.store?.store_name || '')}
@@ -380,10 +381,12 @@ ${bizTypeContext}
           if (reportType === 'customers') {
             const [c, topC] = await Promise.all([
               pool.query('SELECT COUNT(*) as cnt FROM customers WHERE user_id=$1', [userId]),
-              pool.query(`SELECT c.name, c.phone,
+              pool.query(`SELECT * FROM (
+                SELECT c.name, c.phone,
                 (SELECT COUNT(*) FROM orders o WHERE o.user_id=$1 AND LOWER(TRIM(o.customer_name))=LOWER(TRIM(c.name))) as orders,
                 (SELECT COALESCE(SUM(o.total),0) FROM orders o WHERE o.user_id=$1 AND LOWER(TRIM(o.customer_name))=LOWER(TRIM(c.name))) as spent
-                FROM customers c WHERE c.user_id=$1 ORDER BY spent DESC LIMIT 5`, [userId])
+                FROM customers c WHERE c.user_id=$1
+              ) sub ORDER BY sub.spent DESC LIMIT 5`, [userId])
             ]);
             actionResult = {
               type: 'report', report_type: 'customers',
