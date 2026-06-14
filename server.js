@@ -859,7 +859,8 @@ app.get('/api/proxy-image', authenticateToken, async (req, res) => {
 // ============================================================
 // IMAGE COMPOSER — دمج صورة المنتج مع الديكور
 // ============================================================
-app.post('/api/compose-ad', authenticateToken, multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } }).fields([
+const multerCompose = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 10*1024*1024 } });
+app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
   { name: 'product', maxCount: 1 },
   { name: 'decor', maxCount: 1 }
 ]), async (req, res) => {
