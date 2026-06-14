@@ -386,7 +386,7 @@ ${bizTypeContext}
                   COUNT(o.id) as orders,
                   COALESCE(SUM(o.total), 0) as spent
                 FROM customers c
-                LEFT JOIN orders o ON LOWER(TRIM(o.customer_name)) = LOWER(TRIM(c.name))
+                LEFT JOIN orders o ON TRIM(o.customer_phone) = TRIM(c.phone)
                   AND o.user_id = c.user_id
                 WHERE c.user_id = $1
                 GROUP BY c.id, c.name, c.phone
