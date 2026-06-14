@@ -114,21 +114,37 @@ function addProdImgs(input) {
 function renderProdGrid() {
   const grid = document.getElementById('dsProdGrid');
   const thumbRow = document.getElementById('dsProdThumbRow');
+  if (!grid || !thumbRow) return;
+
+  grid.innerHTML = '';
+  thumbRow.innerHTML = '';
+
   if (!dsProdFiles.length) {
-    grid.innerHTML = '';
     thumbRow.innerHTML = '<span style="font-size:.75rem;color:#888">ارفع صور المنتج أولاً</span>';
     return;
   }
-  grid.innerHTML = dsProdFiles.map((f, i) => `
-    <div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}">
-      <img src="${dsProdUrls[i]}" style="width:100%;height:100%;object-fit:cover">
-      <button onclick="removeProdImg(${i})" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:22px;height:22px;color:#fff;cursor:pointer;font-size:.7rem">✕</button>
-    </div>
-  `).join('');
-  thumbRow.innerHTML = dsProdFiles.map((f, i) => `
-    <img src="${dsProdUrls[i]}" onclick="dsSelectedProdIdx=${i};renderProdGrid()"
-      style="width:44px;height:44px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}">
-  `).join('');
+
+  dsProdFiles.forEach((f, i) => {
+    // Grid card
+    const div = document.createElement('div');
+    div.style.cssText = `position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}`;
+    const img = document.createElement('img');
+    img.src = dsProdUrls[i];
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.style.cssText = 'position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:22px;height:22px;color:#fff;cursor:pointer;font-size:.7rem';
+    btn.onclick = () => removeProdImg(i);
+    div.appendChild(img); div.appendChild(btn);
+    grid.appendChild(div);
+
+    // Thumb
+    const th = document.createElement('img');
+    th.src = dsProdUrls[i];
+    th.style.cssText = `width:44px;height:44px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid ${i===dsSelectedProdIdx?'var(--accent)':'#2a2a45'}`;
+    th.onclick = () => { dsSelectedProdIdx = i; renderProdGrid(); };
+    thumbRow.appendChild(th);
+  });
 }
 
 function removeProdImg(idx) {
