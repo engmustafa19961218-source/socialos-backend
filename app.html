@@ -2446,11 +2446,29 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
       <!-- صورة الديكور -->
       <div class="card" style="margin-bottom:14px">
         <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">🏠 صورة الديكور / الخلفية</div>
+
+        <!-- الديكور المختار -->
         <div id="dsDecorPreviewWrap" style="display:none;margin-bottom:10px;position:relative">
           <img id="dsDecorPreview" style="width:100%;border-radius:10px;max-height:160px;object-fit:cover">
           <button onclick="clearDecor()" style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:26px;height:26px;color:#fff;cursor:pointer;font-size:.8rem">✕</button>
         </div>
-        <button class="btn bo bsm" onclick="document.getElementById('dsDecorInput').click()" style="width:100%" id="dsDecorBtn">+ رفع صورة الديكور</button>
+
+        <!-- تبويبات الديكور -->
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px" id="dsDecorTabs">
+          <button class="btn ba bsm dsDecorTab active" onclick="dsFilterCat('all',this)">🌟 الكل</button>
+          <button class="btn bo bsm dsDecorTab" onclick="dsFilterCat('empty',this)">🏠 غرف فارغة</button>
+          <button class="btn bo bsm dsDecorTab" onclick="dsFilterCat('living',this)">🛋️ معيشة</button>
+          <button class="btn bo bsm dsDecorTab" onclick="dsFilterCat('studio',this)">📸 استوديو</button>
+          <button class="btn bo bsm dsDecorTab" onclick="dsFilterCat('dark',this)">🌑 دارك</button>
+          <button class="btn bo bsm dsDecorTab" onclick="dsFilterCat('nature',this)">🌿 طبيعة</button>
+          <button class="btn bo bsm dsDecorTab" onclick="dsFilterCat('abstract',this)">🎨 فني</button>
+        </div>
+
+        <!-- شبكة الديكورات -->
+        <div id="dsDecorGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+
+        <!-- أو رفع صورة -->
+        <button class="btn bo bsm" onclick="document.getElementById('dsDecorInput').click()" style="width:100%;font-size:.75rem" id="dsDecorBtn">📁 أو ارفع صورتك الخاصة</button>
         <input type="file" id="dsDecorInput" accept="image/*" style="display:none" onchange="setDecorImg(this)">
       </div>
 
