@@ -855,6 +855,95 @@ app.get('/api/proxy-image', authenticateToken, async (req, res) => {
   }
 });
 
+
+// ============================================================
+// IMAGE COMPOSER — دمج صورة المنتج مع الديكور
+// ============================================================
+app.post('/api/compose-ad', authenticateToken, multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } }).fields([
+  { name: 'product', maxCount: 1 },
+  { name: 'decor', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const sharp = require('sharp');
+    const { title = '', sub = '', store_name = '', store_phone = '' } = req.body;
+
+    if (!req.files?.product) return res.status(400).json({ message: 'صورة المنتج مطلوبة' });
+
+    let decorBuffer;
+    if (req.files?.decor) {
+      decorBuffer = req.files.decor[0].buffer;
+    } else if (req.body.decor_url) {
+      const url = req.body.decor_url;
+      if (!url.startsWith('https://images.unsplash.com/')) return res.status(403).json({ message: 'مصدر غير مسموح' });
+      const r = await fetch(url);
+      decorBuffer = Buffer.from(await r.arrayBuffer());
+    } else {
+      return res.status(400).json({ message: 'صورة الديكور مطلوبة' });
+    }
+
+    const W = 1080, H = 1080;
+
+    // تجهيز الديكور كخلفية
+    const decorResized = await sharp(decorBuffer)
+      .resize(W, H, { fit: 'cover', position: 'centre' })
+      .toBuffer();
+
+    // تجهيز المنتج — تصغير ليناسب الوسط
+    const prodMeta = await sharp(req.files.product[0].buffer).metadata();
+    const maxW = Math.round(W * 0.72);
+    const maxH = Math.round(H * 0.58);
+    const ratio = Math.min(maxW / prodMeta.width, maxH / prodMeta.height);
+    const pW = Math.round(prodMeta.width * ratio);
+    const pH = Math.round(prodMeta.height * ratio);
+    const pX = Math.round((W - pW) / 2);
+    const pY = Math.round(H * 0.17);
+
+    const prodResized = await sharp(req.files.product[0].buffer)
+      .resize(pW, pH)
+      .toBuffer();
+
+    // تدرج سفلي
+    const gradientSvg = `<svg width="${W}" height="${H}">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0.5" x2="0" y2="1">
+          <stop offset="0" stop-color="black" stop-opacity="0"/>
+          <stop offset="1" stop-color="black" stop-opacity="0.78"/>
+        </linearGradient>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#g)"/>
+    </svg>`;
+
+    // نصوص SVG
+    const textSvg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      ${store_name ? `<rect x="28" y="28" width="200" height="56" rx="12" fill="rgba(80,60,220,0.85)"/>
+      <text x="128" y="63" text-anchor="middle" font-family="Arial" font-size="25" font-weight="bold" fill="white">${store_name}</text>` : ''}
+      ${title ? `<text x="${W/2}" y="${Math.round(H*0.82)}" text-anchor="middle" font-family="Arial" font-size="58" font-weight="bold" fill="white"
+        style="filter:drop-shadow(0 2px 8px rgba(0,0,0,0.9))">${title}</text>` : ''}
+      ${sub ? `<text x="${W/2}" y="${Math.round(H*0.88)}" text-anchor="middle" font-family="Arial" font-size="34" fill="#dddddd">${sub}</text>` : ''}
+      ${store_name ? `<text x="${W-38}" y="${H-52}" text-anchor="end" font-family="Arial" font-size="34" font-weight="bold" fill="white">${store_name}</text>` : ''}
+      ${store_phone ? `<text x="${W-38}" y="${H-20}" text-anchor="end" font-family="Arial" font-size="27" fill="#cccccc">${store_phone}</text>` : ''}
+    </svg>`;
+
+    // دمج الطبقات
+    const result = await sharp(decorResized)
+      .composite([
+        { input: Buffer.from(gradientSvg), top: 0, left: 0 },
+        { input: prodResized, top: pY, left: pX },
+        { input: Buffer.from(textSvg), top: 0, left: 0 }
+      ])
+      .jpeg({ quality: 92 })
+      .toBuffer();
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', 'attachment; filename="ad.jpg"');
+    res.send(result);
+
+  } catch(e) {
+    console.error('Compose error:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ============================================================
 // START
 // ============================================================
