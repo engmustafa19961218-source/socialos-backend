@@ -217,22 +217,37 @@ async function dsGenerate() {
     }
 
     const blob = await r.blob();
-    const src = URL.createObjectURL(blob);
+    // تحويل إلى base64 لعرضه كصورة مباشرة في التطبيق
+    const src = await new Promise(res => {
+      const reader = new FileReader();
+      reader.onload = e => res(e.target.result);
+      reader.readAsDataURL(blob);
+    });
 
     const grid = document.getElementById('dsResultGrid');
     grid.innerHTML = '';
     const img = document.createElement('img');
     img.src = src;
-    img.style.cssText = 'width:100%;border-radius:12px;margin-bottom:8px';
+    img.style.cssText = 'width:100%;border-radius:12px;margin-bottom:8px;display:block';
     const dlBtn = document.createElement('button');
     dlBtn.className = 'btn ba';
     dlBtn.style.width = '100%';
     dlBtn.textContent = '⬇️ تنزيل الإعلان';
-    dlBtn.onclick = () => { const a = document.createElement('a'); a.href = src; a.download = `اعلان_${Date.now()}.jpg`; a.click(); };
-    grid.appendChild(img); grid.appendChild(dlBtn);
+    dlBtn.onclick = () => {
+      const a = document.createElement('a');
+      a.href = src;
+      a.download = `اعلان_${Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    grid.appendChild(img);
+    grid.appendChild(dlBtn);
 
     document.getElementById('dsResultArea').style.display = 'block';
     dsSetStatus('✅ الإعلان جاهز!', '#34d399');
+    // scroll للنتيجة
+    document.getElementById('dsResultArea').scrollIntoView({ behavior: 'smooth' });
 
   } catch(e) {
     dsSetStatus('❌ ' + e.message, '#f87171');

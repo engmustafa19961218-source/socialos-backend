@@ -921,13 +921,15 @@ app.post('/api/compose-ad', authenticateToken, multerCompose.fields([
 
     // تجهيز المنتج — تصغير ليناسب الوسط
     const prodMeta = await sharp(productBuffer).metadata();
-    const maxW = Math.round(W * 0.72);
-    const maxH = Math.round(H * 0.58);
+    // حجم المنتج — كبير نسبياً ليبدو حقيقياً
+    const maxW = Math.round(W * 0.80);
+    const maxH = Math.round(H * 0.55);
     const ratio = Math.min(maxW / prodMeta.width, maxH / prodMeta.height);
     const pW = Math.round(prodMeta.width * ratio);
     const pH = Math.round(prodMeta.height * ratio);
+    // موضع المنتج — مركز أفقياً، أسفل الصورة ليبدو على الأرض
     const pX = Math.round((W - pW) / 2);
-    const pY = Math.round(H * 0.17);
+    const pY = Math.round(H - pH - Math.round(H * 0.05));
 
     const prodResized = await sharp(productBuffer)
       .resize(pW, pH)
