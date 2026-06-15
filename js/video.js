@@ -172,7 +172,7 @@ function pollVideoStatus(renderId, resultEl) {
 
     const d = await api(`/api/video/status/${renderId}`);
 
-    if (d.ready && d.url) {
+    if ((d.ready || d.status === 'done') && d.url) {
       clearInterval(_pollInterval);
       showVideoReady(resultEl, d.url);
       toast('🎬 الفيديو جاهز!');
