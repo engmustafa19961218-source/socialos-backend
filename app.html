@@ -925,6 +925,80 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 @keyframes splashPulse{0%,100%{box-shadow:0 0 40px rgba(201,168,76,.2)}50%{box-shadow:0 0 80px rgba(201,168,76,.5)}}
 @keyframes splashLoad{from{width:0}to{width:100%}}
 
+/* ═══════════════════════════════════════
+   GOLD LUXURY THEME — STRONG OVERRIDES
+   ═══════════════════════════════════════ */
+
+/* Stats cards gold numbers */
+.stat-val, .kpi-val, [class*="stat"] b, [class*="kpi"] b { 
+  color: var(--gold2) !important; 
+}
+
+/* All cards top gold line */
+.card, .kbc, .pasCard {
+  border: 1px solid rgba(201,168,76,.12) !important;
+  background: var(--surface) !important;
+}
+
+/* Nav bottom active gold */
+.bnav-item.active span, .bnav-item.active { color: var(--gold) !important; }
+.bnav-item.active .bnav-icon { 
+  background: linear-gradient(135deg, var(--gold3), var(--gold)) !important;
+  color: #080808 !important;
+}
+
+/* Header logo gold */
+.app-logo, .logo-icon, #app-logo {
+  background: linear-gradient(135deg, var(--gold3), var(--gold)) !important;
+}
+
+/* Mike FAB gold */
+#mike-fab, .mike-fab {
+  background: linear-gradient(135deg, var(--gold3), var(--gold)) !important;
+  box-shadow: 0 4px 24px rgba(201,168,76,.45) !important;
+  color: #080808 !important;
+}
+
+/* Mike avatar gold */
+.mike-ava, #mike-avatar {
+  background: linear-gradient(135deg, var(--gold3), var(--gold)) !important;
+}
+
+/* Online dot gold */
+.online-dot { background: var(--gold) !important; }
+
+/* Active quick action gold */
+.qa-btn.active, .quick-btn.active {
+  background: linear-gradient(135deg, rgba(201,168,76,.2), rgba(201,168,76,.08)) !important;
+  border-color: rgba(201,168,76,.4) !important;
+  color: var(--gold2) !important;
+}
+
+/* Section titles gold icon */
+.pt h1::before { color: var(--gold) !important; }
+
+/* Table header subtle gold */
+.tw th { 
+  color: var(--gold3) !important; 
+  border-bottom: 1px solid rgba(201,168,76,.1) !important;
+}
+
+/* Status badges */
+.badge-new { background: rgba(201,168,76,.15) !important; color: var(--gold) !important; }
+
+/* Input focus gold */
+.fi:focus, .ft:focus { 
+  border-color: var(--gold) !important; 
+  box-shadow: 0 0 0 3px rgba(201,168,76,.12) !important;
+}
+
+/* SocialOS title gold */
+.app-name, #app-title { 
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Gold accent overrides */
 .btn.ba,.btn.bp{
   background:linear-gradient(135deg,var(--gold3),var(--gold))!important;
@@ -1433,22 +1507,277 @@ setTimeout(() => {
 
     <!-- HOME -->
     <div class="page active" id="page-home">
-      <div class="sg">
-        <div class="sc" onclick="sp('orders',null)" style="cursor:pointer"><div class="si">🛒</div><div class="sv" id="h-ord">-</div><div class="sl">الطلبات</div></div>
-        <div class="sc" onclick="sp('products',null)" style="cursor:pointer"><div class="si">📦</div><div class="sv" id="h-prod">-</div><div class="sl">المنتجات</div></div>
-        <div class="sc" onclick="sp('customers',null)" style="cursor:pointer"><div class="si">👥</div><div class="sv" id="h-cust">-</div><div class="sl">العملاء</div></div>
-        <div class="sc" onclick="sp('analytics',null)" style="cursor:pointer"><div class="si">💰</div><div class="sv" id="h-rev">-</div><div class="sl">الإيرادات</div></div>
-      </div>
-      <div class="g2">
-        <div>
-          <div class="card"><h3>⚡ إجراءات سريعة</h3><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ba bsm" onclick="om('mo')">🛒 طلب</button><button class="btn bo bsm" onclick="om('mp')">📦 منتج</button><button class="btn bo bsm" onclick="sp('agent',null)">💬 محادثة</button><button class="btn bo bsm" onclick="sp('training',null)">🎓 تدريب</button><button class="btn bo bsm" onclick="genBoard()">🏛️ المجلس</button></div></div>
-          <div class="card"><h3>🛒 آخر الطلبات</h3><div id="h-ords"><div class="empty"><div class="ei">🛒</div><p>لا طلبات</p></div></div></div>
+      <style>
+        /* ── HOME GOLD LUXURY ── */
+        .home-wrap { padding: 16px; padding-bottom: 80px; }
+        
+        .home-greeting { margin-bottom: 16px; }
+        .home-greeting-sub { font-size: .75rem; color: var(--text3); }
+        .home-greeting-name { font-size: 1.35rem; font-weight: 900; margin-top: 2px; }
+        .home-greeting-name span { 
+          background: linear-gradient(135deg, var(--gold), var(--gold2));
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .home-stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 16px; }
+        .hstat {
+          background: var(--surface2);
+          border: 1px solid rgba(201,168,76,.1);
+          border-radius: 16px;
+          padding: 16px;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          transition: transform .15s;
+        }
+        .hstat:active { transform: scale(.97); }
+        .hstat::before {
+          content: '';
+          position: absolute; top: 0; left: 0; right: 0; height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(201,168,76,.4), transparent);
+        }
+        .hstat-icon { font-size: 1.4rem; margin-bottom: 8px; }
+        .hstat-val { font-size: 1.5rem; font-weight: 900; color: var(--gold2); }
+        .hstat-label { font-size: .68rem; color: var(--text3); margin-top: 3px; }
+
+        .home-section { margin-bottom: 16px; }
+        .home-section-header { 
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 10px;
+        }
+        .home-section-title { font-size: .9rem; font-weight: 700; }
+        .home-section-more { font-size: .72rem; color: var(--gold); cursor: pointer; }
+
+        /* Mike card */
+        .home-mike {
+          background: linear-gradient(135deg, #1A1500, #0F0F0F);
+          border: 1px solid rgba(201,168,76,.25);
+          border-radius: 18px;
+          padding: 16px;
+          margin-bottom: 16px;
+          position: relative;
+          overflow: hidden;
+        }
+        .home-mike::before {
+          content: '';
+          position: absolute; top: -30px; right: -30px;
+          width: 100px; height: 100px;
+          background: radial-gradient(circle, rgba(201,168,76,.15), transparent);
+          border-radius: 50%;
+        }
+        .home-mike-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .home-mike-ava {
+          width: 44px; height: 44px;
+          background: linear-gradient(135deg, var(--gold3), var(--gold));
+          border-radius: 13px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.2rem; flex-shrink: 0;
+          color: #080808;
+        }
+        .home-mike-info h3 { font-size: .9rem; font-weight: 700; }
+        .home-mike-info p { font-size: .7rem; color: var(--text3); margin-top: 1px; }
+        .home-mike-online {
+          display: flex; align-items: center; gap: 4px;
+          font-size: .65rem; color: var(--green); margin-top: 3px;
+        }
+        .home-mike-online::before {
+          content: ''; width: 6px; height: 6px;
+          background: var(--green); border-radius: 50%;
+          animation: mikePulse 1.5s ease infinite;
+        }
+        @keyframes mikePulse { 0%,100%{opacity:1}50%{opacity:.3} }
+        .home-mike-input-row { display: flex; gap: 8px; }
+        .home-mike-input {
+          flex: 1; background: rgba(255,255,255,.04);
+          border: 1px solid rgba(201,168,76,.15);
+          border-radius: 12px; padding: 10px 14px;
+          color: var(--text); font-size: .82rem;
+          font-family: 'Tajawal', sans-serif; outline: none;
+        }
+        .home-mike-input::placeholder { color: var(--text3); }
+        .home-mike-send {
+          width: 42px; height: 42px;
+          background: linear-gradient(135deg, var(--gold3), var(--gold));
+          border: none; border-radius: 12px;
+          color: #080808; font-size: 1rem; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; font-weight: 700;
+        }
+
+        /* Quick actions */
+        .home-qa { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 16px; }
+        .home-qa-item {
+          background: var(--surface2);
+          border: 1px solid rgba(201,168,76,.06);
+          border-radius: 14px; padding: 12px 6px;
+          text-align: center; cursor: pointer;
+          transition: all .15s;
+        }
+        .home-qa-item:active { transform: scale(.95); background: rgba(201,168,76,.1); }
+        .home-qa-icon { font-size: 1.3rem; margin-bottom: 5px; }
+        .home-qa-label { font-size: .6rem; color: var(--text2); font-weight: 600; }
+
+        /* Orders list */
+        .home-order {
+          background: var(--surface2);
+          border: 1px solid rgba(255,255,255,.04);
+          border-radius: 14px; padding: 12px 14px;
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 8px; cursor: pointer;
+          transition: border-color .15s;
+        }
+        .home-order:active { border-color: rgba(201,168,76,.3); }
+        .home-order-icon {
+          width: 40px; height: 40px;
+          background: var(--surface3);
+          border-radius: 11px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1rem; flex-shrink: 0;
+        }
+        .home-order-info { flex: 1; min-width: 0; }
+        .home-order-name { font-size: .83rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .home-order-date { font-size: .68rem; color: var(--text3); margin-top: 1px; }
+        .home-order-right { text-align: left; flex-shrink: 0; }
+        .home-order-amount { font-size: .88rem; font-weight: 800; color: var(--gold2); }
+        .home-order-status {
+          display: inline-block; font-size: .58rem;
+          padding: 2px 7px; border-radius: 20px; margin-top: 3px; font-weight: 600;
+        }
+        .hs-new { background: rgba(201,168,76,.15); color: var(--gold); }
+        .hs-done { background: rgba(34,197,94,.15); color: var(--green); }
+        .hs-pending { background: rgba(239,68,68,.15); color: var(--danger); }
+
+        /* Chart */
+        .home-chart {
+          background: var(--surface2);
+          border: 1px solid rgba(201,168,76,.08);
+          border-radius: 16px; padding: 16px;
+          margin-bottom: 16px;
+        }
+        .home-chart-bars { display: flex; align-items: flex-end; gap: 5px; height: 70px; margin-top: 12px; }
+        .home-chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .home-chart-bar { width: 100%; border-radius: 5px 5px 0 0; background: rgba(201,168,76,.12); }
+        .home-chart-bar.active { background: linear-gradient(180deg, var(--gold2), var(--gold3)); }
+        .home-chart-day { font-size: .56rem; color: var(--text3); }
+      </style>
+
+      <div class="home-wrap">
+        <!-- Greeting -->
+        <div class="home-greeting">
+          <div class="home-greeting-sub">مرحباً 👋</div>
+          <div class="home-greeting-name">متجر <span id="home-store-name">الذواق</span></div>
         </div>
-        <div>
-          <div class="card"><h3>🧠 الموظف الرقمي</h3><div id="h-emp">جاري...</div></div>
-          <div class="card"><h3>🏛️ آخر توصيات</h3><div id="h-board"><div class="empty"><div class="ei">🏛️</div><p>اضغط "المجلس"</p></div></div></div>
+
+        <!-- Stats -->
+        <div class="home-stats">
+          <div class="hstat" onclick="sp('orders',null)">
+            <div class="hstat-icon">🛒</div>
+            <div class="hstat-val" id="h-ord">-</div>
+            <div class="hstat-label">الطلبات</div>
+          </div>
+          <div class="hstat" onclick="sp('products',null)">
+            <div class="hstat-icon">📦</div>
+            <div class="hstat-val" id="h-prod">-</div>
+            <div class="hstat-label">المنتجات</div>
+          </div>
+          <div class="hstat" onclick="sp('analytics',null)">
+            <div class="hstat-icon">💰</div>
+            <div class="hstat-val" id="h-rev">-</div>
+            <div class="hstat-label">الإيرادات</div>
+          </div>
+          <div class="hstat" onclick="sp('customers',null)">
+            <div class="hstat-icon">👥</div>
+            <div class="hstat-val" id="h-cust">-</div>
+            <div class="hstat-label">العملاء</div>
+          </div>
         </div>
+
+        <!-- Mike -->
+        <div class="home-mike">
+          <div class="home-mike-top">
+            <div class="home-mike-ava">🤖</div>
+            <div class="home-mike-info">
+              <h3>Mike</h3>
+              <p>مساعدك التنفيذي الذكي</p>
+              <div class="home-mike-online">نشط الآن</div>
+            </div>
+          </div>
+          <div class="home-mike-input-row">
+            <input class="home-mike-input" id="home-mike-input" placeholder="اكتب أمراً لـ Mike...">
+            <button class="home-mike-send" onclick="homeMikeCmd()">⚡</button>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="home-section-header">
+          <div class="home-section-title">⚡ الإجراءات السريعة</div>
+        </div>
+        <div class="home-qa">
+          <div class="home-qa-item" onclick="om('mo')"><div class="home-qa-icon">🛒</div><div class="home-qa-label">طلب جديد</div></div>
+          <div class="home-qa-item" onclick="om('mp')"><div class="home-qa-icon">📦</div><div class="home-qa-label">منتج</div></div>
+          <div class="home-qa-item" onclick="sp('designer',null)"><div class="home-qa-icon">🎨</div><div class="home-qa-label">إعلان</div></div>
+          <div class="home-qa-item" onclick="sp('video',null)"><div class="home-qa-icon">🎬</div><div class="home-qa-label">فيديو</div></div>
+          <div class="home-qa-item" onclick="sp('posts',null)"><div class="home-qa-icon">📱</div><div class="home-qa-label">نشر</div></div>
+          <div class="home-qa-item" onclick="sp('analytics',null)"><div class="home-qa-icon">📊</div><div class="home-qa-label">تقارير</div></div>
+          <div class="home-qa-item" onclick="sp('customers',null)"><div class="home-qa-icon">👥</div><div class="home-qa-label">عملاء</div></div>
+          <div class="home-qa-item" onclick="sp('bulk-wa',null)"><div class="home-qa-icon">💬</div><div class="home-qa-label">واتساب</div></div>
+        </div>
+
+        <!-- Chart -->
+        <div class="home-chart">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="home-section-title">📈 المبيعات</div>
+            <span style="font-size:.68rem;color:var(--gold);background:rgba(201,168,76,.1);padding:3px 10px;border-radius:8px;">هذا الأسبوع</span>
+          </div>
+          <div class="home-chart-bars" id="home-chart-bars">
+            <div class="home-chart-bar-wrap"><div class="home-chart-bar" style="height:40%"></div><div class="home-chart-day">أح</div></div>
+            <div class="home-chart-bar-wrap"><div class="home-chart-bar" style="height:60%"></div><div class="home-chart-day">إث</div></div>
+            <div class="home-chart-bar-wrap"><div class="home-chart-bar" style="height:45%"></div><div class="home-chart-day">ثل</div></div>
+            <div class="home-chart-bar-wrap"><div class="home-chart-bar" style="height:75%"></div><div class="home-chart-day">أر</div></div>
+            <div class="home-chart-bar-wrap"><div class="home-chart-bar" style="height:55%"></div><div class="home-chart-day">خم</div></div>
+            <div class="home-chart-bar-wrap"><div class="home-chart-bar active" style="height:100%"></div><div class="home-chart-day">جم</div></div>
+            <div class="home-chart-bar-wrap"><div class="home-chart-bar" style="height:30%"></div><div class="home-chart-day">سب</div></div>
+          </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="home-section">
+          <div class="home-section-header">
+            <div class="home-section-title">🛒 آخر الطلبات</div>
+            <div class="home-section-more" onclick="sp('orders',null)">عرض الكل</div>
+          </div>
+          <div id="h-ords"><div class="empty"><div class="ei">🛒</div><p>لا طلبات بعد</p></div></div>
+        </div>
+
+        <!-- Employee -->
+        <div class="home-section">
+          <div class="home-section-header">
+            <div class="home-section-title">🧠 الموظف الرقمي</div>
+            <div class="home-section-more" onclick="sp('employee',null)">التفاصيل</div>
+          </div>
+          <div id="h-emp">جاري...</div>
+        </div>
+
       </div>
+
+      <script>
+      function homeMikeCmd() {
+        const input = document.getElementById('home-mike-input');
+        const val = input?.value?.trim();
+        if (!val) return;
+        input.value = '';
+        sp('mike', null);
+        setTimeout(() => {
+          const mikeInput = document.querySelector('#mike-page input, #page-mike input, .mike-input-box');
+          if (mikeInput) { mikeInput.value = val; mikeInput.focus(); }
+        }, 400);
+      }
+      // Store name
+      api('/api/business-profile').then(d => {
+        const el = document.getElementById('home-store-name');
+        if (el && d.store_name) el.textContent = d.store_name;
+      }).catch(()=>{});
+      </script>
     </div>
 
     <!-- EMPLOYEE -->
