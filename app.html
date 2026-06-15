@@ -1669,28 +1669,24 @@ setTimeout(() => {
         </div>
 
         <!-- Stats -->
-        <div class="home-stats">
-          <div class="hstat" onclick="sp('orders',null)">
-            <div class="hstat-icon">🛒</div>
-            <div class="hstat-val" id="h-ord">-</div>
-            <div class="hstat-label">الطلبات</div>
-          </div>
+        <div class="home-stats" style="grid-template-columns:repeat(3,1fr)!important">
           <div class="hstat" onclick="sp('products',null)">
-            <div class="hstat-icon">📦</div>
-            <div class="hstat-val" id="h-prod">-</div>
-            <div class="hstat-label">المنتجات</div>
+            <div class="hstat-val" id="h-prod" style="font-size:1.8rem;color:var(--gold2)">-</div>
+            <div class="hstat-label">منتجات</div>
+            <div style="font-size:.65rem;color:var(--green);margin-top:4px">متاحة</div>
           </div>
           <div class="hstat" onclick="sp('analytics',null)">
-            <div class="hstat-icon">💰</div>
-            <div class="hstat-val" id="h-rev">-</div>
-            <div class="hstat-label">الإيرادات</div>
+            <div class="hstat-val" id="h-rev" style="font-size:1.8rem;color:var(--gold2)">-</div>
+            <div class="hstat-label">الإيراد</div>
+            <div style="font-size:.65rem;color:var(--green);margin-top:4px" id="h-rev-change">↑ 12%</div>
           </div>
-          <div class="hstat" onclick="sp('customers',null)">
-            <div class="hstat-icon">👥</div>
-            <div class="hstat-val" id="h-cust">-</div>
-            <div class="hstat-label">العملاء</div>
+          <div class="hstat" onclick="sp('orders',null)">
+            <div class="hstat-val" id="h-ord" style="font-size:1.8rem;color:var(--gold2)">-</div>
+            <div class="hstat-label">طلبات اليوم</div>
+            <div style="font-size:.65rem;color:var(--green);margin-top:4px" id="h-ord-change">↑ 2 جديد</div>
           </div>
         </div>
+        <input type="hidden" id="h-cust">
 
         <!-- Mike -->
         <div class="home-mike">
@@ -3908,32 +3904,35 @@ function bnSwitch(name, btn) {
 </script>
 
 <!-- BOTTOM NAV — Dark Pro Mobile -->
-<div id="bottom-nav">
-  <div class="bn-tab active" id="bn-home" onclick="bnSwitch('home',this)">
+<div id="bottom-nav" style="display:flex;align-items:center;padding:8px 0 20px;">
+  <div class="bn-tab active" id="bn-home" onclick="bnSwitch('home',this)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;">
     <div class="bn-icon">🏠</div>
     <div class="bn-label">الرئيسية</div>
   </div>
-  <div class="bn-tab" id="bn-orders" onclick="bnSwitch('orders',this)" style="position:relative">
+  <div class="bn-tab" id="bn-products" onclick="bnSwitch('products',this)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;">
+    <div class="bn-icon">📦</div>
+    <div class="bn-label">المنتجات</div>
+  </div>
+  <!-- Mike Center Button -->
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;margin-top:-18px;" onclick="bnSwitch('mike',this)" id="bn-mike">
+    <div style="
+      width:54px;height:54px;
+      background:linear-gradient(135deg,#8B6914,#C9A84C);
+      border-radius:16px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.5rem;
+      box-shadow:0 4px 20px rgba(201,168,76,.5);
+    ">⚡</div>
+    <div class="bn-label" style="color:var(--gold)!important;font-weight:700;">Mike</div>
+  </div>
+  <div class="bn-tab" id="bn-orders" onclick="bnSwitch('orders',this)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;position:relative;">
     <div class="bn-icon">🛒</div>
     <div class="bn-label">الطلبات</div>
     <div class="bn-badge" id="bn-orders-badge">5</div>
   </div>
-  <div class="bn-tab" id="bn-products" onclick="bnSwitch('products',this)">
-    <div class="bn-icon">📦</div>
-    <div class="bn-label">المنتجات</div>
-  </div>
-  <div class="bn-tab" id="bn-mike" onclick="bnSwitch('mike',this)" style="position:relative">
-    <div class="bn-icon">🤖</div>
-    <div class="bn-label">Mike</div>
-    <div class="bn-badge" id="bn-mike-badge" style="background:var(--accent2)"></div>
-  </div>
-  <div class="bn-tab" id="bn-analytics" onclick="bnSwitch('analytics',this)">
+  <div class="bn-tab" id="bn-analytics" onclick="bnSwitch('analytics',this)" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 0;">
     <div class="bn-icon">📊</div>
     <div class="bn-label">التحليل</div>
-  </div>
-  <div class="bn-tab" id="bn-more" onclick="bnSwitch('more',this)">
-    <div class="bn-icon" style="font-size:1.4rem;letter-spacing:-2px">•••</div>
-    <div class="bn-label">المزيد</div>
   </div>
 </div>
 
