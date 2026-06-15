@@ -298,6 +298,7 @@ ${bizTypeContext}
     const reply = String(parsed.reply || 'تم').substring(0, 2000);
     const action = parsed.action || null;
     const actionData = parsed.action_data || {};
+    console.log('MIKE_ACTION:', JSON.stringify({action, actionData}));
     let actionResult = null;
     let actionError = null;
 
