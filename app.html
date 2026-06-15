@@ -14,25 +14,28 @@
    Dark luxury • Glassmorphism • Fluid motion
 ============================================================ */
 :root {
-  --bg:        #0a0a0c;
-  --bg2:       #0d0d10;
-  --surface:   #111114;
-  --surface2:  #18181c;
-  --surface3:  #222228;
-  --border:    #28282f;
-  --border2:   #1e1e24;
-  --accent:    #5b6af0;
-  --accent2:   #7c8cf8;
-  --accent3:   #f59e0b;
+  --bg:        #080808;
+  --bg2:       #0f0f0f;
+  --surface:   #111111;
+  --surface2:  #1a1a1a;
+  --surface3:  #242424;
+  --border:    #2a2a2a;
+  --border2:   #1e1e1e;
+  --accent:    #C9A84C;
+  --accent2:   #E8C96A;
+  --accent3:   #8B6914;
   --accent4:   #22c55e;
-  --mike:      #5b6af0;
-  --text:      #f0f0f2;
-  --text2:     #8888a0;
-  --text3:     #44445a;
+  --mike:      #C9A84C;
+  --text:      #F0EDE8;
+  --text2:     #9A9590;
+  --text3:     #5A5550;
   --danger:    #ef4444;
   --green:     #22c55e;
-  --radius:    12px;
+  --radius:    14px;
   --sidebar:   60px;
+  --gold:      #C9A84C;
+  --gold2:     #E8C96A;
+  --gold3:     #8B6914;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -887,6 +890,90 @@ body { background:#0a0a0c!important; color:#f0f0f2!important; }
 </style>
 </head>
 <body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash-screen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:#080808;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  transition:opacity .6s ease;
+">
+  <div style="
+    width:88px;height:88px;
+    background:linear-gradient(135deg,#8B6914,#C9A84C,#E8C96A);
+    border-radius:24px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:2.4rem;
+    margin-bottom:20px;
+    box-shadow:0 0 60px rgba(201,168,76,.4);
+    animation:splashPulse 2s ease infinite;
+  ">⚡</div>
+  <div style="
+    font-size:2rem;font-weight:900;letter-spacing:2px;
+    background:linear-gradient(135deg,#C9A84C,#E8C96A);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    font-family:'Tajawal',sans-serif;
+  ">SocialOS</div>
+  <div style="font-size:.8rem;color:#5A5550;margin-top:6px;font-family:'Tajawal',sans-serif;">نظام الأعمال الذكي</div>
+  <div style="width:120px;height:3px;background:#1a1a1a;border-radius:2px;margin-top:40px;overflow:hidden;">
+    <div style="height:100%;background:linear-gradient(90deg,#8B6914,#E8C96A);border-radius:2px;animation:splashLoad 1.8s ease forwards;"></div>
+  </div>
+</div>
+
+<style>
+@keyframes splashPulse{0%,100%{box-shadow:0 0 40px rgba(201,168,76,.2)}50%{box-shadow:0 0 80px rgba(201,168,76,.5)}}
+@keyframes splashLoad{from{width:0}to{width:100%}}
+
+/* Gold accent overrides */
+.btn.ba,.btn.bp{
+  background:linear-gradient(135deg,var(--gold3),var(--gold))!important;
+  border-color:var(--gold)!important;
+  color:#080808!important;
+}
+.btn.ba:hover,.btn.bp:hover{
+  background:linear-gradient(135deg,var(--gold),var(--gold2))!important;
+}
+
+/* Cards gold border top */
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,.3),transparent);
+}
+.card{position:relative;overflow:hidden;}
+
+/* Bottom nav gold active */
+.nav-btn.active .nav-icon-wrap{
+  background:linear-gradient(135deg,var(--gold3),var(--gold))!important;
+}
+
+/* Mike FAB gold */
+#mike-fab{
+  background:linear-gradient(135deg,var(--gold3),var(--gold))!important;
+  box-shadow:0 4px 20px rgba(201,168,76,.4)!important;
+}
+
+/* Header gold logo */
+.app-header-logo{
+  background:linear-gradient(135deg,var(--gold3),var(--gold))!important;
+}
+
+/* Stat values gold */
+.stat-value{color:var(--gold2)!important;}
+
+/* Links gold */
+a{color:var(--gold)!important;}
+
+/* Active filters gold */
+.fb.active{background:linear-gradient(135deg,var(--gold3),var(--gold))!important;color:#080808!important;border-color:var(--gold)!important;}
+</style>
+
+<script>
+setTimeout(() => {
+  const s = document.getElementById('splash-screen');
+  if(s){s.style.opacity='0';setTimeout(()=>s.remove(),600);}
+}, 2200);
+</script>
 
 <!-- AUTH -->
 <div id="auth">
