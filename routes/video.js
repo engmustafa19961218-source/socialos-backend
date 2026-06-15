@@ -188,6 +188,7 @@ app.get('/api/video/status/:render_id', authenticateToken, async (req, res) => {
       headers: { 'Authorization': `Bearer ${KEY}` }
     });
     const data = await r.json();
+    console.log('VIDEO STATUS:', JSON.stringify(data).substring(0, 200));
 
     if (data.status === 'succeeded' || data.status === 'done') {
       if (pool) {
