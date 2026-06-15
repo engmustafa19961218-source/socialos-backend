@@ -1,26 +1,22 @@
 module.exports = function(app, pool, helpers) {
-const { sanitize, authenticateToken, rateLimit, notify } = helpers;
+const { sanitize, authenticateToken, rateLimit, escapeHtml } = helpers;
 
-const CREATOMATE_KEY = () => process.env.CREATOMATE_API_KEY || '0b330c957d7d46b5be1588af6c8cf097ccfe8059093ebdb58e3693dace5b8ffece54c47fcfcb9a1258cae47886a741ee';
-const OPENROUTER_KEY = () => process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
+const CREATOMATE_KEY = () => process.env.CREATOMATE_API_KEY;
 const CREATOMATE_URL = 'https://api.creatomate.com/v1/renders';
 
-// القوالب المتاحة
+// القوالب
 const TEMPLATES = {
   'product-hero-discount': {
     id: '40370d0f-420c-4298-8eed-563dd3748693',
-    name_ar: 'منتج مع خصم',
-    best_for: ['منتج', 'خصم', 'تخفيض', 'عرض', 'سعر']
+    name_ar: 'منتج مع خصم'
   },
   'matrix-promotion': {
     id: '9d7526f4-2019-4918-a5de-201499f65d3b',
-    name_ar: 'حملة ترويجية',
-    best_for: ['ترويج', 'حملة', 'إطلاق', 'جديد', 'خدمة']
+    name_ar: 'حملة ترويجية'
   },
   'animated-review': {
     id: '36075429-7516-4bac-b665-85afbc6c2aba',
-    name_ar: 'تقييم متحرك',
-    best_for: ['تقييم', 'رأي', 'زبون', 'مراجعة', 'تجربة']
+    name_ar: 'تقييم متحرك'
   }
 };
 
@@ -30,158 +26,184 @@ async function getBP(userId) {
   return r.rows[0] || {};
 }
 
-async function createRender(modifications, templateId) {
-  const res = await fetch(CREATOMATE_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${CREATOMATE_KEY()}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ template_id: templateId, modifications })
-  });
-  return res.json();
-}
-
 // ============================================================
-// Mike — يفهم الفكرة ويصنع الفيديو
+// إنشاء فيديو بالصور
 // ============================================================
-app.post('/api/video/mike-create', authenticateToken, rateLimit(10, 60000), async (req, res) => {
-  const { idea, images } = req.body;
-  if (!idea && !images?.length) return res.status(400).json({ success: false, message: 'اكتب فكرة أو أرسل صوراً' });
-
+app.post('/api/video/create', authenticateToken, rateLimit(10, 60000), async (req, res) => {
   try {
+    const KEY = CREATOMATE_KEY();
+    if (!KEY) return res.status(503).json({ success: false, message: 'Creatomate غير مفعّل' });
+
+    const { product_name, price, discount, headline, images = [], template = 'product-hero-discount' } = req.body;
     const bp = await getBP(req.user.id);
     const storeName = bp.store_name || 'متجرنا';
-    const color = bp.primary_color || '#5b6af0';
-    const currency = bp.currency || 'IQD';
-    const businessType = bp.business_type || '';
-    const aiKey = OPENROUTER_KEY();
 
-    // plan يُعرّف هنا — خارج أي block
-    let plan = null;
+    const tmpl = TEMPLATES[template] || TEMPLATES['product-hero-discount'];
 
-    if (!aiKey) {
-      // بدون AI — اختر بناءً على كلمات مفتاحية
-      const ideaLower = (idea || '').toLowerCase();
-      let templateKey = 'product-hero-discount';
-      if (ideaLower.includes('تقييم') || ideaLower.includes('زبون') || ideaLower.includes('مراجعة')) templateKey = 'animated-review';
-      else if (ideaLower.includes('حملة') || ideaLower.includes('ترويج') || ideaLower.includes('إطلاق')) templateKey = 'matrix-promotion';
+    // بناء modifications
+    const modifications = {
+      'Store Name': storeName,
+      'Product Name': sanitize(product_name || 'منتج مميز'),
+      'Price': sanitize(price || ''),
+      'Discount': sanitize(discount || ''),
+      'Headline': sanitize(headline || 'عرض خاص!'),
+      'CTA': 'اطلب الآن',
+    };
 
-      plan = {
-        template: templateKey,
-        reasoning: 'تم اختيار القالب تلقائياً',
-        modifications: {
-          'Product Name': idea || 'منتجنا',
-          'Price': '', 'Discount': '',
-          'Store Name': storeName,
-          'Headline': idea || storeName,
-          'Subtext': businessType,
-          'CTA': 'اطلب الآن',
-          'Customer Name': 'زبون راضٍ',
-          'Review Text': idea || 'منتج رائع!',
-          'Rating': '⭐⭐⭐⭐⭐'
-        },
-        platform: 'instagram',
-        mike_note: 'تم الاختيار تلقائياً'
-      };
-    } else {
-      // مع AI
-      const prompt = `أنت Mike مخرج فيديو لمتجر "${storeName}".
-القوالب: product-hero-discount (منتج+خصم) | matrix-promotion (ترويج) | animated-review (تقييم)
-الفكرة: "${idea || 'فيديو من الصور'}"
-أجب بـ JSON فقط: {"template":"...","reasoning":"...","modifications":{"Product Name":"","Price":"","Discount":"","Store Name":"${storeName}","Headline":"","Subtext":"","CTA":"اطلب الآن","Customer Name":"","Review Text":"","Rating":"⭐⭐⭐⭐⭐"},"platform":"instagram","mike_note":"..."}`;
+    // إضافة الصور إذا وُجدت
+    if (images.length > 0) modifications['Image'] = images[0];
+    if (images.length > 1) modifications['Image 2'] = images[1];
+    if (images.length > 2) modifications['Image 3'] = images[2];
 
-      const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${aiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'anthropic/claude-haiku-4-5', max_tokens: 500, messages: [{ role: 'user', content: prompt }] })
-      });
-      const aiData = await aiRes.json();
-      const raw = aiData.choices?.[0]?.message?.content || '{}';
+    const result = await fetch(CREATOMATE_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ template_id: tmpl.id, modifications })
+    });
 
-      try { plan = JSON.parse(raw.replace(/```json|```/g, '').trim()); }
-      catch(e) { plan = null; }
+    const data = await result.json();
+    console.log('Creatomate response:', JSON.stringify(data).substring(0, 300));
+
+    if (!result.ok) {
+      return res.status(400).json({ success: false, message: data?.message || data?.error || 'خطأ في Creatomate', raw: data });
     }
 
-    // fallback إذا plan فارغ أو template غير صحيح
-    if (!plan || !plan.template || !TEMPLATES[plan.template]) {
-      plan = {
-        template: 'product-hero-discount',
-        reasoning: 'قالب افتراضي',
-        modifications: { 'Product Name': idea || 'منتجنا', 'Store Name': storeName, 'Headline': idea || storeName, 'CTA': 'اطلب الآن' },
-        platform: 'instagram',
-        mike_note: ''
-      };
+    const renderId = Array.isArray(data) ? data[0]?.id : data.id;
+    if (!renderId) {
+      return res.status(400).json({ success: false, message: 'لم يتم إنشاء الفيديو', raw: data });
     }
-
-    const template = TEMPLATES[plan.template];
-    let modifications = { ...plan.modifications };
-
-    // إضافة صورة وألوان
-    if (images?.length) modifications['Product Image'] = images[0];
-    modifications['Primary Color'] = color;
-    modifications['Background Color'] = color;
-    modifications['Store Name'] = storeName;
-
-    const result = await createRender(modifications, template.id);
-    if (!result || result.error) {
-      return res.status(400).json({ success: false, message: result?.error || result?.message || 'خطأ في Creatomate' });
-    }
-
-    const renderId = Array.isArray(result) ? result[0]?.id : result.id;
-    if (!renderId) return res.status(400).json({ success: false, message: 'لم يتم إنشاء الفيديو' });
 
     if (pool) {
       await pool.query(
         `INSERT INTO video_renders (user_id, render_id, type, platform, product_name, status) VALUES ($1,$2,$3,$4,$5,'rendering')`,
-        [req.user.id, renderId, plan.template, plan.platform||'instagram', sanitize(idea?.substring(0,100)||'')]
+        [req.user.id, renderId, template, 'instagram', sanitize(product_name?.substring(0,100)||'')]
       ).catch(() => {});
     }
 
-    res.json({ success: true, render_id: renderId, template_used: template.name_ar, reasoning: plan.reasoning, mike_note: plan.mike_note, platform: plan.platform||'instagram', status: 'rendering' });
+    res.json({ success: true, render_id: renderId, template_used: tmpl.name_ar, status: 'rendering' });
 
-  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+  } catch(e) {
+    console.error('Video create error:', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
-// فحص حالة الفيديو
+// Mike create — يفهم الفكرة ويصنع الفيديو
+app.post('/api/video/mike-create', authenticateToken, rateLimit(10, 60000), async (req, res) => {
+  try {
+    const KEY = CREATOMATE_KEY();
+    if (!KEY) return res.status(503).json({ success: false, message: 'Creatomate غير مفعّل' });
+
+    const { idea, images = [], platform = 'instagram' } = req.body;
+    const bp = await getBP(req.user.id);
+    const storeName = bp.store_name || 'متجرنا';
+
+    // اختيار القالب بناء على الفكرة
+    const ideaLower = (idea || '').toLowerCase();
+    let templateKey = 'product-hero-discount';
+    if (ideaLower.includes('تقييم') || ideaLower.includes('مراجعة') || ideaLower.includes('زبون')) templateKey = 'animated-review';
+    else if (ideaLower.includes('حملة') || ideaLower.includes('ترويج') || ideaLower.includes('إطلاق')) templateKey = 'matrix-promotion';
+
+    const tmpl = TEMPLATES[templateKey];
+
+    const modifications = {
+      'Store Name': storeName,
+      'Product Name': sanitize(idea?.substring(0, 50) || 'منتج مميز'),
+      'Headline': sanitize(idea?.substring(0, 80) || 'عرض خاص!'),
+      'CTA': 'اطلب الآن',
+      'Price': '',
+      'Discount': '',
+    };
+
+    if (images.length > 0) modifications['Image'] = images[0];
+    if (images.length > 1) modifications['Image 2'] = images[1];
+    if (images.length > 2) modifications['Image 3'] = images[2];
+
+    const result = await fetch(CREATOMATE_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_id: tmpl.id, modifications })
+    });
+
+    const data = await result.json();
+    console.log('Creatomate mike-create:', JSON.stringify(data).substring(0, 300));
+
+    if (!result.ok) {
+      return res.status(400).json({ success: false, message: data?.message || data?.error || 'خطأ في Creatomate', raw: data });
+    }
+
+    const renderId = Array.isArray(data) ? data[0]?.id : data.id;
+    if (!renderId) return res.status(400).json({ success: false, message: 'لم يتم إنشاء الفيديو', raw: data });
+
+    if (pool) {
+      await pool.query(
+        `INSERT INTO video_renders (user_id, render_id, type, platform, product_name, status) VALUES ($1,$2,$3,$4,$5,'rendering')`,
+        [req.user.id, renderId, templateKey, platform, sanitize(idea?.substring(0,100)||'')]
+      ).catch(() => {});
+    }
+
+    res.json({ 
+      success: true, render_id: renderId, 
+      template_used: tmpl.name_ar, 
+      reasoning: `اخترت قالب "${tmpl.name_ar}" بناء على فكرتك`,
+      mike_note: 'جاري تصنيع الفيديو، سيكون جاهزاً خلال دقيقة!',
+      platform, status: 'rendering' 
+    });
+
+  } catch(e) {
+    console.error('Mike video error:', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// متابعة حالة الفيديو
+// ============================================================
 app.get('/api/video/status/:render_id', authenticateToken, async (req, res) => {
   try {
+    const KEY = CREATOMATE_KEY();
+    if (!KEY) return res.status(503).json({ success: false, message: 'Creatomate غير مفعّل' });
+
     const r = await fetch(`${CREATOMATE_URL}/${req.params.render_id}`, {
-      headers: { 'Authorization': `Bearer ${CREATOMATE_KEY()}` }
+      headers: { 'Authorization': `Bearer ${KEY}` }
     });
     const data = await r.json();
 
-    if (pool && (data.status === 'succeeded' || data.status === 'failed')) {
-      await pool.query(
-        'UPDATE video_renders SET status=$1, video_url=$2, updated_at=NOW() WHERE render_id=$3 AND user_id=$4',
-        [data.status === 'succeeded' ? 'completed' : 'failed', data.url || null, req.params.render_id, req.user.id]
-      ).catch(() => {});
-
-      if (data.status === 'succeeded') {
-        await notify(req.user.id, '🎬 فيديوك جاهز!', 'Mike انتهى من إنشاء الفيديو', 'video');
+    if (data.status === 'succeeded') {
+      if (pool) {
+        await pool.query(
+          `UPDATE video_renders SET status='done', video_url=$1 WHERE render_id=$2 AND user_id=$3`,
+          [data.url, req.params.render_id, req.user.id]
+        ).catch(() => {});
       }
+      res.json({ success: true, status: 'done', url: data.url });
+    } else if (data.status === 'failed') {
+      res.json({ success: false, status: 'failed', message: data.error || 'فشل التوليد' });
+    } else {
+      res.json({ success: true, status: 'rendering', progress: data.progress || 0 });
     }
-
-    res.json({
-      success: true,
-      status: data.status,
-      url: data.url || null,
-      progress: data.progress || 0,
-      ready: data.status === 'succeeded'
-    });
-  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+  } catch(e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
-// جلب آخر الفيديوهات
+// ============================================================
+// قائمة الفيديوهات
+// ============================================================
 app.get('/api/video/list', authenticateToken, async (req, res) => {
   try {
     if (!pool) return res.json({ success: true, videos: [] });
     const r = await pool.query(
-      'SELECT * FROM video_renders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',
+      `SELECT * FROM video_renders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,
       [req.user.id]
     );
     res.json({ success: true, videos: r.rows });
-  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+  } catch(e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
 };
