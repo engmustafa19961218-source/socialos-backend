@@ -32,25 +32,17 @@ async function ldDelivery() {
   if (!pendingOrders.length) {
     list.innerHTML = '<div class="empty"><div class="ei">📦</div><p>لا طلبات بانتظار الشحن</p></div>';
   } else {
-    list.innerHTML = `<div class="tw"><table><tr><th>#</th><th>العميل</th><th>الهاتف</th><th>المبلغ</th><th>الحالة</th><th>إجراءات</th></tr>${pendingOrders.map(o=>`
-      <tr>
-        <td style="font-family:monospace;color:var(--text2)">#${o.id}</td>
-        <td>${esc(o.customer_name)}</td>
-        <td dir="ltr" style="color:var(--text2);font-size:.8rem">${esc(o.customer_phone)}</td>
-        <td style="font-weight:700">${Number(o.total||0).toLocaleString()}</td>
-        <td>${o.delivery_company ? `<span class="badge bbl">${esc(o.delivery_company)}</span>` : '<span class="badge bor">لم يُشحن</span>'}</td>
-        <td><button class="btn ba bsm" onclick="openShipModal(${o.id},'${esc(o.customer_name)}','${esc(o.customer_phone)}',${o.total})">🚚 شحن</button></td>
-      </tr>`).join('')}</table></div>`;
+    list.innerHTML = pendingOrders.map(o=>`<div style="background:#111111;border:1px solid rgba(201,168,76,.1);border-radius:14px;padding:12px 14px;margin-bottom:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;background:#1a1a1a;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1rem">🛒</div><div><div style="font-weight:700;font-size:.85rem">${esc(o.customer_name)}</div><div style="font-size:.7rem;color:#9A9590" dir="ltr">${esc(o.customer_phone)}</div></div></div><div style="text-align:left"><div style="font-size:.95rem;font-weight:900;color:#E8C96A">${Number(o.total||0).toLocaleString()}</div><div style="font-size:.62rem;color:#5A5550">#${o.id}</div></div></div><div style="display:flex;gap:8px"><span style="flex:1;font-size:.7rem;background:${o.delivery_company?'rgba(201,168,76,.1)':'rgba(201,168,76,.08)'};color:${o.delivery_company?'#C9A84C':'#9A9590'};padding:5px 10px;border-radius:10px;text-align:center">${o.delivery_company?esc(o.delivery_company):'لم يُشحن'}</span><button style="background:linear-gradient(135deg,#8B6914,#C9A84C);border:none;border-radius:10px;padding:5px 14px;color:#080808;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif" onclick="openShipModal(${o.id},'${esc(o.customer_name)}','${esc(o.customer_phone)}',${o.total})">🚚 شحن</button></div></div>`).join('');
   }
 
   // بطاقات الشركات
   const co = document.getElementById('del-companies');
   co.innerHTML = deliveryCompanies.map(c => `
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:13px;text-align:center;cursor:pointer" onclick="copyText('${esc(c.name)}')">
-      <div style="font-size:1.6rem;margin-bottom:6px">${c.icon}</div>
+    <div style="background:#111;border:1px solid rgba(201,168,76,.1);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s" onclick="copyText('${esc(c.name)}')">
+      <div style="font-size:1.8rem;margin-bottom:8px">${c.icon}</div>
       <div style="font-weight:700;font-size:.82rem">${esc(c.name)}</div>
-      ${c.tracking_url ? `<div style="font-size:.68rem;color:var(--green);margin-top:3px">🔗 تتبع متاح</div>` : '<div style="font-size:.68rem;color:var(--text2);margin-top:3px">لا تتبع</div>'}
-      ${c.custom ? `<div class="badge bpu" style="font-size:.62rem;margin-top:5px">مخصصة</div>` : ''}
+      ${c.tracking_url ? `<div style="font-size:.65rem;color:#22c55e;margin-top:4px">🔗 تتبع</div>` : '<div style="font-size:.65rem;color:#5A5550;margin-top:4px">لا تتبع</div>'}
+      ${c.custom ? `<span style="font-size:.6rem;background:rgba(201,168,76,.1);color:#C9A84C;padding:2px 6px;border-radius:8px;margin-top:5px;display:inline-block">مخصصة</span>` : ''}
     </div>
   `).join('');
 }

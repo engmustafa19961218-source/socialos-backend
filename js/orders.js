@@ -8,35 +8,40 @@ function rnOrds(ords){
   if(!ords.length){list.innerHTML='<div class="empty"><div class="ei">🛒</div><p>لا طلبات</p></div>';return;}
   const sl={new:'🆕 جديد',confirmed:'✅ مؤكد',processing:'⚙️ جاري',shipped:'🚚 شُحن',delivered:'🚀 تم',cancelled:'❌ ملغي'};
   const bc={new:'bbl',confirmed:'bgr',processing:'bor',shipped:'bpu',delivered:'bgr',cancelled:'brd'};
-  list.innerHTML=`<div class="tw"><table>
-    <tr><th>#</th><th>العميل</th><th>الهاتف</th><th>المبلغ</th><th>الدفع</th><th>الحالة</th><th>التاريخ</th><th>إجراءات</th></tr>
-    ${ords.map(o=>{
-      const pm=PAYMENT_INFO[o.payment_method]||{label:o.payment_method||'',icon:'💰'};
-      const cardBadge=o.card_info?`<div style="font-size:.66rem;color:var(--text2);margin-top:2px;font-family:monospace">${esc(o.card_info.length>12?o.card_info.substring(0,6)+'···'+o.card_info.slice(-4):o.card_info)}</div>`:'';
-      return`<tr>
-        <td style="font-family:monospace;color:var(--text2)">#${o.id}</td>
-        <td>${esc(o.customer_name)}</td>
-        <td dir="ltr" style="color:var(--text2)">${esc(o.customer_phone)}</td>
-        <td style="font-weight:700">${Number(o.total||0).toLocaleString()}</td>
-        <td><div style="font-size:.78rem">${pm.icon} ${esc(pm.label)}</div>${cardBadge}</td>
-        <td><span class="badge ${bc[o.status]||'bbl'}">${sl[o.status]||o.status}</span></td>
-        <td style="color:var(--text2);font-size:.76rem">${new Date(o.created_at).toLocaleDateString('ar')}</td>
-        <td>
-          <select class="fs" style="padding:4px 6px;font-size:.73rem;width:100px" onchange="updOrdSt(${o.id},this.value)">
-            <option value="">تغيير...</option>
-            <option>new</option><option>confirmed</option><option>processing</option>
-            <option>shipped</option><option>delivered</option><option>cancelled</option>
-          </select>
-          <button class="btn bo bsm" onclick="waInv(${o.id})" style="margin-top:3px;width:100%">📱 واتساب</button>
-          <button class="btn bo bsm" onclick="notifyCustomer(${o.id},'${['confirmed','shipped','delivered','cancelled'].includes(o.status) ? o.status : 'confirmed'}')" style="margin-top:3px;width:100%;font-size:.68rem">🔔 إشعار</button>
-          ${o.status==='confirmed'?`<label class="btn bo bsm" style="margin-top:3px;width:100%;font-size:.68rem;cursor:pointer;text-align:center">📸 وصل حوالة<input type="file" accept="image/*" style="display:none" onchange="uploadReceipt(${o.id},this.files[0])"></label>`:''}
-          ${o.payment_wa_link?`<button class="btn bo bsm" onclick="window.open('${o.payment_wa_link}','_blank')" style="margin-top:3px;width:100%;font-size:.65rem;background:rgba(37,211,102,.1);color:#25D366">💳 أرسل بطاقات</button>`:''}
-          ${o.status==='delivered'?`<button class="btn bo bsm" onclick="sendReviewLink(${o.id})" style="margin-top:3px;width:100%;font-size:.65rem;background:rgba(245,158,11,.1);color:#f59e0b">⭐ رابط تقييم</button>`:''}
-          <button class="btn bo bsm" onclick="sendTrackLink(${o.id},'${o.customer_phone}','${o.customer_name}')" style="margin-top:3px;width:100%;font-size:.65rem">🔍 رابط تتبع</button>
-        </td>
-      </tr>`;
-    }).join('')}
-  </table></div>`;
+  list.innerHTML=ords.map(o=>{
+  const pm=PAYMENT_INFO[o.payment_method]||{label:o.payment_method||'',icon:'💰'};
+  const st=o.status||'new';
+  const sc={new:'rgba(201,168,76,.15)',confirmed:'rgba(34,197,94,.15)',processing:'rgba(201,168,76,.12)',shipped:'rgba(99,102,241,.15)',delivered:'rgba(34,197,94,.15)',cancelled:'rgba(239,68,68,.15)'};
+  const stc={new:'#C9A84C',confirmed:'#22c55e',processing:'#C9A84C',shipped:'#818cf8',delivered:'#22c55e',cancelled:'#ef4444'};
+  const sl2={new:'جديد',confirmed:'مؤكد',processing:'جاري',shipped:'شُحن',delivered:'تم التسليم',cancelled:'ملغي'};
+  return`<div style="${G}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:42px;height:42px;background:#1a1a1a;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.1rem">🛒</div>
+        <div><div style="font-weight:700;font-size:.88rem">${esc(o.customer_name)}</div>
+        <div style="font-size:.72rem;color:#9A9590" dir="ltr">${esc(o.customer_phone)}</div></div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:1rem;font-weight:900;color:#E8C96A">${Number(o.total||0).toLocaleString()}</div>
+        <div style="font-size:.6rem;color:#5A5550">${new Date(o.created_at).toLocaleDateString('ar')}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="background:${sc[st]};color:${stc[st]};padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700">${sl2[st]||st}</span>
+      <span style="font-size:.72rem;color:#9A9590">${pm.icon} ${esc(pm.label)}</span>
+      <span style="font-size:.7rem;color:#5A5550;margin-right:auto;font-family:monospace">#${o.id}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <select style="background:#1a1a1a;border:1px solid rgba(201,168,76,.15);border-radius:10px;padding:8px;color:#F0EDE8;font-size:.75rem;font-family:'Tajawal',sans-serif" onchange="updOrdSt(${o.id},this.value)">
+        <option value="">تغيير الحالة...</option>
+        <option>new</option><option>confirmed</option><option>processing</option>
+        <option>shipped</option><option>delivered</option><option>cancelled</option>
+      </select>
+      <button style="background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);border-radius:10px;padding:8px;color:#25D366;font-size:.75rem;cursor:pointer;font-family:'Tajawal',sans-serif" onclick="waInv(${o.id})">📱 واتساب</button>
+      <button style="background:#1a1a1a;border:1px solid rgba(201,168,76,.12);border-radius:10px;padding:8px;color:#9A9590;font-size:.72rem;cursor:pointer;font-family:'Tajawal',sans-serif" onclick="sendTrackLink(${o.id},'${o.customer_phone}','${o.customer_name}')">🔍 تتبع</button>
+      <button style="background:#1a1a1a;border:1px solid rgba(201,168,76,.12);border-radius:10px;padding:8px;color:#9A9590;font-size:.72rem;cursor:pointer;font-family:'Tajawal',sans-serif" onclick="notifyCustomer(${o.id},'confirmed')">🔔 إشعار</button>
+    </div>
+  </div>`;}).join('');
 }
 function ford(s,btn){ordF=s;document.querySelectorAll('#page-orders .fb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');ldOrds();}
 function srchOrd(){const q=document.getElementById('osrch').value.toLowerCase();rnOrds(allOrds.filter(o=>o.customer_name?.toLowerCase().includes(q)||o.customer_phone?.includes(q)));}
@@ -122,7 +127,7 @@ async function ldCusts(){const d=await api('/api/customers');allCusts=d.customer
 function rnCusts(list){
   const el=document.getElementById('custlist');
   if(!list.length){el.innerHTML='<div class="empty"><div class="ei">👥</div><p>لا عملاء</p></div>';return;}
-  el.innerHTML=`<div class="tw"><table><tr><th>الاسم</th><th>الهاتف</th><th>العنوان</th><th>إجراءات</th></tr>${list.map(c=>`<tr><td>${esc(c.name)}</td><td dir="ltr">${esc(c.phone)}</td><td>${esc(c.address||'-')}</td><td><button class="btn bd bsm" onclick="delCust(${c.id})">🗑</button></td></tr>`).join('')}</table></div>`;
+  el.innerHTML=list.map(c=>`<div style="background:#111111;border:1px solid rgba(201,168,76,.1);border-radius:14px;padding:14px;margin-bottom:10px"><div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#8B6914,#C9A84C);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#080808;font-weight:900;flex-shrink:0">${esc(c.name?.[0]||'؟')}</div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.88rem">${esc(c.name)}</div><div style="font-size:.72rem;color:#9A9590;margin-top:2px" dir="ltr">${esc(c.phone)}</div>${c.address?`<div style="font-size:.7rem;color:#5A5550;margin-top:2px">📍 ${esc(c.address)}</div>`:''}</div><div style="display:flex;flex-direction:column;gap:5px"><a href="https://wa.me/${c.phone?.replace(/[^0-9]/g,'')}" target="_blank" style="background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);border-radius:10px;padding:6px 10px;color:#25D366;font-size:.7rem;text-decoration:none;text-align:center">📱</a><button style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:6px 10px;color:#ef4444;font-size:.7rem;cursor:pointer;font-family:'Tajawal',sans-serif" onclick="delCust(${c.id})">🗑️</button></div></div></div>`).join('');
 }
 function srchCust(){const q=document.getElementById('csrch').value.toLowerCase();rnCusts(allCusts.filter(c=>c.name?.toLowerCase().includes(q)||c.phone?.includes(q)));}
 async function saveCust(){
@@ -140,7 +145,7 @@ async function ldProds(){const d=await api('/api/products');allProds=d.products|
 function rnProds(list){
   const el=document.getElementById('prodlist');
   if(!list.length){el.innerHTML='<div class="empty"><div class="ei">📦</div><p>لا منتجات</p></div>';return;}
-  el.innerHTML=`<div class="tw"><table><tr><th>المنتج</th><th>الفئة</th><th>السعر</th><th>المخزون</th><th>الحالة</th><th>السمات</th><th>إجراءات</th></tr>${list.map(p=>{let at={};try{at=JSON.parse(p.dynamic_attrs||'{}')}catch(e){}const ah=Object.entries(at).map(([k,v])=>`<span class="badge bpu">${esc(k)}:${esc(v)}</span>`).join(' ');return`<tr><td><div style="font-weight:700">${esc(p.name)}</div><div style="color:var(--text2);font-size:.74rem">${esc((p.description||'').substring(0,35))}</div></td><td><span class="badge bbl">${esc(p.category)}</span></td><td style="font-weight:700;color:var(--accent)">${Number(p.price||0).toLocaleString()}</td><td>${p.stock||0}</td><td><span class="badge ${p.is_available?'bgr':'brd'}">${p.is_available?'✅':'❌'}</span></td><td>${ah||'-'}</td><td><button class="btn bd bsm" onclick="delProd(${p.id})">🗑</button></td></tr>`}).join('')}</table></div>`;
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">${list.map(p=>`<div style="background:#111;border:1px solid rgba(201,168,76,.1);border-radius:16px;overflow:hidden"><div style="${p.image_url?'background:url('+p.image_url+') center/cover':'background:#1a1a1a'};height:110px;display:flex;align-items:center;justify-content:center;font-size:2.5rem">${p.image_url?'':' 📦'}</div><div style="padding:12px"><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">${esc(p.name)}</div><div style="font-size:.95rem;font-weight:900;color:#E8C96A;margin-bottom:6px">${Number(p.price||0).toLocaleString()}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:.65rem;background:rgba(201,168,76,.1);color:#C9A84C;padding:2px 8px;border-radius:10px">${esc(p.category||'عام')}</span><span style="font-size:.65rem;color:${p.stock>0?'#22c55e':'#ef4444'}">${p.stock>0?'✅ '+p.stock:'❌ نفذ'}</span></div><button style="width:100%;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:6px;color:#ef4444;font-size:.72rem;cursor:pointer;font-family:'Tajawal',sans-serif" onclick="delProd(${p.id})">🗑️ حذف</button></div></div>`).join('')}</div>`;
 }
 function srchProd(){const q=document.getElementById('psrch').value.toLowerCase();rnProds(allProds.filter(p=>p.name?.toLowerCase().includes(q)||p.category?.toLowerCase().includes(q)));}
 function addAttr(){

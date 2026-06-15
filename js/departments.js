@@ -137,16 +137,7 @@ function rnWorkflowHistory() {
   const statusLabels = { pending: '⏳ معلق', completed: '✅ مكتمل', rejected: '❌ مرفوض' };
   const deptEmoji = { customer_service:'💬', orders:'📦', inventory:'🏪', design_publish:'🎨', promotion:'📢', analytics:'📊' };
 
-  el.innerHTML = `<div class="tw"><table>
-    <tr><th>المهمة</th><th>من</th><th>إلى</th><th>الحالة</th><th>التاريخ</th></tr>
-    ${_deptTasks.map(t => `<tr>
-      <td style="font-size:.82rem">${esc(t.title)}</td>
-      <td>${deptEmoji[t.from_dept]||''} <span style="font-size:.75rem">${t.from_dept}</span></td>
-      <td>${deptEmoji[t.to_dept]||''} <span style="font-size:.75rem">${t.to_dept}</span></td>
-      <td><span class="badge" style="background:${statusColors[t.status]}22;color:${statusColors[t.status]}">${statusLabels[t.status]||t.status}</span></td>
-      <td style="font-size:.72rem;color:var(--text2)">${new Date(t.created_at).toLocaleDateString('ar')}</td>
-    </tr>`).join('')}
-  </table></div>`;
+  el.innerHTML = _deptTasks.map(t => `<div style="background:#111111;border:1px solid rgba(201,168,76,.1);border-radius:14px;padding:12px 14px;margin-bottom:8px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1"><div style="font-size:.85rem;font-weight:700;margin-bottom:6px">${esc(t.title)}</div><div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:#9A9590">${deptEmoji[t.from_dept]||''} ${t.from_dept} <span style="color:#5A5550">→</span> ${deptEmoji[t.to_dept]||''} ${t.to_dept}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0"><span style="background:${statusColors[t.status]}22;color:${statusColors[t.status]};padding:3px 10px;border-radius:20px;font-size:.68rem;font-weight:700">${statusLabels[t.status]||t.status}</span><div style="font-size:.65rem;color:#5A5550">${new Date(t.created_at).toLocaleDateString('ar')}</div></div></div></div>`).join('');
 }
 
 // تفاصيل قسم معين

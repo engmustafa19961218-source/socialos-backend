@@ -63,7 +63,7 @@ async function ldAdvAna(){
   if(custEl){
     const custs=data.top_customers||[];
     if(!custs.length){custEl.innerHTML='<div class="empty"><div class="ei">👥</div><p>لا بيانات</p></div>';return;}
-    custEl.innerHTML=`<div class="tw"><table><tr><th>العميل</th><th>الطلبات</th><th>المبلغ</th><th>آخر طلب</th></tr>${custs.map(c=>`<tr><td>${esc(c.customer_name||c.customer_phone||'')}</td><td>${c.orders}</td><td>${Number(c.spent||0).toLocaleString()}</td><td>${new Date(c.last_order).toLocaleDateString('ar')}</td></tr>`).join('')}</table></div>`;
+    custEl.innerHTML=custs.map(c=>`<div style="background:#111111;border:1px solid rgba(201,168,76,.1);border-radius:14px;padding:14px;margin-bottom:10px"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:700;font-size:.88rem">${esc(c.customer_name||c.customer_phone||'')}</div><div style="font-size:.7rem;color:#9A9590;margin-top:2px">${c.orders} طلب</div></div><div style="text-align:left"><div style="font-size:1rem;font-weight:900;color:#E8C96A">${Number(c.spent||0).toLocaleString()}</div><div style="font-size:.62rem;color:#5A5550">${new Date(c.last_order).toLocaleDateString('ar')}</div></div></div></div>`).join('');
   }
 }
 
