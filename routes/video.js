@@ -189,7 +189,7 @@ app.get('/api/video/status/:render_id', authenticateToken, async (req, res) => {
     });
     const data = await r.json();
 
-    if (data.status === 'succeeded') {
+    if (data.status === 'succeeded' || data.status === 'done') {
       if (pool) {
         await pool.query(
           `UPDATE video_renders SET status='done', video_url=$1 WHERE render_id=$2 AND user_id=$3`,
