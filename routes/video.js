@@ -109,18 +109,35 @@ app.post('/api/video/mike-create', authenticateToken, rateLimit(10, 60000), asyn
 
     const tmpl = TEMPLATES[templateKey];
 
-    const modifications = {
-      'Store Name': storeName,
-      'Product Name': sanitize(idea?.substring(0, 50) || 'منتج مميز'),
-      'Headline': sanitize(idea?.substring(0, 80) || 'عرض خاص!'),
-      'CTA': 'اطلب الآن',
-      'Price': '',
-      'Discount': '',
-    };
+    // modifications حسب القالب المختار
+    let modifications = {};
 
-    if (images.length > 0) modifications['Image'] = images[0];
-    if (images.length > 1) modifications['Image 2'] = images[1];
-    if (images.length > 2) modifications['Image 3'] = images[2];
+    if (templateKey === 'product-hero-discount') {
+      modifications = {
+        'Product-Name': sanitize(idea?.substring(0, 50) || 'منتج مميز'),
+        'Product-Description': sanitize(idea?.substring(0, 80) || ''),
+        'Caption': 'خصم خاص!',
+        'Discounted-Price': '',
+        'Normal-Price': '',
+      };
+      if (images.length > 0) modifications['Product-Image'] = images[0];
+    } else if (templateKey === 'matrix-promotion') {
+      modifications = {
+        'Text': storeName,
+        'Date': new Date().toLocaleDateString('ar'),
+        'Product Offer 1': sanitize(idea?.substring(0, 50) || 'عرض مميز'),
+      };
+      if (images.length > 0) modifications['Product Image 1'] = images[0];
+      if (images.length > 1) modifications['Product Image 2'] = images[1];
+    } else if (templateKey === 'animated-review') {
+      modifications = {
+        'Review-Text': sanitize(idea?.substring(0, 100) || 'منتج رائع وجودة عالية'),
+        'Name': storeName,
+        'Date': new Date().toLocaleDateString('ar'),
+        'Stars': '5',
+      };
+      if (images.length > 0) modifications['Photo'] = images[0];
+    }
 
     const result = await fetch(CREATOMATE_URL, {
       method: 'POST',
