@@ -135,8 +135,51 @@ async function sendMike(text) {
 
     addCm('mike-msgs', 'ai', fullReply);
 
-    // تحديث الصفحة الحالية إذا نفّذ إجراء
-    if (d.action && d.action !== 'none' && d.action_result) {
+    // تنفيذ الـ actions
+    console.log('Mike action:', d.action, 'data:', JSON.stringify(d.action_data));
+    if (d.action && d.action !== 'none') {
+
+      // التنقل للصفحات
+      if (d.action === 'navigate_to' && d.action_data?.page) {
+        setTimeout(() => sp(d.action_data.page, null), 300);
+      }
+
+      // تصميم إعلان صورة
+      if (d.action === 'design_ad') {
+        setTimeout(() => {
+          sp('designer', null);
+          toast('🎨 افتحت مصمم الإعلانات — ارفع صورة المنتج واختر ديكور');
+        }, 300);
+      }
+
+      // إنشاء فيديو
+      if (d.action === 'create_video') {
+        setTimeout(() => {
+          sp('video', null);
+          if (d.action_data?.idea) {
+            setTimeout(() => {
+              const ideaInput = document.getElementById('video-idea-input');
+              if (ideaInput) { ideaInput.value = d.action_data.idea; ideaInput.dispatchEvent(new Event('input')); }
+            }, 500);
+          }
+          toast('🎬 افتحت مصمم الفيديو — Mike يجهز الفكرة');
+        }, 300);
+      }
+
+      // نشر على منصة
+      if (d.action === 'publish_product_ad' || d.action === 'create_post') {
+        setTimeout(() => sp('posts', null), 300);
+      }
+
+      // حملة إعلانية
+      if (d.action === 'launch_ad') {
+        setTimeout(() => {
+          sp('ads', null);
+          toast('📢 افتحت قسم الإعلانات — راجع تفاصيل الحملة');
+        }, 300);
+      }
+
+      // تحديث الصفحة الحالية إذا نفّذ إجراء يغير البيانات
       const refreshMap = {
         create_order: 'orders',
         create_product: 'products',
@@ -146,14 +189,14 @@ async function sendMike(text) {
         update_order_status: 'orders'
       };
       const refreshPage = refreshMap[d.action];
-      if (refreshPage) {
+      if (refreshPage && d.action_result) {
         setTimeout(() => {
-          // إضافة زر للانتقال للصفحة
           const lastMsg = msgs.lastElementChild;
           if (lastMsg) {
             const actionBtn = document.createElement('div');
             actionBtn.style.cssText = 'margin-top:7px';
-            actionBtn.innerHTML = `<button class="btn ba bsm" onclick="sp('${refreshPage}',null)" style="font-size:.75rem">🔗 عرض في ${refreshPage === 'orders' ? 'الطلبات' : refreshPage === 'products' ? 'المنتجات' : refreshPage === 'customers' ? 'العملاء' : refreshPage === 'posts' ? 'المنشورات' : 'الكوبونات'}</button>`;
+            const labels = { orders:'الطلبات', products:'المنتجات', customers:'العملاء', posts:'المنشورات', coupons:'الكوبونات' };
+            actionBtn.innerHTML = `<button class="btn ba bsm" onclick="sp('${refreshPage}',null)" style="font-size:.75rem">🔗 عرض في ${labels[refreshPage]||refreshPage}</button>`;
             lastMsg.querySelector('.cbub')?.appendChild(actionBtn);
           }
         }, 100);

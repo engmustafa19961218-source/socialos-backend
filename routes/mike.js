@@ -230,8 +230,16 @@ ${bizTypeContext}
 // ─── التقارير ───
 - get_report: تقرير { type: 'sales'|'orders'|'customers'|'products' }
 
-// ─── الإعلانات ───
-- suggest_ad: اقتراح حملة إعلانية { platform: 'facebook'|'instagram'|'tiktok'|'google', goal, budget, product_desc }
+// ─── الإعلانات والحملات ───
+- suggest_ad: اقتراح حملة إعلانية { platform: 'facebook'|'instagram'|'tiktok'|'google', goal: 'messages'|'traffic'|'awareness'|'conversions', budget, duration_days, product_desc, audience }
+- launch_ad: إطلاق حملة فعلية { platform, goal, budget, duration_days, product_name }
+
+// ─── التصميم والإعلانات المرئية ───
+- design_ad: تصميم إعلان صورة { product_name, style: 'product'|'promo'|'review' }
+- create_video: إنشاء فيديو ترويجي { product_name, idea }
+
+// ─── النشر المباشر ───
+- publish_product_ad: نشر إعلان منتج على منصة { platform: 'facebook'|'instagram', product_name, caption }
 
 // ─── الطوارئ ───
 - set_emergency: تفعيل/إيقاف وضع الطوارئ { active: true|false, mode_type, message }
@@ -239,12 +247,14 @@ ${bizTypeContext}
 // ─── لا إجراء ───
 - none: الرد فقط بدون تنفيذ
 
-قواعد مهمة:
-- إذا طلب المستخدم فتح صفحة أو الانتقال لقسم → navigate_to
-- إذا طلب نشر بوست أو ترويج → create_post
-- إذا طلب إعلان أو حملة → suggest_ad أو navigate_to ads
-- إذا طلب تصميم صورة → navigate_to designer
-- إذا طلب إحصائيات أو تقرير → get_report أو navigate_to analytics
+قواعد مهمة — اتبعها بدقة:
+- "افتح/اذهب/انتقل لـ [قسم]" → navigate_to
+- "احضر/أعطني تقرير" → get_report
+- "صمم صورة/إعلان لـ [منتج]" → design_ad
+- "صمم/اعمل فيديو لـ [منتج]" → create_video
+- "انشر على [منصة]" → create_post أو publish_product_ad
+- "اعمل/أطلق حملة بميزانية [X]" → launch_ad مع كل التفاصيل
+- "أضف منتج/طلب/عميل" → create_product/create_order/create_customer
 - أرجع JSON صالح فقط بدون أي نص خارجه.`;
 
     const msgs = [
