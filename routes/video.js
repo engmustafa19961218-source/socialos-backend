@@ -196,7 +196,8 @@ app.get('/api/video/status/:render_id', authenticateToken, async (req, res) => {
           [data.url, req.params.render_id, req.user.id]
         ).catch(() => {});
       }
-      res.json({ success: true, status: 'done', url: data.url });
+      const videoUrl = data.url || data.output_url || (Array.isArray(data) ? data[0]?.url : null);
+      res.json({ success: true, status: 'done', url: videoUrl });
     } else if (data.status === 'failed') {
       res.json({ success: false, status: 'failed', message: data.error || 'فشل التوليد' });
     } else {
